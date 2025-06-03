@@ -61,5 +61,3 @@ export const useToast = () => {
     dismiss,
   }
 }
-
-export { toast } from "./use-toast"
