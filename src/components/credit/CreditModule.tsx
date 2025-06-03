@@ -18,12 +18,14 @@ import {
   Mail,
   Save,
   Edit,
-  Trash
+  Trash,
+  MessageSquare
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { toast } from '../ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const CreditDashboard = () => {
+  const { toast } = useToast();
   const [selectedClient, setSelectedClient] = useState(null);
   const [clients, setClients] = useState([
     { id: 1, name: "António Silva", classification: "Fiel", score: 850, lastOp: "15/03/2024", phone: "84123456", email: "antonio@email.com" },
@@ -144,6 +146,20 @@ const CreditDashboard = () => {
     toast({
       title: "Detalhes do Cliente",
       description: `Visualizando informações de ${client?.name}.`,
+    });
+  };
+
+  const handleSendSMSReminder = (clientName: string, amount: string, type: string) => {
+    toast({
+      title: "SMS Enviado",
+      description: `Lembrete por SMS enviado para ${clientName} sobre ${type} de ${amount}.`,
+    });
+  };
+
+  const handleCallClient = (clientName: string, reason: string) => {
+    toast({
+      title: "Chamada Iniciada",
+      description: `Ligação para ${clientName} - ${reason}.`,
     });
   };
 
@@ -483,7 +499,7 @@ const CreditDashboard = () => {
             <CardHeader>
               <CardTitle>Sistema de Cobrança</CardTitle>
               <CardDescription>
-                Alertas e lembretes de pagamento
+                Alertas e lembretes de pagamento por SMS e telefone
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -492,11 +508,29 @@ const CreditDashboard = () => {
                   <h3 className="font-semibold text-red-800 mb-2">Vencidos</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span>João Silva - Venceu há 5 dias</span>
+                      <div>
+                        <span className="font-medium">João Silva - Venceu há 5 dias</span>
+                        <p className="text-sm text-gray-600">Tel: 84123456</p>
+                      </div>
                       <span className="font-bold">MZN 15,000</span>
-                      <Button size="sm" variant="destructive" onClick={() => handleContactClient('João Silva', 'cobrança urgente')}>
-                        Contactar
-                      </Button>
+                      <div className="flex space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant="destructive" 
+                          onClick={() => handleCallClient('João Silva', 'cobrança urgente')}
+                        >
+                          <Phone className="h-3 w-3 mr-1" />
+                          Ligar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleSendSMSReminder('João Silva', 'MZN 15,000', 'pagamento vencido')}
+                        >
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          SMS
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -505,11 +539,28 @@ const CreditDashboard = () => {
                   <h3 className="font-semibold text-yellow-800 mb-2">Vencem Hoje</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span>Maria Santos - Vence hoje</span>
+                      <div>
+                        <span className="font-medium">Maria Santos - Vence hoje</span>
+                        <p className="text-sm text-gray-600">Tel: 87654321</p>
+                      </div>
                       <span className="font-bold">MZN 8,500</span>
-                      <Button size="sm" variant="outline" onClick={() => handleContactClient('Maria Santos', 'lembrete de vencimento')}>
-                        Lembrar
-                      </Button>
+                      <div className="flex space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleCallClient('Maria Santos', 'lembrete de vencimento')}
+                        >
+                          <Phone className="h-3 w-3 mr-1" />
+                          Ligar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleSendSMSReminder('Maria Santos', 'MZN 8,500', 'vencimento hoje')}
+                        >
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          SMS
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -518,13 +569,52 @@ const CreditDashboard = () => {
                   <h3 className="font-semibold text-blue-800 mb-2">Vencem em 3 dias</h3>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span>Ana Costa - Vence em 3 dias</span>
+                      <div>
+                        <span className="font-medium">Ana Costa - Vence em 3 dias</span>
+                        <p className="text-sm text-gray-600">Tel: 85987654</p>
+                      </div>
                       <span className="font-bold">MZN 12,000</span>
-                      <Button size="sm" variant="outline" onClick={() => handleContactClient('Ana Costa', 'pré-aviso')}>
-                        Pré-aviso
-                      </Button>
+                      <div className="flex space-x-1">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleCallClient('Ana Costa', 'pré-aviso de vencimento')}
+                        >
+                          <Phone className="h-3 w-3 mr-1" />
+                          Ligar
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleSendSMSReminder('Ana Costa', 'MZN 12,000', 'pré-aviso (3 dias)')}
+                        >
+                          <MessageSquare className="h-3 w-3 mr-1" />
+                          SMS
+                        </Button>
+                      </div>
                     </div>
                   </div>
+                </div>
+
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h3 className="font-semibold text-green-800 mb-2">Configurações de SMS</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="smsProvider">Provedor SMS</Label>
+                      <Input id="smsProvider" placeholder="Ex: Vodacom, Tmcel" />
+                    </div>
+                    <div>
+                      <Label htmlFor="smsTemplate">Modelo de SMS</Label>
+                      <Textarea 
+                        id="smsTemplate" 
+                        placeholder="Olá {nome}, seu pagamento de {valor} vence {data}..."
+                        className="min-h-[80px]"
+                      />
+                    </div>
+                  </div>
+                  <Button className="mt-4" onClick={() => toast({ title: "Configurações Salvas", description: "Configurações de SMS foram atualizadas." })}>
+                    <Save className="mr-2 h-4 w-4" />
+                    Salvar Configurações
+                  </Button>
                 </div>
               </div>
             </CardContent>
