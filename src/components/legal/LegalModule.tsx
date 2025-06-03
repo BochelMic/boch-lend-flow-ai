@@ -1,140 +1,140 @@
-
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 import { 
-  Scale, 
   FileText, 
+  Scale, 
   Shield, 
-  AlertTriangle,
+  AlertTriangle, 
   CheckCircle,
-  Download,
   Eye,
+  Download,
+  Upload,
   Search,
-  MessageSquare,
-  Phone
+  Plus,
+  Settings
 } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
 const LegalDashboard = () => {
   const { toast } = useToast();
-  const [showAMLPolicy, setShowAMLPolicy] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [showAntiLaundering, setShowAntiLaundering] = useState(false);
+  const [complianceChecks, setComplianceChecks] = useState([
+    { id: 1, item: "Verificação de identidade", status: "Concluído", date: "15/03/2024" },
+    { id: 2, item: "Análise de origem de fundos", status: "Pendente", date: "14/03/2024" },
+    { id: 3, item: "Verificação de sanções", status: "Concluído", date: "13/03/2024" }
+  ]);
 
-  const handleShowAMLPolicy = () => {
-    setShowAMLPolicy(true);
+  const handleAntiLaunderingCheck = () => {
+    setShowAntiLaundering(!showAntiLaundering);
     toast({
-      title: "Política AML Carregada",
-      description: "Política Anti-Lavagem de Dinheiro conforme Lei de Moçambique foi carregada.",
+      title: showAntiLaundering ? "Política Ocultada" : "Política de Anti-Lavagem Ativada",
+      description: showAntiLaundering ? 
+        "Informações de anti-lavagem foram ocultadas." : 
+        "Exibindo políticas de anti-lavagem de acordo com a lei de Moçambique.",
     });
   };
 
-  const handleDownloadPolicy = (policyName: string) => {
-    toast({
-      title: "Download Iniciado",
-      description: `Download de ${policyName} foi iniciado.`,
-    });
-  };
-
-  const handleViewPolicy = (policyName: string) => {
-    toast({
-      title: "Visualizando Política",
-      description: `Abrindo visualização de ${policyName}.`,
-    });
-  };
-
-  const handleEditContract = (contractName: string) => {
-    toast({
-      title: "Editor de Contrato",
-      description: `Abrindo editor para ${contractName}.`,
-    });
-  };
-
-  const handleUseTemplate = (templateName: string) => {
-    toast({
-      title: "Modelo Aplicado",
-      description: `Modelo ${templateName} foi aplicado com sucesso.`,
-    });
-  };
-
-  const handleRenewLicense = (licenseName: string) => {
-    toast({
-      title: "Renovação Iniciada",
-      description: `Processo de renovação para ${licenseName} foi iniciado.`,
-    });
-  };
-
-  const handleGenerateReport = (reportType: string) => {
-    toast({
-      title: "Relatório Gerado",
-      description: `Relatório de ${reportType} foi gerado com sucesso.`,
-    });
-  };
-
-  const handleAMLVerification = (clientName: string, status: string) => {
-    toast({
-      title: "Verificação AML",
-      description: `Cliente ${clientName} - Status: ${status}`,
-    });
+  const handleComplianceAction = (action: string, clientName?: string) => {
+    switch (action) {
+      case 'verify_identity':
+        toast({
+          title: "Verificação de Identidade",
+          description: `Iniciando verificação de identidade para ${clientName || 'cliente selecionado'}.`,
+        });
+        break;
+      case 'check_sanctions':
+        toast({
+          title: "Verificação de Sanções",
+          description: `Consultando listas de sanções para ${clientName || 'cliente selecionado'}.`,
+        });
+        break;
+      case 'analyze_funds':
+        toast({
+          title: "Análise de Fundos",
+          description: `Analisando origem dos fundos para ${clientName || 'cliente selecionado'}.`,
+        });
+        break;
+      case 'generate_report':
+        toast({
+          title: "Relatório de Compliance",
+          description: "Gerando relatório de conformidade regulatória.",
+        });
+        break;
+      default:
+        toast({
+          title: "Ação de Compliance",
+          description: `Executando ação: ${action}`,
+        });
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Departamento Jurídico</h1>
-        <div className="space-x-2">
-          <Button onClick={handleShowAMLPolicy}>
+        <h1 className="text-3xl font-bold">Jurídico e Compliance</h1>
+        <div className="flex space-x-2">
+          <Button 
+            onClick={handleAntiLaunderingCheck}
+            variant={showAntiLaundering ? "destructive" : "default"}
+          >
             <Shield className="mr-2 h-4 w-4" />
-            Política Anti-Lavagem (Lei MZ)
+            {showAntiLaundering ? "Ocultar" : "Mostrar"} Anti-Lavagem
           </Button>
-          <Button onClick={() => handleGenerateReport('Compliance')}>
-            <Download className="mr-2 h-4 w-4" />
+          <Button onClick={() => handleComplianceAction('generate_report')}>
+            <FileText className="mr-2 h-4 w-4" />
             Relatório Compliance
           </Button>
         </div>
       </div>
 
-      {showAMLPolicy && (
-        <Card className="border-blue-200 bg-blue-50">
+      {showAntiLaundering && (
+        <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
-            <CardTitle className="text-blue-800">Política Anti-Lavagem de Dinheiro - Lei de Moçambique</CardTitle>
-            <CardDescription className="text-blue-600">
-              Conforme Lei nº 14/2013 e Decreto nº 10/2014
+            <CardTitle className="flex items-center text-amber-800">
+              <AlertTriangle className="mr-2 h-5 w-5" />
+              Política de Prevenção à Lavagem de Dinheiro
+            </CardTitle>
+            <CardDescription className="text-amber-700">
+              Conforme Lei nº 14/2013 de Moçambique
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4 text-sm">
+          <CardContent className="text-amber-800">
+            <div className="space-y-4">
               <div>
-                <h4 className="font-semibold mb-2">1. Identificação de Clientes (KYC)</h4>
-                <p>Todos os clientes devem fornecer documento de identificação válido, comprovativo de residência e declaração de rendimentos conforme Artigo 15º da Lei nº 14/2013.</p>
+                <h3 className="font-semibold mb-2">Obrigações Principais:</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>Identificação e verificação da identidade dos clientes</li>
+                  <li>Manutenção de registros de transações por no mínimo 5 anos</li>
+                  <li>Comunicação de operações suspeitas ao GCIFP</li>
+                  <li>Implementação de políticas de conhecimento do cliente (KYC)</li>
+                  <li>Formação regular dos funcionários sobre AML/CFT</li>
+                </ul>
               </div>
               <div>
-                <h4 className="font-semibold mb-2">2. Transações Suspeitas</h4>
-                <p>Operações acima de MZN 50,000 ou com padrões anómalos devem ser reportadas ao Gabinete de Informação Financeira (GIF) no prazo de 3 dias úteis.</p>
+                <h3 className="font-semibold mb-2">Limites de Comunicação:</h3>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  <li>Transações em dinheiro superiores a MZN 1.000.000</li>
+                  <li>Operações suspeitas independentemente do valor</li>
+                  <li>Tentativas de transações fracionadas</li>
+                </ul>
               </div>
-              <div>
-                <h4 className="font-semibold mb-2">3. Conservação de Registos</h4>
-                <p>Todos os registos de transações e identificação devem ser conservados por período mínimo de 5 anos conforme Artigo 23º.</p>
+              <div className="flex space-x-2 mt-4">
+                <Button size="sm" onClick={() => handleComplianceAction('verify_identity')}>
+                  Verificar Identidade
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleComplianceAction('check_sanctions')}>
+                  Consultar Sanções
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleComplianceAction('analyze_funds')}>
+                  Analisar Fundos
+                </Button>
               </div>
-              <div>
-                <h4 className="font-semibold mb-2">4. Formação de Pessoal</h4>
-                <p>Colaboradores devem receber formação anual sobre prevenção de lavagem de dinheiro e financiamento ao terrorismo.</p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">5. Sanções</h4>
-                <p>Multas de 50 a 500 salários mínimos para pessoas colectivas e prisão de 2 a 8 anos para pessoas singulares.</p>
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowAMLPolicy(false)}
-                className="mt-4"
-              >
-                Fechar
-              </Button>
             </div>
           </CardContent>
         </Card>
@@ -144,8 +144,8 @@ const LegalDashboard = () => {
         <TabsList>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
           <TabsTrigger value="contracts">Contratos</TabsTrigger>
-          <TabsTrigger value="licensing">Licenças</TabsTrigger>
-          <TabsTrigger value="aml">Anti-Lavagem</TabsTrigger>
+          <TabsTrigger value="regulations">Regulamentações</TabsTrigger>
+          <TabsTrigger value="documentation">Documentação</TabsTrigger>
         </TabsList>
 
         <TabsContent value="compliance" className="space-y-6">
@@ -154,8 +154,20 @@ const LegalDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Status Compliance</p>
-                    <p className="text-2xl font-bold text-green-600">Conforme</p>
+                    <p className="text-sm font-medium text-gray-600">Verificações Pendentes</p>
+                    <p className="text-2xl font-bold">3</p>
+                  </div>
+                  <AlertTriangle className="h-8 w-8 text-yellow-600" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Compliance OK</p>
+                    <p className="text-2xl font-bold">15</p>
                   </div>
                   <CheckCircle className="h-8 w-8 text-green-600" />
                 </div>
@@ -167,21 +179,9 @@ const LegalDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Alertas Ativos</p>
-                    <p className="text-2xl font-bold text-yellow-600">2</p>
+                    <p className="text-2xl font-bold">2</p>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-yellow-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Verificações AML</p>
-                    <p className="text-2xl font-bold">156</p>
-                  </div>
-                  <Shield className="h-8 w-8 text-blue-600" />
+                  <Shield className="h-8 w-8 text-red-600" />
                 </div>
               </CardContent>
             </Card>
@@ -189,62 +189,67 @@ const LegalDashboard = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Políticas de Compliance</CardTitle>
+              <CardTitle>Centro de Comando Compliance</CardTitle>
               <CardDescription>
-                Políticas contra lavagem de dinheiro e financiamento ao terrorismo
+                Ferramentas de verificação e controle de conformidade
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-semibold">Política Anti-Lavagem de Dinheiro (AML)</h3>
-                    <p className="text-sm text-gray-600">Última atualização: 15/03/2024</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleViewPolicy('Política AML')}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
-                    <Button size="sm" onClick={() => handleDownloadPolicy('Política AML')}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Button 
+                  className="h-20 flex-col"
+                  onClick={() => handleComplianceAction('verify_identity', 'Cliente Atual')}
+                >
+                  <Eye className="mb-2 h-6 w-6" />
+                  <span className="text-sm">Verificar Identidade</span>
+                </Button>
+                
+                <Button 
+                  className="h-20 flex-col"
+                  variant="outline"
+                  onClick={() => handleComplianceAction('check_sanctions', 'Cliente Atual')}
+                >
+                  <Search className="mb-2 h-6 w-6" />
+                  <span className="text-sm">Consultar Sanções</span>
+                </Button>
+                
+                <Button 
+                  className="h-20 flex-col"
+                  variant="outline"
+                  onClick={() => handleComplianceAction('analyze_funds', 'Cliente Atual')}
+                >
+                  <Settings className="mb-2 h-6 w-6" />
+                  <span className="text-sm">Analisar Fundos</span>
+                </Button>
+                
+                <Button 
+                  className="h-20 flex-col"
+                  variant="outline"
+                  onClick={() => handleComplianceAction('generate_detailed_report')}
+                >
+                  <FileText className="mb-2 h-6 w-6" />
+                  <span className="text-sm">Relatório Detalhado</span>
+                </Button>
+              </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-semibold">Prevenção ao Financiamento do Terrorismo</h3>
-                    <p className="text-sm text-gray-600">Última atualização: 10/03/2024</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleViewPolicy('Prevenção Terrorismo')}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
-                    <Button size="sm" onClick={() => handleDownloadPolicy('Prevenção Terrorismo')}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-semibold">Código de Conduta Ética</h3>
-                    <p className="text-sm text-gray-600">Última atualização: 01/03/2024</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleViewPolicy('Código de Conduta')}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
-                    <Button size="sm" onClick={() => handleDownloadPolicy('Código de Conduta')}>
-                      <Download className="h-4 w-4 mr-2" />
-                      Download
-                    </Button>
-                  </div>
+              <div className="mt-6">
+                <h3 className="font-semibold mb-4">Verificações Recentes</h3>
+                <div className="space-y-2">
+                  {complianceChecks.map((check) => (
+                    <div key={check.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div>
+                        <p className="font-medium">{check.item}</p>
+                        <p className="text-sm text-gray-600">{check.date}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        check.status === 'Concluído' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {check.status}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>
@@ -309,7 +314,7 @@ const LegalDashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="licensing" className="space-y-6">
+        <TabsContent value="regulations" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Licenças e Autorizações</CardTitle>
@@ -358,7 +363,7 @@ const LegalDashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="aml" className="space-y-6">
+        <TabsContent value="documentation" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Sistema Anti-Lavagem de Dinheiro</CardTitle>

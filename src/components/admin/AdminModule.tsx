@@ -20,7 +20,8 @@ import {
   Eye,
   Upload
 } from 'lucide-react';
-import { toast } from '../ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import { exportToExcel, exportToWord, ReportData } from '../../utils/exportUtils';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
@@ -141,7 +142,7 @@ const AdminDashboard = () => {
         <h1 className="text-3xl font-bold">Administração</h1>
         <Button onClick={handleExportReports}>
           <Download className="mr-2 h-4 w-4" />
-          Exportar Relatórios
+          Exportar Relatórios Excel
         </Button>
       </div>
 
