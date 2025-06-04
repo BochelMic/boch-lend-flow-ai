@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -36,21 +37,43 @@ const AdminDashboard = () => {
     category: ''
   });
 
-  const handleAddEmployee = () => {
+  const handleAddEmployee = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEmployee.name || !newEmployee.email || !newEmployee.role || !newEmployee.department) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('Adicionando funcionário:', newEmployee);
     toast({
       title: "Funcionário Adicionado",
       description: `${newEmployee.name} foi adicionado ao sistema.`,
     });
+    
+    // Limpar formulário
+    setNewEmployee({
+      name: '',
+      email: '',
+      role: '',
+      department: ''
+    });
   };
 
   const handleDeleteEmployee = () => {
+    console.log('Removendo funcionário');
     toast({
       title: "Funcionário Removido",
       description: "Funcionário foi removido do sistema.",
+      variant: "destructive"
     });
   };
 
   const handleEditEmployee = () => {
+    console.log('Editando funcionário');
     toast({
       title: "Funcionário Editado",
       description: "Dados do funcionário foram atualizados.",
@@ -58,6 +81,8 @@ const AdminDashboard = () => {
   };
 
   const handleExportReport = async (type: 'excel' | 'word', reportType: string) => {
+    console.log(`Exportando relatório ${reportType} em ${type}`);
+    
     const reportData: ReportData = {
       title: `Relatório Administrativo - ${reportType}`,
       headers: ['Data', 'Tipo', 'Valor', 'Status'],
@@ -76,19 +101,24 @@ const AdminDashboard = () => {
     let success = false;
     const filename = `relatorio-admin-${reportType.toLowerCase()}-${new Date().toISOString().split('T')[0]}`;
 
-    if (type === 'excel') {
-      success = exportToExcel(reportData, filename);
-    } else {
-      const wordContent = `${reportData.title}\n\nRelatório gerado em: ${new Date().toLocaleDateString()}`;
-      success = exportToWord(wordContent, filename);
-    }
+    try {
+      if (type === 'excel') {
+        success = exportToExcel(reportData, filename);
+      } else {
+        const wordContent = `${reportData.title}\n\nRelatório gerado em: ${new Date().toLocaleDateString()}`;
+        success = exportToWord(wordContent, filename);
+      }
 
-    if (success) {
-      toast({
-        title: "Relatório Exportado",
-        description: `Relatório ${reportType} foi exportado com sucesso.`,
-      });
-    } else {
+      if (success) {
+        toast({
+          title: "Relatório Exportado",
+          description: `Relatório ${reportType} foi exportado com sucesso.`,
+        });
+      } else {
+        throw new Error('Falha na exportação');
+      }
+    } catch (error) {
+      console.error('Erro na exportação:', error);
       toast({
         title: "Erro na Exportação",
         description: "Ocorreu um erro ao exportar o relatório.",
@@ -97,14 +127,34 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleRegisterTransaction = () => {
+  const handleRegisterTransaction = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transaction.type || !transaction.amount || !transaction.description) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('Registrando transação:', transaction);
     toast({
       title: "Transação Registrada",
       description: `Transação de ${transaction.type} registrada com sucesso.`,
     });
+    
+    // Limpar formulário
+    setTransaction({
+      type: '',
+      amount: '',
+      description: '',
+      category: ''
+    });
   };
 
   const handleSystemBackup = () => {
+    console.log('Iniciando backup do sistema');
     toast({
       title: "Backup Iniciado",
       description: "Processo de backup do sistema foi iniciado.",
@@ -112,6 +162,7 @@ const AdminDashboard = () => {
   };
 
   const handleGenerateReport = (reportType: string) => {
+    console.log(`Gerando relatório de ${reportType}`);
     toast({
       title: "Relatório Gerado",
       description: `Relatório de ${reportType} foi gerado com sucesso.`,
@@ -119,6 +170,7 @@ const AdminDashboard = () => {
   };
 
   const handleSystemMaintenance = () => {
+    console.log('Agendando manutenção do sistema');
     toast({
       title: "Manutenção Agendada",
       description: "Manutenção do sistema foi agendada para esta noite.",
@@ -129,7 +181,7 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Administração</h1>
-        <Button>
+        <Button onClick={() => setNewEmployee({ name: '', email: '', role: '', department: '' })}>
           <UserPlus className="mr-2 h-4 w-4" />
           Adicionar Funcionário
         </Button>
@@ -237,54 +289,58 @@ const AdminDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4">
+              <form onSubmit={handleAddEmployee} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="employeeName">Nome Completo</Label>
+                    <Label htmlFor="employeeName">Nome Completo *</Label>
                     <Input 
                       id="employeeName" 
                       placeholder="Nome completo" 
                       value={newEmployee.name}
                       onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="employeeEmail">Email</Label>
+                    <Label htmlFor="employeeEmail">Email *</Label>
                     <Input 
                       id="employeeEmail" 
                       placeholder="Email" 
                       type="email"
                       value={newEmployee.email}
                       onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                      required
                     />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="employeeRole">Cargo</Label>
+                    <Label htmlFor="employeeRole">Cargo *</Label>
                     <Input 
                       id="employeeRole" 
                       placeholder="Cargo" 
                       value={newEmployee.role}
                       onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="employeeDepartment">Departamento</Label>
+                    <Label htmlFor="employeeDepartment">Departamento *</Label>
                     <Input 
                       id="employeeDepartment" 
                       placeholder="Departamento" 
                       value={newEmployee.department}
                       onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
+                      required
                     />
                   </div>
                 </div>
 
                 <div className="flex space-x-2">
-                  <Button className="w-1/3" onClick={handleAddEmployee}>Adicionar</Button>
-                  <Button variant="outline" className="w-1/3" onClick={handleEditEmployee}>Editar</Button>
-                  <Button variant="destructive" className="w-1/3" onClick={handleDeleteEmployee}>Remover</Button>
+                  <Button type="submit" className="w-1/3">Adicionar</Button>
+                  <Button type="button" variant="outline" className="w-1/3" onClick={handleEditEmployee}>Editar</Button>
+                  <Button type="button" variant="destructive" className="w-1/3" onClick={handleDeleteEmployee}>Remover</Button>
                 </div>
               </form>
             </CardContent>
@@ -300,36 +356,39 @@ const AdminDashboard = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4">
+              <form onSubmit={handleRegisterTransaction} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="transactionType">Tipo de Transação</Label>
+                    <Label htmlFor="transactionType">Tipo de Transação *</Label>
                     <Input 
                       id="transactionType" 
                       placeholder="Tipo" 
                       value={transaction.type}
                       onChange={(e) => setTransaction({...transaction, type: e.target.value})}
+                      required
                     />
                   </div>
                   <div>
-                    <Label htmlFor="transactionAmount">Valor (MZN)</Label>
+                    <Label htmlFor="transactionAmount">Valor (MZN) *</Label>
                     <Input 
                       id="transactionAmount" 
                       placeholder="Valor" 
                       type="number"
                       value={transaction.amount}
                       onChange={(e) => setTransaction({...transaction, amount: e.target.value})}
+                      required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="transactionDescription">Descrição</Label>
+                  <Label htmlFor="transactionDescription">Descrição *</Label>
                   <Textarea 
                     id="transactionDescription" 
                     placeholder="Descrição" 
                     value={transaction.description}
                     onChange={(e) => setTransaction({...transaction, description: e.target.value})}
+                    required
                   />
                 </div>
 
@@ -343,7 +402,7 @@ const AdminDashboard = () => {
                   />
                 </div>
 
-                <Button className="w-full" onClick={handleRegisterTransaction}>Registrar Transação</Button>
+                <Button type="submit" className="w-full">Registrar Transação</Button>
               </form>
             </CardContent>
           </Card>
