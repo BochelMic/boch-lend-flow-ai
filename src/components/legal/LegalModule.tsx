@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -33,22 +34,11 @@ const LegalDashboard = () => {
     interestRate: '',
     purpose: ''
   });
-  const [showAntiLaundering, setShowAntiLaundering] = useState(false);
   const [complianceChecks, setComplianceChecks] = useState([
     { id: 1, item: "Verificação de identidade", status: "Concluído", date: "15/03/2024" },
     { id: 2, item: "Análise de origem de fundos", status: "Pendente", date: "14/03/2024" },
     { id: 3, item: "Verificação de sanções", status: "Concluído", date: "13/03/2024" }
   ]);
-
-  const handleAntiLaunderingCheck = () => {
-    setShowAntiLaundering(!showAntiLaundering);
-    toast({
-      title: showAntiLaundering ? "Política Ocultada" : "Política de Anti-Lavagem Ativada",
-      description: showAntiLaundering ? 
-        "Informações de anti-lavagem foram ocultadas." : 
-        "Exibindo políticas de anti-lavagem de acordo com a lei de Moçambique.",
-    });
-  };
 
   const handleComplianceAction = (action: string, clientName?: string) => {
     switch (action) {
@@ -130,13 +120,6 @@ const LegalDashboard = () => {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Jurídico e Compliance</h1>
         <div className="flex space-x-2">
-          <Button 
-            onClick={handleAntiLaunderingCheck}
-            variant={showAntiLaundering ? "destructive" : "default"}
-          >
-            <Shield className="mr-2 h-4 w-4" />
-            {showAntiLaundering ? "Ocultar" : "Mostrar"} Anti-Lavagem
-          </Button>
           <Button onClick={() => handleComplianceAction('generate_report')}>
             <FileText className="mr-2 h-4 w-4" />
             Relatório Compliance
@@ -144,59 +127,13 @@ const LegalDashboard = () => {
         </div>
       </div>
 
-      {showAntiLaundering && (
-        <Card className="border-amber-200 bg-amber-50">
-          <CardHeader>
-            <CardTitle className="flex items-center text-amber-800">
-              <AlertTriangle className="mr-2 h-5 w-5" />
-              Política de Prevenção à Lavagem de Dinheiro
-            </CardTitle>
-            <CardDescription className="text-amber-700">
-              Conforme Lei nº 14/2013 de Moçambique
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-amber-800">
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-2">Obrigações Principais:</h3>
-                <ul className="list-disc list-inside space-y-1 text-sm">
-                  <li>Identificação e verificação da identidade dos clientes</li>
-                  <li>Manutenção de registros de transações por no mínimo 5 anos</li>
-                  <li>Comunicação de operações suspeitas ao GCIFP</li>
-                  <li>Implementação de políticas de conhecimento do cliente (KYC)</li>
-                  <li>Formação regular dos funcionários sobre AML/CFT</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-semibold mb-2">Limites de Comunicação:</h3>
-                <ul className="list-disc list-inside space-y-1 text-sm">
-                  <li>Transações em dinheiro superiores a MZN 1.000.000</li>
-                  <li>Operações suspeitas independentemente do valor</li>
-                  <li>Tentativas de transações fracionadas</li>
-                </ul>
-              </div>
-              <div className="flex space-x-2 mt-4">
-                <Button size="sm" onClick={() => handleComplianceAction('verify_identity')}>
-                  Verificar Identidade
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleComplianceAction('check_sanctions')}>
-                  Consultar Sanções
-                </Button>
-                <Button size="sm" variant="outline" onClick={() => handleComplianceAction('analyze_funds')}>
-                  Analisar Fundos
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       <Tabs defaultValue="compliance" className="w-full">
         <TabsList>
           <TabsTrigger value="compliance">Compliance</TabsTrigger>
           <TabsTrigger value="contracts">Contratos</TabsTrigger>
           <TabsTrigger value="regulations">Regulamentações</TabsTrigger>
           <TabsTrigger value="documentation">Documentação</TabsTrigger>
+          <TabsTrigger value="aml">Anti-Lavagem</TabsTrigger>
         </TabsList>
 
         <TabsContent value="compliance" className="space-y-6">
@@ -415,6 +352,111 @@ const LegalDashboard = () => {
         </TabsContent>
 
         <TabsContent value="documentation" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Documentação Legal</CardTitle>
+              <CardDescription>
+                Gestão de documentos e políticas da empresa
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold mb-3">Políticas Internas</h3>
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                      <span className="text-sm">Política de Crédito</span>
+                      <div className="flex space-x-1">
+                        <Button size="sm" variant="outline" onClick={() => handleGenerateReport('Política de Crédito')}>
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                      <span className="text-sm">Manual de Procedimentos</span>
+                      <div className="flex space-x-1">
+                        <Button size="sm" variant="outline" onClick={() => handleGenerateReport('Manual de Procedimentos')}>
+                          <Eye className="h-3 w-3" />
+                        </Button>
+                        <Button size="sm" variant="outline">
+                          <Download className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold mb-3">Documentos Regulamentares</h3>
+                  <div className="space-y-2">
+                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('Regulamento Interno')}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Regulamento Interno
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('Código de Conduta')}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Código de Conduta
+                    </Button>
+                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('Política de Privacidade')}>
+                      <FileText className="mr-2 h-4 w-4" />
+                      Política de Privacidade
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="aml" className="space-y-6">
+          <Card className="border-amber-200 bg-amber-50">
+            <CardHeader>
+              <CardTitle className="flex items-center text-amber-800">
+                <AlertTriangle className="mr-2 h-5 w-5" />
+                Política de Prevenção à Lavagem de Dinheiro
+              </CardTitle>
+              <CardDescription className="text-amber-700">
+                Conforme Lei nº 14/2013 de Moçambique
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-amber-800">
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">Obrigações Principais:</h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Identificação e verificação da identidade dos clientes</li>
+                    <li>Manutenção de registros de transações por no mínimo 5 anos</li>
+                    <li>Comunicação de operações suspeitas ao GCIFP</li>
+                    <li>Implementação de políticas de conhecimento do cliente (KYC)</li>
+                    <li>Formação regular dos funcionários sobre AML/CFT</li>
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Limites de Comunicação:</h3>
+                  <ul className="list-disc list-inside space-y-1 text-sm">
+                    <li>Transações em dinheiro superiores a MZN 1.000.000</li>
+                    <li>Operações suspeitas independentemente do valor</li>
+                    <li>Tentativas de transações fracionadas</li>
+                  </ul>
+                </div>
+                <div className="flex space-x-2 mt-4">
+                  <Button size="sm" onClick={() => handleComplianceAction('verify_identity')}>
+                    Verificar Identidade
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleComplianceAction('check_sanctions')}>
+                    Consultar Sanções
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => handleComplianceAction('analyze_funds')}>
+                    Analisar Fundos
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Sistema Anti-Lavagem de Dinheiro</CardTitle>

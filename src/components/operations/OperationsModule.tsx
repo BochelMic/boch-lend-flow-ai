@@ -1,75 +1,132 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 import { 
-  FileText, 
-  CreditCard, 
+  TrendingUp, 
+  Users, 
   DollarSign, 
-  Clock,
-  CheckCircle,
   AlertCircle,
-  Plus,
-  Receipt
+  Download,
+  FileText,
+  Calendar,
+  Search,
+  Filter,
+  BarChart3,
+  PieChart,
+  Receipt,
+  FileX
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import DocumentGenerator from '../documents/DocumentGenerator';
-import { exportToExcel, exportToWord, ReportData } from '../../utils/exportUtils';
 import { useToast } from '@/hooks/use-toast';
+import { exportToExcel, exportToWord, ReportData } from '../../utils/exportUtils';
+import DocumentGenerator from '../documents/DocumentGenerator';
 
 const OperationsDashboard = () => {
   const { toast } = useToast();
+  const [dateRange, setDateRange] = useState({
+    start: '',
+    end: ''
+  });
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const handleExportReport = async (type: 'excel' | 'word', reportType: string) => {
+  const handleExportReport = async (reportType: string, format: 'excel' | 'word') => {
+    // Dados de exemplo para demonstração
     const reportData: ReportData = {
       title: `Relatório de ${reportType}`,
-      headers: ['Data', 'Cliente', 'Valor', 'Status'],
+      headers: ['Data', 'Cliente', 'Valor', 'Status', 'Observações'],
       data: [
-        ['15/03/2024', 'Ana Silva', '25000', 'Aprovado'],
-        ['14/03/2024', 'João Mussa', '15000', 'Aprovado'],
-        ['13/03/2024', 'Maria Santos', '20000', 'Em Análise']
+        ['15/03/2024', 'João Silva', 'MZN 25,000', 'Ativo', 'Pagamento em dia'],
+        ['14/03/2024', 'Maria Santos', 'MZN 15,000', 'Pendente', 'Aguardando documentação'],
+        ['13/03/2024', 'Carlos Mussa', 'MZN 30,000', 'Aprovado', 'Liberado para pagamento']
       ],
       summary: {
-        'Total de Operações': 3,
-        'Valor Total': 'MZN 60,000',
-        'Taxa de Aprovação': '75%'
+        'Total de Registros': 3,
+        'Valor Total': 'MZN 70,000',
+        'Status Ativo': 1,
+        'Status Pendente': 1,
+        'Status Aprovado': 1
       }
     };
 
-    let success = false;
-    const filename = `relatorio-${reportType.toLowerCase()}-${new Date().toISOString().split('T')[0]}`;
+    try {
+      let success = false;
+      const filename = `relatorio-${reportType.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+      
+      if (format === 'excel') {
+        success = exportToExcel(reportData, filename);
+      } else {
+        const content = `
+          ${reportData.title}
+          
+          Data de Geração: ${new Date().toLocaleDateString()}
+          
+          Dados:
+          ${reportData.data.map(row => row.join(' | ')).join('\n')}
+          
+          Resumo:
+          ${Object.entries(reportData.summary || {}).map(([key, value]) => `${key}: ${value}`).join('\n')}
+        `;
+        success = exportToWord(content, filename);
+      }
 
-    if (type === 'excel') {
-      success = exportToExcel(reportData, filename);
-    } else {
-      const wordContent = `
-        ${reportData.title}
-        
-        Data do Relatório: ${new Date().toLocaleDateString()}
-        
-        DADOS:
-        ${reportData.headers.join(' | ')}
-        ${reportData.data.map(row => row.join(' | ')).join('\n')}
-        
-        RESUMO:
-        ${Object.entries(reportData.summary || {}).map(([key, value]) => `${key}: ${value}`).join('\n')}
-      `;
-      success = exportToWord(wordContent, filename);
-    }
-
-    if (success) {
-      toast({
-        title: "Relatório Exportado",
-        description: `Relatório de ${reportType} foi exportado em ${type.toUpperCase()} com sucesso.`,
-      });
-    } else {
+      if (success) {
+        toast({
+          title: "Exportação Realizada",
+          description: `Relatório de ${reportType} exportado em ${format.toUpperCase()} com sucesso.`,
+        });
+      } else {
+        toast({
+          title: "Erro na Exportação",
+          description: "Não foi possível exportar o relatório. Tente novamente.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
       toast({
         title: "Erro na Exportação",
-        description: "Ocorreu um erro ao exportar o relatório.",
+        description: "Ocorreu um erro durante a exportação.",
         variant: "destructive"
       });
+    }
+  };
+
+  const handleOperationAction = (action: string, clientName?: string) => {
+    switch (action) {
+      case 'process_payment':
+        toast({
+          title: "Processando Pagamento",
+          description: `Processando pagamento para ${clientName || 'cliente selecionado'}.`,
+        });
+        break;
+      case 'update_status':
+        toast({
+          title: "Status Atualizado",
+          description: `Status do cliente ${clientName || 'selecionado'} foi atualizado.`,
+        });
+        break;
+      case 'send_notification':
+        toast({
+          title: "Notificação Enviada",
+          description: `Notificação enviada para ${clientName || 'cliente selecionado'}.`,
+        });
+        break;
+      case 'generate_statement':
+        toast({
+          title: "Extrato Gerado",
+          description: `Extrato gerado para ${clientName || 'cliente selecionado'}.`,
+        });
+        break;
+      default:
+        toast({
+          title: "Ação Executada",
+          description: `Ação ${action} executada com sucesso.`,
+        });
     }
   };
 
@@ -77,30 +134,36 @@ const OperationsDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Operações</h1>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Nova Operação
-        </Button>
+        <div className="flex space-x-2">
+          <Button onClick={() => handleExportReport('Operações', 'excel')}>
+            <Download className="mr-2 h-4 w-4" />
+            Exportar Excel
+          </Button>
+          <Button variant="outline" onClick={() => handleExportReport('Operações', 'word')}>
+            <FileText className="mr-2 h-4 w-4" />
+            Exportar Word
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="requests" className="w-full">
+      <Tabs defaultValue="overview" className="w-full">
         <TabsList>
-          <TabsTrigger value="requests">Pedidos</TabsTrigger>
-          <TabsTrigger value="disbursement">Desembolso</TabsTrigger>
-          <TabsTrigger value="payments">Pagamentos</TabsTrigger>
+          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
+          <TabsTrigger value="documents">Documentos</TabsTrigger>
+          <TabsTrigger value="monitoring">Monitorização</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="requests" className="space-y-6">
+        <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Novos Pedidos</p>
-                    <p className="text-2xl font-bold">15</p>
+                    <p className="text-sm font-medium text-gray-600">Operações Hoje</p>
+                    <p className="text-2xl font-bold">47</p>
                   </div>
-                  <FileText className="h-8 w-8 text-blue-600" />
+                  <TrendingUp className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -109,10 +172,10 @@ const OperationsDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Em Análise</p>
-                    <p className="text-2xl font-bold">8</p>
+                    <p className="text-sm font-medium text-gray-600">Clientes Ativos</p>
+                    <p className="text-2xl font-bold">1,234</p>
                   </div>
-                  <Clock className="h-8 w-8 text-yellow-600" />
+                  <Users className="h-8 w-8 text-green-600" />
                 </div>
               </CardContent>
             </Card>
@@ -121,10 +184,10 @@ const OperationsDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Aprovados</p>
-                    <p className="text-2xl font-bold">12</p>
+                    <p className="text-sm font-medium text-gray-600">Volume Hoje</p>
+                    <p className="text-2xl font-bold">MZN 2.4M</p>
                   </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
+                  <DollarSign className="h-8 w-8 text-yellow-600" />
                 </div>
               </CardContent>
             </Card>
@@ -133,10 +196,10 @@ const OperationsDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Processados Hoje</p>
-                    <p className="text-2xl font-bold">23</p>
+                    <p className="text-sm font-medium text-gray-600">Alertas</p>
+                    <p className="text-2xl font-bold">3</p>
                   </div>
-                  <CreditCard className="h-8 w-8 text-purple-600" />
+                  <AlertCircle className="h-8 w-8 text-red-600" />
                 </div>
               </CardContent>
             </Card>
@@ -144,147 +207,111 @@ const OperationsDashboard = () => {
 
           <Card>
             <CardHeader>
-              <CardTitle>Formulário de Solicitação de Empréstimo</CardTitle>
+              <CardTitle>Centro de Comando Operacional</CardTitle>
               <CardDescription>
-                Registro de novos pedidos de crédito
+                Ferramentas principais para gestão operacional
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="clientName">Nome do Cliente</Label>
-                    <Input id="clientName" placeholder="Nome completo" />
-                  </div>
-                  <div>
-                    <Label htmlFor="clientId">Bilhete de Identidade</Label>
-                    <Input id="clientId" placeholder="Número do BI" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="amount">Valor Solicitado (MZN)</Label>
-                    <Input id="amount" placeholder="Ex: 25000" type="number" />
-                  </div>
-                  <div>
-                    <Label htmlFor="term">Prazo (meses)</Label>
-                    <Input id="term" placeholder="Ex: 6" type="number" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="income">Renda Mensal (MZN)</Label>
-                    <Input id="income" placeholder="Ex: 15000" type="number" />
-                  </div>
-                  <div>
-                    <Label htmlFor="purpose">Finalidade do Empréstimo</Label>
-                    <Input id="purpose" placeholder="Ex: Capital de giro" />
-                  </div>
-                </div>
-
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <h3 className="font-semibold mb-3">Checklist de Documentação</h3>
-                  <div className="grid grid-cols-2 gap-2">
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Bilhete de Identidade
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Comprovativo de Residência
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Comprovativo de Renda
-                    </label>
-                    <label className="flex items-center">
-                      <input type="checkbox" className="mr-2" />
-                      Garantias/Penhor
-                    </label>
-                  </div>
-                </div>
-
-                <Button className="w-full">Registrar Pedido</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="disbursement" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Desembolso de Recursos</CardTitle>
-              <CardDescription>
-                Processamento e liberação de créditos aprovados
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Ana Silva</p>
-                    <p className="text-sm text-gray-600">Aprovado em 15/03/2024</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">MZN 25,000</p>
-                    <p className="text-sm text-gray-600">6 meses • 25% a.m.</p>
-                  </div>
-                  <Button>Desembolsar</Button>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">João Mussa</p>
-                    <p className="text-sm text-gray-600">Aprovado em 14/03/2024</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">MZN 15,000</p>
-                    <p className="text-sm text-gray-600">4 meses • 25% a.m.</p>
-                  </div>
-                  <Button>Desembolsar</Button>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Button 
+                  className="h-20 flex-col"
+                  onClick={() => handleOperationAction('process_payment')}
+                >
+                  <DollarSign className="mb-2 h-6 w-6" />
+                  <span className="text-sm">Processar Pagamentos</span>
+                </Button>
+                
+                <Button 
+                  className="h-20 flex-col"
+                  variant="outline"
+                  onClick={() => handleOperationAction('update_status')}
+                >
+                  <Users className="mb-2 h-6 w-6" />
+                  <span className="text-sm">Atualizar Status</span>
+                </Button>
+                
+                <Button 
+                  className="h-20 flex-col"
+                  variant="outline"
+                  onClick={() => handleOperationAction('send_notification')}
+                >
+                  <FileText className="mb-2 h-6 w-6" />
+                  <span className="text-sm">Enviar Notificações</span>
+                </Button>
+                
+                <Button 
+                  className="h-20 flex-col"
+                  variant="outline"
+                  onClick={() => handleOperationAction('generate_statement')}
+                >
+                  <BarChart3 className="mb-2 h-6 w-6" />
+                  <span className="text-sm">Gerar Extratos</span>
+                </Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="payments" className="space-y-6">
+        <TabsContent value="documents" className="space-y-6">
+          <DocumentGenerator />
+        </TabsContent>
+
+        <TabsContent value="monitoring" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Controle de Pagamentos</CardTitle>
+              <CardTitle>Monitorização em Tempo Real</CardTitle>
               <CardDescription>
-                Registro e acompanhamento de pagamentos
+                Acompanhe as operações em tempo real
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Maria Santos</p>
-                    <p className="text-sm text-gray-600">Parcela 2/6 • Vence: 20/03/2024</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold">MZN 6,250</p>
-                    <p className="text-sm text-gray-600">Capital + Juros</p>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline">Registrar</Button>
-                    <Button size="sm">Recebido</Button>
-                  </div>
+                <div className="flex space-x-2">
+                  <Input 
+                    placeholder="Buscar operação, cliente ou ID..." 
+                    className="flex-1"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  <Button variant="outline">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline">
+                    <Filter className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-green-50">
-                  <div>
-                    <p className="font-medium">Pedro Costa</p>
-                    <p className="text-sm text-gray-600">Parcela 1/4 • Pago em: 15/03/2024</p>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center p-3 bg-green-50 rounded">
+                    <div>
+                      <span className="font-medium">João Silva - Pagamento Processado</span>
+                      <p className="text-sm text-gray-600">MZN 5,250 - 14:32</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => handleOperationAction('view_details', 'João Silva')}>
+                      Ver Detalhes
+                    </Button>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-green-600">MZN 4,375</p>
-                    <p className="text-sm text-gray-600">Quitado</p>
+                  
+                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                    <div>
+                      <span className="font-medium">Maria Santos - Novo Empréstimo</span>
+                      <p className="text-sm text-gray-600">MZN 15,000 - 14:28</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => handleOperationAction('view_details', 'Maria Santos')}>
+                      Ver Detalhes
+                    </Button>
                   </div>
-                  <CheckCircle className="h-6 w-6 text-green-600" />
+                  
+                  <div className="flex justify-between items-center p-3 bg-yellow-50 rounded">
+                    <div>
+                      <span className="font-medium">Carlos Mussa - Pagamento Atrasado</span>
+                      <p className="text-sm text-gray-600">MZN 3,100 - 5 dias</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => handleOperationAction('send_reminder', 'Carlos Mussa')}>
+                      Enviar Lembrete
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -296,93 +323,104 @@ const OperationsDashboard = () => {
             <CardHeader>
               <CardTitle>Relatórios Operacionais</CardTitle>
               <CardDescription>
-                Controle e análise das operações diárias - Exportação Real
+                Gere relatórios detalhados das operações
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Operações Diárias</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Resumo das atividades do dia
-                  </p>
-                  <div className="flex flex-col space-y-2">
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleExportReport('excel', 'Operações Diárias')}
-                      className="w-full"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Excel
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleExportReport('word', 'Operações Diárias')}
-                      className="w-full"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Word
-                    </Button>
+              <div className="space-y-4">
+                <div className="flex space-x-4">
+                  <div className="flex-1">
+                    <Label htmlFor="startDate">Data Início</Label>
+                    <Input 
+                      id="startDate"
+                      type="date"
+                      value={dateRange.start}
+                      onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="endDate">Data Fim</Label>
+                    <Input 
+                      id="endDate"
+                      type="date"
+                      value={dateRange.end}
+                      onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                    />
                   </div>
                 </div>
 
-                <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Relatório Mensal</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Consolidado mensal de operações
-                  </p>
-                  <div className="flex flex-col space-y-2">
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleExportReport('excel', 'Relatório Mensal')}
-                      className="w-full"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Excel
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleExportReport('word', 'Relatório Mensal')}
-                      className="w-full"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Word
-                    </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 border rounded-lg">
+                    <h3 className="font-semibold mb-2">Relatório de Pagamentos</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Histórico completo de pagamentos processados
+                    </p>
+                    <div className="flex space-x-2">
+                      <Button size="sm" onClick={() => handleExportReport('Pagamentos', 'excel')}>
+                        <Download className="mr-1 h-3 w-3" />
+                        Excel
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleExportReport('Pagamentos', 'word')}>
+                        <FileText className="mr-1 h-3 w-3" />
+                        Word
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Fluxo de Caixa</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Entradas e saídas de recursos
-                  </p>
-                  <div className="flex flex-col space-y-2">
-                    <Button 
-                      size="sm" 
-                      onClick={() => handleExportReport('excel', 'Fluxo de Caixa')}
-                      className="w-full"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Excel
-                    </Button>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleExportReport('word', 'Fluxo de Caixa')}
-                      className="w-full"
-                    >
-                      <FileText className="mr-2 h-4 w-4" />
-                      Word
-                    </Button>
+                  <div className="p-4 border rounded-lg">
+                    <h3 className="font-semibold mb-2">Relatório de Empréstimos</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Status e performance dos empréstimos ativos
+                    </p>
+                    <div className="flex space-x-2">
+                      <Button size="sm" onClick={() => handleExportReport('Empréstimos', 'excel')}>
+                        <Download className="mr-1 h-3 w-3" />
+                        Excel
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleExportReport('Empréstimos', 'word')}>
+                        <FileText className="mr-1 h-3 w-3" />
+                        Word
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <h3 className="font-semibold mb-2">Relatório de Performance</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Métricas de performance operacional
+                    </p>
+                    <div className="flex space-x-2">
+                      <Button size="sm" onClick={() => handleExportReport('Performance', 'excel')}>
+                        <Download className="mr-1 h-3 w-3" />
+                        Excel
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleExportReport('Performance', 'word')}>
+                        <FileText className="mr-1 h-3 w-3" />
+                        Word
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 border rounded-lg">
+                    <h3 className="font-semibold mb-2">Relatório de Compliance</h3>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Conformidade e auditoria operacional
+                    </p>
+                    <div className="flex space-x-2">
+                      <Button size="sm" onClick={() => handleExportReport('Compliance', 'excel')}>
+                        <Download className="mr-1 h-3 w-3" />
+                        Excel
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => handleExportReport('Compliance', 'word')}>
+                        <FileText className="mr-1 h-3 w-3" />
+                        Word
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
-
-          <DocumentGenerator />
         </TabsContent>
       </Tabs>
     </div>
