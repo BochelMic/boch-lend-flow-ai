@@ -17,7 +17,8 @@ import {
   Eye,
   Edit,
   Users,
-  Building
+  Building,
+  Settings
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '@/hooks/use-toast';
@@ -73,6 +74,12 @@ const LegalDashboard = () => {
         toast({
           title: "Relatório de Compliance",
           description: "Gerando relatório de conformidade regulatória.",
+        });
+        break;
+      case 'generate_detailed_report':
+        toast({
+          title: "Relatório Detalhado",
+          description: "Gerando relatório detalhado de compliance.",
         });
         break;
       default:
@@ -438,7 +445,7 @@ const LegalDashboard = () => {
                       <span className="text-sm">Ana Silva - Verificação completa</span>
                       <div className="flex space-x-1">
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                        <Button size="sm" variant="outline" onClick={() => handleAMLVerification('Ana Silva', 'Aprovada')}>
+                        <Button size="sm" variant="outline" onClick={() => handleAMLVerification('Ana Silva')}>
                           Ver Detalhes
                         </Button>
                       </div>
@@ -447,7 +454,7 @@ const LegalDashboard = () => {
                       <span className="text-sm">João Mussa - Documentação pendente</span>
                       <div className="flex space-x-1">
                         <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                        <Button size="sm" variant="outline" onClick={() => handleAMLVerification('João Mussa', 'Pendente')}>
+                        <Button size="sm" variant="outline" onClick={() => handleAMLVerification('João Mussa')}>
                           Resolver
                         </Button>
                       </div>
