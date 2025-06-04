@@ -41,18 +41,18 @@ const DocumentGenerator = () => {
     const invoiceNumber = `FAT-${Date.now()}`;
     const htmlContent = generateInvoiceHTML({
       number: invoiceNumber,
-      date: new Date().toLocaleDateString(),
+      date: new Date().toLocaleDateString('pt-BR'),
       clientName: invoiceData.clientName,
       amount: parseFloat(invoiceData.amount),
       description: invoiceData.description,
-      companyName: "Empresa de Microcrédito"
+      companyName: "Bochel Microcrédito"
     });
 
     if (action === 'print') {
       printDocument(htmlContent);
       toast({
-        title: "Fatura Impressa",
-        description: `Fatura ${invoiceNumber} enviada para impressão.`,
+        title: "Fatura Enviada para Impressão",
+        description: `Fatura ${invoiceNumber} foi enviada para impressão.`,
       });
     } else {
       downloadDocument(htmlContent, `fatura-${invoiceNumber}`);
@@ -76,18 +76,18 @@ const DocumentGenerator = () => {
     const receiptNumber = `REC-${Date.now()}`;
     const htmlContent = generateReceiptHTML({
       number: receiptNumber,
-      date: new Date().toLocaleDateString(),
+      date: new Date().toLocaleDateString('pt-BR'),
       clientName: receiptData.clientName,
       amount: parseFloat(receiptData.amount),
       description: receiptData.description,
-      companyName: "Empresa de Microcrédito"
+      companyName: "Bochel Microcrédito"
     });
 
     if (action === 'print') {
       printDocument(htmlContent);
       toast({
-        title: "Recibo Impresso",
-        description: `Recibo ${receiptNumber} enviado para impressão.`,
+        title: "Recibo Enviado para Impressão",
+        description: `Recibo ${receiptNumber} foi enviado para impressão.`,
       });
     } else {
       downloadDocument(htmlContent, `recibo-${receiptNumber}`);
@@ -142,11 +142,18 @@ const DocumentGenerator = () => {
                 />
               </div>
               <div className="flex space-x-2">
-                <Button onClick={() => generateInvoice('print')} className="flex-1">
+                <Button 
+                  onClick={() => generateInvoice('print')} 
+                  className="flex-1 bg-gray-800 hover:bg-gray-900"
+                >
                   <Printer className="mr-2 h-4 w-4" />
                   Imprimir
                 </Button>
-                <Button onClick={() => generateInvoice('download')} variant="outline" className="flex-1">
+                <Button 
+                  onClick={() => generateInvoice('download')} 
+                  variant="outline" 
+                  className="flex-1"
+                >
                   <Download className="mr-2 h-4 w-4" />
                   Baixar
                 </Button>
@@ -196,11 +203,18 @@ const DocumentGenerator = () => {
                 />
               </div>
               <div className="flex space-x-2">
-                <Button onClick={() => generateReceipt('print')} className="flex-1">
+                <Button 
+                  onClick={() => generateReceipt('print')} 
+                  className="flex-1 bg-gray-800 hover:bg-gray-900"
+                >
                   <Printer className="mr-2 h-4 w-4" />
                   Imprimir
                 </Button>
-                <Button onClick={() => generateReceipt('download')} variant="outline" className="flex-1">
+                <Button 
+                  onClick={() => generateReceipt('download')} 
+                  variant="outline" 
+                  className="flex-1"
+                >
                   <Download className="mr-2 h-4 w-4" />
                   Baixar
                 </Button>
