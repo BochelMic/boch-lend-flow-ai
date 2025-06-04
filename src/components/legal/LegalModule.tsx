@@ -2,27 +2,36 @@ import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { 
-  FileText, 
   Scale, 
+  FileText, 
   Shield, 
-  AlertTriangle, 
+  AlertTriangle,
   CheckCircle,
-  Eye,
-  Download,
-  Upload,
+  Clock,
   Search,
-  Plus,
-  Settings
+  Download,
+  Eye,
+  Edit,
+  Users,
+  Building
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 
 const LegalDashboard = () => {
   const { toast } = useToast();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [contractData, setContractData] = useState({
+    clientName: '',
+    amount: '',
+    term: '',
+    interestRate: '',
+    purpose: ''
+  });
   const [showAntiLaundering, setShowAntiLaundering] = useState(false);
   const [complianceChecks, setComplianceChecks] = useState([
     { id: 1, item: "Verificação de identidade", status: "Concluído", date: "15/03/2024" },
@@ -72,6 +81,41 @@ const LegalDashboard = () => {
           description: `Executando ação: ${action}`,
         });
     }
+  };
+
+  const handleEditContract = (contractId: string) => {
+    toast({
+      title: "Contrato Editado",
+      description: `Contrato ${contractId} foi editado com sucesso.`,
+    });
+  };
+
+  const handleUseTemplate = (templateName: string) => {
+    toast({
+      title: "Template Aplicado",
+      description: `Template ${templateName} foi aplicado ao contrato.`,
+    });
+  };
+
+  const handleRenewLicense = (licenseName: string) => {
+    toast({
+      title: "Licença Renovada",
+      description: `Renovação de ${licenseName} foi processada.`,
+    });
+  };
+
+  const handleAMLVerification = (clientName: string) => {
+    toast({
+      title: "Verificação AML",
+      description: `Verificação anti-lavagem para ${clientName} foi concluída.`,
+    });
+  };
+
+  const handleGenerateReport = (reportType: string) => {
+    toast({
+      title: "Relatório Gerado",
+      description: `Relatório de ${reportType} foi gerado com sucesso.`,
+    });
   };
 
   return (

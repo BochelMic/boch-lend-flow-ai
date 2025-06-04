@@ -2,137 +2,126 @@ import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { 
   Users, 
-  FileText, 
-  Calculator, 
-  Settings, 
+  DollarSign, 
+  TrendingUp, 
+  Shield,
+  UserPlus,
+  CreditCard,
+  FileText,
+  Settings,
   BarChart3,
-  Download,
-  Plus,
-  Edit,
-  Trash,
-  Save,
-  Eye,
-  Upload
+  AlertTriangle
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel, exportToWord, ReportData } from '../../utils/exportUtils';
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [employees, setEmployees] = useState([
-    { id: 1, name: 'João Silva', position: 'Analista de Crédito', salary: '25000' },
-    { id: 2, name: 'Maria Santos', position: 'Gerente de Operações', salary: '35000' },
-    { id: 3, name: 'Ana Costa', position: 'Assistente Administrativa', salary: '18000' }
-  ]);
-  const [transactions, setTransactions] = useState([
-    { id: 1, date: '2024-01-15', type: 'Entrada', description: 'Juros recebidos', amount: 5000 },
-    { id: 2, date: '2024-01-15', type: 'Saída', description: 'Salários', amount: -78000 },
-    { id: 3, date: '2024-01-14', type: 'Entrada', description: 'Pagamento de empréstimo', amount: 12000 }
-  ]);
-
-  const [newEmployee, setNewEmployee] = useState({ name: '', position: '', salary: '' });
-  const [newTransaction, setNewTransaction] = useState({ type: 'Entrada', description: '', amount: '' });
-
-  const handleExportReports = () => {
-    toast({
-      title: "Relatórios exportados",
-      description: "Os relatórios foram exportados com sucesso.",
-    });
-  };
-
-  const handleGenerateReport = (type: string) => {
-    toast({
-      title: "Relatório gerado",
-      description: `Relatório de ${type} foi gerado com sucesso.`,
-    });
-  };
-
-  const handleAccessModule = (module: string) => {
-    toast({
-      title: `Acesso ao ${module}`,
-      description: `Redirecionando para o módulo de ${module}...`,
-    });
-  };
+  const { toast } = useToast();
+  const [newEmployee, setNewEmployee] = useState({
+    name: '',
+    email: '',
+    role: '',
+    department: ''
+  });
+  const [transaction, setTransaction] = useState({
+    type: '',
+    amount: '',
+    description: '',
+    category: ''
+  });
 
   const handleAddEmployee = () => {
-    if (newEmployee.name && newEmployee.position && newEmployee.salary) {
-      const employee = {
-        id: employees.length + 1,
-        ...newEmployee
-      };
-      setEmployees([...employees, employee]);
-      setNewEmployee({ name: '', position: '', salary: '' });
+    toast({
+      title: "Funcionário Adicionado",
+      description: `${newEmployee.name} foi adicionado ao sistema.`,
+    });
+  };
+
+  const handleDeleteEmployee = () => {
+    toast({
+      title: "Funcionário Removido",
+      description: "Funcionário foi removido do sistema.",
+    });
+  };
+
+  const handleEditEmployee = () => {
+    toast({
+      title: "Funcionário Editado",
+      description: "Dados do funcionário foram atualizados.",
+    });
+  };
+
+  const handleExportReport = async (type: 'excel' | 'word', reportType: string) => {
+    const reportData: ReportData = {
+      title: `Relatório Administrativo - ${reportType}`,
+      headers: ['Data', 'Tipo', 'Valor', 'Status'],
+      data: [
+        ['15/03/2024', 'Receita', '50000', 'Confirmado'],
+        ['14/03/2024', 'Despesa', '25000', 'Pago'],
+        ['13/03/2024', 'Investimento', '75000', 'Aprovado']
+      ],
+      summary: {
+        'Total de Transações': 3,
+        'Receita Total': 'MZN 50,000',
+        'Despesas': 'MZN 25,000'
+      }
+    };
+
+    let success = false;
+    const filename = `relatorio-admin-${reportType.toLowerCase()}-${new Date().toISOString().split('T')[0]}`;
+
+    if (type === 'excel') {
+      success = exportToExcel(reportData, filename);
+    } else {
+      const wordContent = `${reportData.title}\n\nRelatório gerado em: ${new Date().toLocaleDateString()}`;
+      success = exportToWord(wordContent, filename);
+    }
+
+    if (success) {
       toast({
-        title: "Funcionário adicionado",
-        description: `${newEmployee.name} foi adicionado com sucesso.`,
+        title: "Relatório Exportado",
+        description: `Relatório ${reportType} foi exportado com sucesso.`,
       });
     } else {
       toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
+        title: "Erro na Exportação",
+        description: "Ocorreu um erro ao exportar o relatório.",
         variant: "destructive"
       });
     }
   };
 
-  const handleEditEmployee = (id: number) => {
+  const handleRegisterTransaction = () => {
     toast({
-      title: "Editar funcionário",
-      description: `Funcionalidade de edição será implementada para o funcionário ID: ${id}`,
+      title: "Transação Registrada",
+      description: `Transação de ${transaction.type} registrada com sucesso.`,
     });
   };
 
-  const handleDeleteEmployee = (id: number) => {
-    setEmployees(employees.filter(emp => emp.id !== id));
+  const handleSystemBackup = () => {
     toast({
-      title: "Funcionário removido",
-      description: "Funcionário foi removido com sucesso.",
+      title: "Backup Iniciado",
+      description: "Processo de backup do sistema foi iniciado.",
     });
   };
 
-  const handleAddTransaction = () => {
-    if (newTransaction.description && newTransaction.amount) {
-      const transaction = {
-        id: transactions.length + 1,
-        date: new Date().toISOString().split('T')[0],
-        type: newTransaction.type,
-        description: newTransaction.description,
-        amount: newTransaction.type === 'Entrada' ? 
-          Math.abs(parseFloat(newTransaction.amount)) : 
-          -Math.abs(parseFloat(newTransaction.amount))
-      };
-      setTransactions([transaction, ...transactions]);
-      setNewTransaction({ type: 'Entrada', description: '', amount: '' });
-      toast({
-        title: "Transação adicionada",
-        description: "Transação foi registrada no livro caixa.",
-      });
-    } else {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos da transação.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleUploadDocument = (docType: string) => {
+  const handleGenerateReport = (reportType: string) => {
     toast({
-      title: "Upload de documento",
-      description: `Funcionalidade de upload para ${docType} será implementada.`,
+      title: "Relatório Gerado",
+      description: `Relatório de ${reportType} foi gerado com sucesso.`,
     });
   };
 
-  const handleViewDocument = (docType: string) => {
+  const handleSystemMaintenance = () => {
     toast({
-      title: "Visualizar documento",
-      description: `Abrindo ${docType}...`,
+      title: "Manutenção Agendada",
+      description: "Manutenção do sistema foi agendada para esta noite.",
     });
   };
 
@@ -140,299 +129,222 @@ const AdminDashboard = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Administração</h1>
-        <Button onClick={handleExportReports}>
-          <Download className="mr-2 h-4 w-4" />
-          Exportar Relatórios Excel
+        <Button>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Adicionar Funcionário
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="hr">Recursos Humanos</TabsTrigger>
-          <TabsTrigger value="accounting">Contabilidade</TabsTrigger>
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList>
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="employees">Funcionários</TabsTrigger>
+          <TabsTrigger value="finance">Finanças</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
+          <TabsTrigger value="settings">Configurações</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <TabsContent value="dashboard" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="mr-2 h-5 w-5" />
-                  Recursos Humanos
-                </CardTitle>
-                <CardDescription>
-                  Gestão de funcionários e contratos
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm">• Contratos de trabalho</p>
-                  <p className="text-sm">• Manual do funcionário</p>
-                  <p className="text-sm">• Regulamento interno</p>
-                  <p className="text-sm">• Avaliações de desempenho</p>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Usuários Ativos</p>
+                    <p className="text-2xl font-bold">45</p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-600" />
                 </div>
-                <Button 
-                  className="w-full mt-4" 
-                  variant="outline"
-                  onClick={() => handleAccessModule('Recursos Humanos')}
-                >
-                  Acessar RH
-                </Button>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Calculator className="mr-2 h-5 w-5" />
-                  Contabilidade
-                </CardTitle>
-                <CardDescription>
-                  Livro caixa e demonstrações financeiras
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm">• Livro caixa diário</p>
-                  <p className="text-sm">• Balancetes mensais</p>
-                  <p className="text-sm">• Demonstração de resultados</p>
-                  <p className="text-sm">• Controle fiscal</p>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Receita Mensal</p>
+                    <p className="text-2xl font-bold">MZN 50,000</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
-                <Button 
-                  className="w-full mt-4" 
-                  variant="outline"
-                  onClick={() => handleAccessModule('Contabilidade')}
-                >
-                  Ver Contabilidade
-                </Button>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <FileText className="mr-2 h-5 w-5" />
-                  Documentação
-                </CardTitle>
-                <CardDescription>
-                  Certidões e registos da empresa
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm">• Certidão de registo</p>
-                  <p className="text-sm">• NUIT da empresa</p>
-                  <p className="text-sm">• Licenças operacionais</p>
-                  <p className="text-sm">• Políticas internas</p>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Novos Clientes</p>
+                    <p className="text-2xl font-bold">12</p>
+                  </div>
+                  <UserPlus className="h-8 w-8 text-orange-600" />
                 </div>
-                <Button 
-                  className="w-full mt-4" 
-                  variant="outline"
-                  onClick={() => handleAccessModule('Documentação')}
-                >
-                  Documentos
-                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Taxa de Engajamento</p>
+                    <p className="text-2xl font-bold">78%</p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-purple-600" />
+                </div>
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
 
-        <TabsContent value="hr" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Gestão de Funcionários</CardTitle>
+              <CardTitle>Alertas de Segurança</CardTitle>
               <CardDescription>
-                Adicionar, editar e remover funcionários
+                Notificações importantes sobre a segurança do sistema
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {/* Formulário para adicionar funcionário */}
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <h3 className="font-semibold mb-4">Adicionar Novo Funcionário</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="name">Nome Completo</Label>
-                      <Input 
-                        id="name"
-                        value={newEmployee.name}
-                        onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
-                        placeholder="Ex: João Silva"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="position">Cargo</Label>
-                      <Input 
-                        id="position"
-                        value={newEmployee.position}
-                        onChange={(e) => setNewEmployee({...newEmployee, position: e.target.value})}
-                        placeholder="Ex: Analista de Crédito"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="salary">Salário (MZN)</Label>
-                      <Input 
-                        id="salary"
-                        type="number"
-                        value={newEmployee.salary}
-                        onChange={(e) => setNewEmployee({...newEmployee, salary: e.target.value})}
-                        placeholder="Ex: 25000"
-                      />
-                    </div>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50">
+                  <div>
+                    <p className="font-medium">Acesso Não Autorizado</p>
+                    <p className="text-sm text-gray-600">
+                      Tentativa de acesso detectada em 15/03/2024
+                    </p>
                   </div>
-                  <Button onClick={handleAddEmployee} className="mt-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Adicionar Funcionário
-                  </Button>
+                  <AlertTriangle className="h-6 w-6 text-yellow-600" />
                 </div>
 
-                {/* Lista de funcionários */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold">Funcionários Cadastrados</h3>
-                  {employees.map((employee) => (
-                    <div key={employee.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium">{employee.name}</p>
-                        <p className="text-sm text-gray-600">{employee.position}</p>
-                      </div>
-                      <div className="text-right mr-4">
-                        <p className="font-bold">MZN {employee.salary}</p>
-                      </div>
-                      <div className="space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => handleEditEmployee(employee.id)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDeleteEmployee(employee.id)}>
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Documentos de RH */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Documentação de RH</CardTitle>
-              <CardDescription>
-                Contratos e políticas internas
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[
-                  'Contratos de Trabalho',
-                  'Manual do Funcionário', 
-                  'Regulamento Interno',
-                  'Avaliações de Desempenho'
-                ].map((doc) => (
-                  <div key={doc} className="p-4 border rounded-lg">
-                    <h3 className="font-semibold mb-2">{doc}</h3>
-                    <div className="space-x-2">
-                      <Button size="sm" variant="outline" onClick={() => handleViewDocument(doc)}>
-                        <Eye className="mr-2 h-4 w-4" />
-                        Ver
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleUploadDocument(doc)}>
-                        <Upload className="mr-2 h-4 w-4" />
-                        Upload
-                      </Button>
-                    </div>
+                <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
+                  <div>
+                    <p className="font-medium">Vulnerabilidade Encontrada</p>
+                    <p className="text-sm text-gray-600">
+                      Risco de segurança identificado no módulo de pagamentos
+                    </p>
                   </div>
-                ))}
+                  <Shield className="h-6 w-6 text-red-600" />
+                </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="accounting" className="space-y-6">
+        <TabsContent value="employees" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Livro Caixa</CardTitle>
+              <CardTitle>Gerenciar Funcionários</CardTitle>
               <CardDescription>
-                Registro diário de entradas e saídas
+                Adicionar, editar e remover funcionários do sistema
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {/* Formulário para nova transação */}
-                <div className="border rounded-lg p-4 bg-gray-50">
-                  <h3 className="font-semibold mb-4">Nova Transação</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <Label htmlFor="type">Tipo</Label>
-                      <select 
-                        id="type"
-                        value={newTransaction.type}
-                        onChange={(e) => setNewTransaction({...newTransaction, type: e.target.value})}
-                        className="w-full p-2 border rounded-md"
-                      >
-                        <option value="Entrada">Entrada</option>
-                        <option value="Saída">Saída</option>
-                      </select>
-                    </div>
-                    <div>
-                      <Label htmlFor="description">Descrição</Label>
-                      <Input 
-                        id="description"
-                        value={newTransaction.description}
-                        onChange={(e) => setNewTransaction({...newTransaction, description: e.target.value})}
-                        placeholder="Ex: Pagamento de empréstimo"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="amount">Valor (MZN)</Label>
-                      <Input 
-                        id="amount"
-                        type="number"
-                        value={newTransaction.amount}
-                        onChange={(e) => setNewTransaction({...newTransaction, amount: e.target.value})}
-                        placeholder="Ex: 15000"
-                      />
-                    </div>
+              <form className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="employeeName">Nome Completo</Label>
+                    <Input 
+                      id="employeeName" 
+                      placeholder="Nome completo" 
+                      value={newEmployee.name}
+                      onChange={(e) => setNewEmployee({...newEmployee, name: e.target.value})}
+                    />
                   </div>
-                  <Button onClick={handleAddTransaction} className="mt-4">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Registrar Transação
-                  </Button>
+                  <div>
+                    <Label htmlFor="employeeEmail">Email</Label>
+                    <Input 
+                      id="employeeEmail" 
+                      placeholder="Email" 
+                      type="email"
+                      value={newEmployee.email}
+                      onChange={(e) => setNewEmployee({...newEmployee, email: e.target.value})}
+                    />
+                  </div>
                 </div>
 
-                {/* Histórico de transações */}
-                <div className="space-y-2">
-                  <h3 className="font-semibold">Histórico de Transações</h3>
-                  <div className="border rounded-lg">
-                    <div className="grid grid-cols-4 gap-4 p-3 bg-gray-50 rounded-t font-medium">
-                      <span>Data</span>
-                      <span>Tipo</span>
-                      <span>Descrição</span>
-                      <span className="text-right">Valor (MZN)</span>
-                    </div>
-                    {transactions.map((transaction) => (
-                      <div key={transaction.id} className="grid grid-cols-4 gap-4 p-3 border-b items-center">
-                        <span>{transaction.date}</span>
-                        <span className={`px-2 py-1 rounded text-xs ${
-                          transaction.type === 'Entrada' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {transaction.type}
-                        </span>
-                        <span>{transaction.description}</span>
-                        <span className={`text-right font-bold ${
-                          transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
-                        }`}>
-                          {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()}
-                        </span>
-                      </div>
-                    ))}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="employeeRole">Cargo</Label>
+                    <Input 
+                      id="employeeRole" 
+                      placeholder="Cargo" 
+                      value={newEmployee.role}
+                      onChange={(e) => setNewEmployee({...newEmployee, role: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="employeeDepartment">Departamento</Label>
+                    <Input 
+                      id="employeeDepartment" 
+                      placeholder="Departamento" 
+                      value={newEmployee.department}
+                      onChange={(e) => setNewEmployee({...newEmployee, department: e.target.value})}
+                    />
                   </div>
                 </div>
-              </div>
+
+                <div className="flex space-x-2">
+                  <Button className="w-1/3" onClick={handleAddEmployee}>Adicionar</Button>
+                  <Button variant="outline" className="w-1/3" onClick={handleEditEmployee}>Editar</Button>
+                  <Button variant="destructive" className="w-1/3" onClick={handleDeleteEmployee}>Remover</Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="finance" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Controle Financeiro</CardTitle>
+              <CardDescription>
+                Registro de transações financeiras
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="transactionType">Tipo de Transação</Label>
+                    <Input 
+                      id="transactionType" 
+                      placeholder="Tipo" 
+                      value={transaction.type}
+                      onChange={(e) => setTransaction({...transaction, type: e.target.value})}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="transactionAmount">Valor (MZN)</Label>
+                    <Input 
+                      id="transactionAmount" 
+                      placeholder="Valor" 
+                      type="number"
+                      value={transaction.amount}
+                      onChange={(e) => setTransaction({...transaction, amount: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="transactionDescription">Descrição</Label>
+                  <Textarea 
+                    id="transactionDescription" 
+                    placeholder="Descrição" 
+                    value={transaction.description}
+                    onChange={(e) => setTransaction({...transaction, description: e.target.value})}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="transactionCategory">Categoria</Label>
+                  <Input 
+                    id="transactionCategory" 
+                    placeholder="Categoria" 
+                    value={transaction.category}
+                    onChange={(e) => setTransaction({...transaction, category: e.target.value})}
+                  />
+                </div>
+
+                <Button className="w-full" onClick={handleRegisterTransaction}>Registrar Transação</Button>
+              </form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -442,71 +354,131 @@ const AdminDashboard = () => {
             <CardHeader>
               <CardTitle>Relatórios Administrativos</CardTitle>
               <CardDescription>
-                Relatórios mensais e anuais para gestão
+                Geração e exportação de relatórios
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Relatório Mensal</h3>
-                  <p className="text-sm text-gray-600 mb-3">Balanço geral das operações</p>
-                  <Button 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => handleGenerateReport('Mensal')}
-                  >
-                    <BarChart3 className="mr-2 h-4 w-4" />
-                    Gerar
-                  </Button>
+                  <h3 className="font-semibold mb-2">Relatório Financeiro</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Visão geral das finanças da empresa
+                  </p>
+                  <div className="flex flex-col space-y-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleExportReport('excel', 'Financeiro')}
+                      className="w-full"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Excel
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleExportReport('word', 'Financeiro')}
+                      className="w-full"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Word
+                    </Button>
+                  </div>
                 </div>
+
                 <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Controle de Custos</h3>
-                  <p className="text-sm text-gray-600 mb-3">Análise de despesas operacionais</p>
-                  <Button 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => handleGenerateReport('Custos')}
-                  >
-                    <Calculator className="mr-2 h-4 w-4" />
-                    Gerar
-                  </Button>
+                  <h3 className="font-semibold mb-2">Relatório de Usuários</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Informações sobre os usuários do sistema
+                  </p>
+                  <div className="flex flex-col space-y-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleExportReport('excel', 'Usuários')}
+                      className="w-full"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Excel
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleExportReport('word', 'Usuários')}
+                      className="w-full"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Word
+                    </Button>
+                  </div>
                 </div>
+
                 <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Auditoria Interna</h3>
-                  <p className="text-sm text-gray-600 mb-3">Verificação de conformidade</p>
-                  <Button 
-                    size="sm" 
-                    className="w-full"
-                    onClick={() => handleGenerateReport('Auditoria')}
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Gerar
-                  </Button>
+                  <h3 className="font-semibold mb-2">Relatório de Atividades</h3>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Registro de atividades dos usuários
+                  </p>
+                  <div className="flex flex-col space-y-2">
+                    <Button 
+                      size="sm" 
+                      onClick={() => handleExportReport('excel', 'Atividades')}
+                      className="w-full"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Excel
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleExportReport('word', 'Atividades')}
+                      className="w-full"
+                    >
+                      <FileText className="mr-2 h-4 w-4" />
+                      Word
+                    </Button>
+                  </div>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-              {/* Relatórios adicionais */}
-              <div className="mt-6 space-y-4">
-                <h3 className="font-semibold">Relatórios Especiais</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button 
-                    variant="outline" 
-                    className="p-4 h-auto flex-col"
-                    onClick={() => handleGenerateReport('Balancete Mensal')}
-                  >
-                    <BarChart3 className="mb-2 h-6 w-6" />
-                    <span className="font-semibold">Balancete Mensal</span>
-                    <span className="text-sm text-gray-600">Demonstração financeira</span>
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    className="p-4 h-auto flex-col"
-                    onClick={() => handleGenerateReport('Demonstração de Resultados')}
-                  >
-                    <Calculator className="mb-2 h-6 w-6" />
-                    <span className="font-semibold">Demonstração de Resultados</span>
-                    <span className="text-sm text-gray-600">Receitas vs despesas</span>
-                  </Button>
+        <TabsContent value="settings" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações do Sistema</CardTitle>
+              <CardDescription>
+                Ajustes e configurações gerais do sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Backup do Sistema</p>
+                    <p className="text-sm text-gray-600">
+                      Realize um backup completo do sistema
+                    </p>
+                  </div>
+                  <Button onClick={handleSystemBackup}>Executar Backup</Button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Manutenção do Sistema</p>
+                    <p className="text-sm text-gray-600">
+                      Agende uma manutenção para otimizar o sistema
+                    </p>
+                  </div>
+                  <Button onClick={handleSystemMaintenance}>Agendar Manutenção</Button>
+                </div>
+
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div>
+                    <p className="font-medium">Gerar Relatório de Uso</p>
+                    <p className="text-sm text-gray-600">
+                      Crie um relatório detalhado sobre o uso do sistema
+                    </p>
+                  </div>
+                  <Button onClick={() => handleGenerateReport('Uso do Sistema')}>Gerar Relatório</Button>
                 </div>
               </div>
             </CardContent>
