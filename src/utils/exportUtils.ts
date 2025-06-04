@@ -160,15 +160,35 @@ export const generateReceiptHTML = (receiptData: {
 };
 
 export const printDocument = (htmlContent: string) => {
-  const printWindow = window.open('', '_blank');
-  if (printWindow) {
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.print();
+  try {
+    console.log('Iniciando impressão...');
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
+    } else {
+      console.error('Não foi possível abrir janela de impressão');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Erro ao imprimir documento:', error);
+    return false;
   }
 };
 
 export const downloadDocument = (htmlContent: string, filename: string) => {
-  const blob = new Blob([htmlContent], { type: 'text/html' });
-  saveAs(blob, `${filename}.html`);
+  try {
+    console.log('Iniciando download...', filename);
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    saveAs(blob, `${filename}.html`);
+    return true;
+  } catch (error) {
+    console.error('Erro ao baixar documento:', error);
+    return false;
+  }
 };

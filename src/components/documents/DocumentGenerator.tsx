@@ -28,7 +28,9 @@ const DocumentGenerator = () => {
     description: ''
   });
 
-  const generateInvoice = (action: 'print' | 'download') => {
+  const generateInvoice = async (action: 'print' | 'download') => {
+    console.log('Gerando fatura...', action, invoiceData);
+    
     if (!invoiceData.clientName || !invoiceData.amount || !invoiceData.description) {
       toast({
         title: "Erro",
@@ -38,32 +40,56 @@ const DocumentGenerator = () => {
       return;
     }
 
-    const invoiceNumber = `FAT-${Date.now()}`;
-    const htmlContent = generateInvoiceHTML({
-      number: invoiceNumber,
-      date: new Date().toLocaleDateString('pt-BR'),
-      clientName: invoiceData.clientName,
-      amount: parseFloat(invoiceData.amount),
-      description: invoiceData.description,
-      companyName: "Bochel Microcrédito"
-    });
-
-    if (action === 'print') {
-      printDocument(htmlContent);
-      toast({
-        title: "Fatura Enviada para Impressão",
-        description: `Fatura ${invoiceNumber} foi enviada para impressão.`,
+    try {
+      const invoiceNumber = `FAT-${Date.now()}`;
+      const htmlContent = generateInvoiceHTML({
+        number: invoiceNumber,
+        date: new Date().toLocaleDateString('pt-BR'),
+        clientName: invoiceData.clientName,
+        amount: parseFloat(invoiceData.amount),
+        description: invoiceData.description,
+        companyName: "Bochel Microcrédito"
       });
-    } else {
-      downloadDocument(htmlContent, `fatura-${invoiceNumber}`);
+
+      let success = false;
+      if (action === 'print') {
+        success = printDocument(htmlContent);
+        if (success) {
+          toast({
+            title: "Fatura Enviada para Impressão",
+            description: `Fatura ${invoiceNumber} foi enviada para impressão.`,
+          });
+        }
+      } else {
+        success = downloadDocument(htmlContent, `fatura-${invoiceNumber}`);
+        if (success) {
+          toast({
+            title: "Fatura Baixada",
+            description: `Fatura ${invoiceNumber} foi baixada com sucesso.`,
+          });
+        }
+      }
+
+      if (!success) {
+        toast({
+          title: "Erro",
+          description: `Erro ao ${action === 'print' ? 'imprimir' : 'baixar'} a fatura.`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao gerar fatura:', error);
       toast({
-        title: "Fatura Baixada",
-        description: `Fatura ${invoiceNumber} foi baixada com sucesso.`,
+        title: "Erro",
+        description: "Erro interno ao gerar fatura.",
+        variant: "destructive"
       });
     }
   };
 
-  const generateReceipt = (action: 'print' | 'download') => {
+  const generateReceipt = async (action: 'print' | 'download') => {
+    console.log('Gerando recibo...', action, receiptData);
+    
     if (!receiptData.clientName || !receiptData.amount || !receiptData.description) {
       toast({
         title: "Erro",
@@ -73,27 +99,49 @@ const DocumentGenerator = () => {
       return;
     }
 
-    const receiptNumber = `REC-${Date.now()}`;
-    const htmlContent = generateReceiptHTML({
-      number: receiptNumber,
-      date: new Date().toLocaleDateString('pt-BR'),
-      clientName: receiptData.clientName,
-      amount: parseFloat(receiptData.amount),
-      description: receiptData.description,
-      companyName: "Bochel Microcrédito"
-    });
-
-    if (action === 'print') {
-      printDocument(htmlContent);
-      toast({
-        title: "Recibo Enviado para Impressão",
-        description: `Recibo ${receiptNumber} foi enviado para impressão.`,
+    try {
+      const receiptNumber = `REC-${Date.now()}`;
+      const htmlContent = generateReceiptHTML({
+        number: receiptNumber,
+        date: new Date().toLocaleDateString('pt-BR'),
+        clientName: receiptData.clientName,
+        amount: parseFloat(receiptData.amount),
+        description: receiptData.description,
+        companyName: "Bochel Microcrédito"
       });
-    } else {
-      downloadDocument(htmlContent, `recibo-${receiptNumber}`);
+
+      let success = false;
+      if (action === 'print') {
+        success = printDocument(htmlContent);
+        if (success) {
+          toast({
+            title: "Recibo Enviado para Impressão",
+            description: `Recibo ${receiptNumber} foi enviado para impressão.`,
+          });
+        }
+      } else {
+        success = downloadDocument(htmlContent, `recibo-${receiptNumber}`);
+        if (success) {
+          toast({
+            title: "Recibo Baixado",
+            description: `Recibo ${receiptNumber} foi baixado com sucesso.`,
+          });
+        }
+      }
+
+      if (!success) {
+        toast({
+          title: "Erro",
+          description: `Erro ao ${action === 'print' ? 'imprimir' : 'baixar'} o recibo.`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erro ao gerar recibo:', error);
       toast({
-        title: "Recibo Baixado",
-        description: `Recibo ${receiptNumber} foi baixado com sucesso.`,
+        title: "Erro",
+        description: "Erro interno ao gerar recibo.",
+        variant: "destructive"
       });
     }
   };
