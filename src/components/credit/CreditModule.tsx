@@ -19,18 +19,30 @@ import {
   Save,
   Edit,
   Trash,
-  MessageSquare
+  MessageSquare,
+  Calculator,
+  DollarSign,
+  Calendar,
+  FileText,
+  Download
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useToast } from '@/hooks/use-toast';
 
 const CreditDashboard = () => {
   const { toast } = useToast();
   const [selectedClient, setSelectedClient] = useState(null);
   const [clients, setClients] = useState([
-    { id: 1, name: "António Silva", classification: "Fiel", score: 850, lastOp: "15/03/2024", phone: "84123456", email: "antonio@email.com" },
-    { id: 2, name: "Beatriz Costa", classification: "Fiel", score: 780, lastOp: "10/03/2024", phone: "87654321", email: "beatriz@email.com" },
-    { id: 3, name: "Carlos Mussa", classification: "Não Fiel", score: 520, lastOp: "02/02/2024", phone: "85987654", email: "carlos@email.com" },
+    { id: 1, name: "António Silva", classification: "Fiel", score: 850, lastOp: "15/03/2024", phone: "84123456", email: "antonio@email.com", balance: 25000, status: "Ativo" },
+    { id: 2, name: "Beatriz Costa", classification: "Fiel", score: 780, lastOp: "10/03/2024", phone: "87654321", email: "beatriz@email.com", balance: 15000, status: "Ativo" },
+    { id: 3, name: "Carlos Mussa", classification: "Não Fiel", score: 520, lastOp: "02/02/2024", phone: "85987654", email: "carlos@email.com", balance: 0, status: "Inadimplente" },
+  ]);
+
+  const [loans, setLoans] = useState([
+    { id: 1, clientId: 1, amount: 50000, interestRate: 15, term: 12, monthlyPayment: 4500, remainingBalance: 25000, nextPayment: "15/07/2024", status: "Ativo", daysOverdue: 0 },
+    { id: 2, clientId: 2, amount: 30000, interestRate: 18, term: 6, monthlyPayment: 5500, remainingBalance: 15000, nextPayment: "10/07/2024", status: "Ativo", daysOverdue: 0 },
+    { id: 3, clientId: 3, amount: 20000, interestRate: 20, term: 12, monthlyPayment: 1850, remainingBalance: 18500, nextPayment: "02/06/2024", status: "Vencido", daysOverdue: 35 }
   ]);
 
   const [pendingAnalysis, setPendingAnalysis] = useState([
@@ -39,49 +51,37 @@ const CreditDashboard = () => {
     { id: 3, name: "Maria Silva", amount: "MZN 30,000", score: 780, risk: "Baixo", status: "Pendente" },
   ]);
 
-  const [analysisForm, setAnalysisForm] = useState({
-    income: '',
-    expenses: '',
-    collateral: '',
-    requested: '',
-    description: ''
+  const [loanForm, setLoanForm] = useState({
+    clientId: '',
+    amount: '',
+    interestRate: '',
+    term: '',
+    purpose: '',
+    collateral: ''
   });
 
-  const [newClient, setNewClient] = useState({
-    name: '',
-    phone: '',
-    email: '',
-    address: '',
-    income: ''
+  const [paymentForm, setPaymentForm] = useState({
+    loanId: '',
+    amount: '',
+    paymentDate: '',
+    paymentMethod: '',
+    reference: ''
   });
 
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleApproveCredit = (clientId: number) => {
-    setPendingAnalysis(prev => prev.map(client => 
-      client.id === clientId ? { ...client, status: 'Aprovado' } : client
-    ));
-    toast({
-      title: "Crédito Aprovado",
-      description: "O crédito foi aprovado com sucesso.",
-    });
+  const calculateDefaultInterest = (principal, daysOverdue, defaultRate = 2) => {
+    return (principal * (defaultRate / 100) * daysOverdue) / 30;
   };
 
-  const handleRejectCredit = (clientId: number) => {
-    setPendingAnalysis(prev => prev.map(client => 
-      client.id === clientId ? { ...client, status: 'Rejeitado' } : client
-    ));
-    toast({
-      title: "Crédito Rejeitado",
-      description: "O crédito foi rejeitado.",
-      variant: "destructive"
-    });
+  const calculateFixedInstallment = (principal, annualRate, termMonths) => {
+    const monthlyRate = annualRate / 100 / 12;
+    if (monthlyRate === 0) return principal / termMonths;
+    return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
   };
 
-  const handleAnalyzeCredit = () => {
-    const { income, expenses, collateral, requested } = analysisForm;
-    
-    if (!income || !expenses || !collateral || !requested) {
+  const handleCreateLoan = () => {
+    if (!loanForm.clientId || !loanForm.amount || !loanForm.interestRate || !loanForm.term) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios.",
@@ -90,47 +90,79 @@ const CreditDashboard = () => {
       return;
     }
 
-    const incomeNum = parseFloat(income);
-    const expensesNum = parseFloat(expenses);
-    const collateralNum = parseFloat(collateral);
-    const requestedNum = parseFloat(requested);
+    const monthlyPayment = calculateFixedInstallment(
+      parseFloat(loanForm.amount),
+      parseFloat(loanForm.interestRate),
+      parseInt(loanForm.term)
+    );
 
-    const paymentCapacity = ((incomeNum - expensesNum) / incomeNum) * 100;
-    const collateralRatio = (collateralNum / requestedNum) * 100;
-
-    toast({
-      title: "Análise Concluída",
-      description: `Capacidade: ${paymentCapacity.toFixed(1)}% | Garantia: ${collateralRatio.toFixed(1)}%`,
-    });
-  };
-
-  const handleAddClient = () => {
-    if (!newClient.name || !newClient.phone || !newClient.email) {
-      toast({
-        title: "Erro",
-        description: "Preencha todos os campos obrigatórios.",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const client = {
-      id: clients.length + 1,
-      name: newClient.name,
-      classification: "Novo",
-      score: 600,
-      lastOp: "Novo",
-      phone: newClient.phone,
-      email: newClient.email
+    const newLoan = {
+      id: loans.length + 1,
+      clientId: parseInt(loanForm.clientId),
+      amount: parseFloat(loanForm.amount),
+      interestRate: parseFloat(loanForm.interestRate),
+      term: parseInt(loanForm.term),
+      monthlyPayment: Math.round(monthlyPayment),
+      remainingBalance: parseFloat(loanForm.amount),
+      nextPayment: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR'),
+      status: "Ativo",
+      daysOverdue: 0
     };
 
-    setClients([...clients, client]);
-    setNewClient({ name: '', phone: '', email: '', address: '', income: '' });
+    setLoans([...loans, newLoan]);
+    setLoanForm({ clientId: '', amount: '', interestRate: '', term: '', purpose: '', collateral: '' });
     
     toast({
-      title: "Cliente Adicionado",
-      description: `${newClient.name} foi cadastrado com sucesso.`,
+      title: "Empréstimo Criado",
+      description: `Empréstimo de MZN ${loanForm.amount} criado com prestação de MZN ${Math.round(monthlyPayment)}.`,
     });
+  };
+
+  const handlePayment = () => {
+    if (!paymentForm.loanId || !paymentForm.amount) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoans(prev => prev.map(loan => 
+      loan.id === parseInt(paymentForm.loanId) 
+        ? { ...loan, remainingBalance: loan.remainingBalance - parseFloat(paymentForm.amount) }
+        : loan
+    ));
+
+    setPaymentForm({ loanId: '', amount: '', paymentDate: '', paymentMethod: '', reference: '' });
+    
+    toast({
+      title: "Pagamento Registrado",
+      description: `Pagamento de MZN ${paymentForm.amount} registrado com sucesso.`,
+    });
+  };
+
+  const generateAmortizationTable = (principal, annualRate, termMonths) => {
+    const monthlyRate = annualRate / 100 / 12;
+    const monthlyPayment = calculateFixedInstallment(principal, annualRate, termMonths);
+    const table = [];
+    let balance = principal;
+
+    for (let month = 1; month <= termMonths; month++) {
+      const interest = balance * monthlyRate;
+      const principalPayment = monthlyPayment - interest;
+      balance -= principalPayment;
+
+      table.push({
+        month,
+        payment: monthlyPayment,
+        interest: interest,
+        principal: principalPayment,
+        balance: Math.max(0, balance)
+      });
+    }
+
+    return table;
   };
 
   const handleContactClient = (clientName: string, method: string) => {
@@ -180,9 +212,11 @@ const CreditDashboard = () => {
       <Tabs defaultValue="dashboard" className="w-full">
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="loans">Empréstimos</TabsTrigger>
+          <TabsTrigger value="payments">Pagamentos</TabsTrigger>
           <TabsTrigger value="clients">Clientes</TabsTrigger>
-          <TabsTrigger value="analysis">Análise</TabsTrigger>
           <TabsTrigger value="collection">Cobrança</TabsTrigger>
+          <TabsTrigger value="reports">Relatórios</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
@@ -191,10 +225,22 @@ const CreditDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Pedidos Pendentes</p>
+                    <p className="text-sm font-medium text-gray-600">Carteira Total</p>
+                    <p className="text-2xl font-bold">MZN 58.5K</p>
+                  </div>
+                  <DollarSign className="h-8 w-8 text-green-600" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Empréstimos Ativos</p>
                     <p className="text-2xl font-bold">23</p>
                   </div>
-                  <AlertTriangle className="h-8 w-8 text-yellow-600" />
+                  <CheckCircle className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -203,19 +249,7 @@ const CreditDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Aprovados Hoje</p>
-                    <p className="text-2xl font-bold">8</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Rejeitados</p>
+                    <p className="text-sm font-medium text-gray-600">Em Atraso</p>
                     <p className="text-2xl font-bold">3</p>
                   </div>
                   <XCircle className="h-8 w-8 text-red-600" />
@@ -227,58 +261,263 @@ const CreditDashboard = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Taxa Aprovação</p>
-                    <p className="text-2xl font-bold">73%</p>
+                    <p className="text-sm font-medium text-gray-600">Taxa Inadimplência</p>
+                    <p className="text-2xl font-bold">13%</p>
                   </div>
-                  <CreditCard className="h-8 w-8 text-blue-600" />
+                  <AlertTriangle className="h-8 w-8 text-yellow-600" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Empréstimos Vencidos</CardTitle>
+                <CardDescription>Clientes com pagamentos em atraso</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {loans.filter(loan => loan.daysOverdue > 0).map((loan) => {
+                    const client = clients.find(c => c.id === loan.clientId);
+                    const defaultInterest = calculateDefaultInterest(loan.remainingBalance, loan.daysOverdue);
+                    return (
+                      <div key={loan.id} className="flex items-center justify-between p-3 border rounded-lg bg-red-50">
+                        <div>
+                          <p className="font-medium">{client?.name}</p>
+                          <p className="text-sm text-gray-600">{loan.daysOverdue} dias em atraso</p>
+                          <p className="text-sm text-red-600">Juros de mora: MZN {defaultInterest.toFixed(2)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">MZN {loan.remainingBalance.toLocaleString()}</p>
+                          <p className="text-sm text-gray-600">Prestação: MZN {loan.monthlyPayment}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Pagamentos Hoje</CardTitle>
+                <CardDescription>Clientes com vencimento hoje</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {loans.filter(loan => loan.status === "Ativo").slice(0, 3).map((loan) => {
+                    const client = clients.find(c => c.id === loan.clientId);
+                    return (
+                      <div key={loan.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{client?.name}</p>
+                          <p className="text-sm text-gray-600">Vence: {loan.nextPayment}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold">MZN {loan.monthlyPayment}</p>
+                          <Button size="sm" onClick={() => toast({ title: "Lembrete Enviado", description: `SMS enviado para ${client?.name}` })}>
+                            <MessageSquare className="h-3 w-3 mr-1" />
+                            SMS
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="loans" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Novo Empréstimo</CardTitle>
+                <CardDescription>Criar novo empréstimo com parcelas fixas</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="clientSelect">Cliente</Label>
+                  <Select onValueChange={(value) => setLoanForm({...loanForm, clientId: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clients.map(client => (
+                        <SelectItem key={client.id} value={client.id.toString()}>{client.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="loanAmount">Valor (MZN)</Label>
+                    <Input 
+                      id="loanAmount"
+                      type="number"
+                      value={loanForm.amount}
+                      onChange={(e) => setLoanForm({...loanForm, amount: e.target.value})}
+                      placeholder="Ex: 50000"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="interestRate">Taxa de Juros (% a.a.)</Label>
+                    <Input 
+                      id="interestRate"
+                      type="number"
+                      step="0.1"
+                      value={loanForm.interestRate}
+                      onChange={(e) => setLoanForm({...loanForm, interestRate: e.target.value})}
+                      placeholder="Ex: 15"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="loanTerm">Prazo (meses)</Label>
+                  <Input 
+                    id="loanTerm"
+                    type="number"
+                    value={loanForm.term}
+                    onChange={(e) => setLoanForm({...loanForm, term: e.target.value})}
+                    placeholder="Ex: 12"
+                  />
+                </div>
+
+                {loanForm.amount && loanForm.interestRate && loanForm.term && (
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="font-medium">Prestação Fixa Calculada:</p>
+                    <p className="text-lg font-bold text-blue-600">
+                      MZN {calculateFixedInstallment(
+                        parseFloat(loanForm.amount),
+                        parseFloat(loanForm.interestRate),
+                        parseInt(loanForm.term)
+                      ).toFixed(2)}
+                    </p>
+                  </div>
+                )}
+
+                <Button onClick={handleCreateLoan} className="w-full">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Criar Empréstimo
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Tabela de Amortização</CardTitle>
+                <CardDescription>Visualize o cronograma de pagamentos</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loanForm.amount && loanForm.interestRate && loanForm.term ? (
+                  <div className="max-h-96 overflow-y-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left p-2">Mês</th>
+                          <th className="text-left p-2">Prestação</th>
+                          <th className="text-left p-2">Juros</th>
+                          <th className="text-left p-2">Principal</th>
+                          <th className="text-left p-2">Saldo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {generateAmortizationTable(
+                          parseFloat(loanForm.amount),
+                          parseFloat(loanForm.interestRate),
+                          parseInt(loanForm.term)
+                        ).map((row, index) => (
+                          <tr key={index} className="border-b">
+                            <td className="p-2">{row.month}</td>
+                            <td className="p-2">{row.payment.toFixed(2)}</td>
+                            <td className="p-2">{row.interest.toFixed(2)}</td>
+                            <td className="p-2">{row.principal.toFixed(2)}</td>
+                            <td className="p-2">{row.balance.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-gray-500">Preencha os dados do empréstimo para ver a tabela</p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="payments" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Análise de Crédito Pendente</CardTitle>
-              <CardDescription>
-                Pedidos aguardando análise e aprovação
-              </CardDescription>
+              <CardTitle>Registrar Pagamento</CardTitle>
+              <CardDescription>Registre pagamentos de empréstimos</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {pendingAnalysis.map((client) => (
-                  <div key={client.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium">{client.name}</p>
-                      <p className="text-sm text-gray-600">Score: {client.score} | Risco: {client.risk}</p>
-                    </div>
-                    <div className="text-right mr-4">
-                      <p className="font-bold">{client.amount}</p>
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        client.status === 'Aprovado' ? 'bg-green-100 text-green-800' :
-                        client.status === 'Rejeitado' ? 'bg-red-100 text-red-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {client.status}
-                      </span>
-                    </div>
-                    <div className="space-x-2">
-                      <Button size="sm" variant="outline" onClick={() => handleViewClientDetails(client.id)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {client.status === 'Pendente' && (
-                        <>
-                          <Button size="sm" onClick={() => handleApproveCredit(client.id)}>
-                            Aprovar
-                          </Button>
-                          <Button size="sm" variant="destructive" onClick={() => handleRejectCredit(client.id)}>
-                            Rejeitar
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="paymentLoan">Empréstimo</Label>
+                  <Select onValueChange={(value) => setPaymentForm({...paymentForm, loanId: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o empréstimo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {loans.map(loan => {
+                        const client = clients.find(c => c.id === loan.clientId);
+                        return (
+                          <SelectItem key={loan.id} value={loan.id.toString()}>
+                            {client?.name} - MZN {loan.remainingBalance.toLocaleString()}
+                          </SelectItem>
+                        );
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="paymentAmount">Valor do Pagamento (MZN)</Label>
+                  <Input 
+                    id="paymentAmount"
+                    type="number"
+                    value={paymentForm.amount}
+                    onChange={(e) => setPaymentForm({...paymentForm, amount: e.target.value})}
+                    placeholder="Ex: 4500"
+                  />
+                </div>
               </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="paymentMethod">Método de Pagamento</Label>
+                  <Select onValueChange={(value) => setPaymentForm({...paymentForm, paymentMethod: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o método" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
+                      <SelectItem value="transfer">Transferência</SelectItem>
+                      <SelectItem value="mpesa">M-Pesa</SelectItem>
+                      <SelectItem value="emola">E-Mola</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="paymentReference">Referência</Label>
+                  <Input 
+                    id="paymentReference"
+                    value={paymentForm.reference}
+                    onChange={(e) => setPaymentForm({...paymentForm, reference: e.target.value})}
+                    placeholder="Ex: TXN123456"
+                  />
+                </div>
+              </div>
+
+              <Button onClick={handlePayment} className="w-full">
+                <Save className="mr-2 h-4 w-4" />
+                Registrar Pagamento
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -300,8 +539,6 @@ const CreditDashboard = () => {
                       <Label htmlFor="clientName">Nome Completo</Label>
                       <Input 
                         id="clientName"
-                        value={newClient.name}
-                        onChange={(e) => setNewClient({...newClient, name: e.target.value})}
                         placeholder="Ex: João Silva"
                       />
                     </div>
@@ -309,8 +546,6 @@ const CreditDashboard = () => {
                       <Label htmlFor="clientPhone">Telefone</Label>
                       <Input 
                         id="clientPhone"
-                        value={newClient.phone}
-                        onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
                         placeholder="Ex: 84123456"
                       />
                     </div>
@@ -319,8 +554,6 @@ const CreditDashboard = () => {
                       <Input 
                         id="clientEmail"
                         type="email"
-                        value={newClient.email}
-                        onChange={(e) => setNewClient({...newClient, email: e.target.value})}
                         placeholder="Ex: joao@email.com"
                       />
                     </div>
@@ -329,13 +562,11 @@ const CreditDashboard = () => {
                       <Input 
                         id="clientIncome"
                         type="number"
-                        value={newClient.income}
-                        onChange={(e) => setNewClient({...newClient, income: e.target.value})}
                         placeholder="Ex: 15000"
                       />
                     </div>
                   </div>
-                  <Button onClick={handleAddClient} className="mt-4">
+                  <Button className="mt-4">
                     <Plus className="mr-2 h-4 w-4" />
                     Cadastrar Cliente
                   </Button>
@@ -393,103 +624,6 @@ const CreditDashboard = () => {
                   ))}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="analysis" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Análise de Capacidade Financeira</CardTitle>
-              <CardDescription>
-                Avaliação detalhada do cliente para concessão de crédito
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleAnalyzeCredit(); }}>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="income">Renda Mensal (MZN)</Label>
-                    <Input 
-                      id="income" 
-                      type="number"
-                      value={analysisForm.income}
-                      onChange={(e) => setAnalysisForm({...analysisForm, income: e.target.value})}
-                      placeholder="Ex: 15000" 
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="expenses">Despesas Mensais (MZN)</Label>
-                    <Input 
-                      id="expenses" 
-                      type="number"
-                      value={analysisForm.expenses}
-                      onChange={(e) => setAnalysisForm({...analysisForm, expenses: e.target.value})}
-                      placeholder="Ex: 8000" 
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="collateral">Valor do Penhor (MZN)</Label>
-                    <Input 
-                      id="collateral" 
-                      type="number"
-                      value={analysisForm.collateral}
-                      onChange={(e) => setAnalysisForm({...analysisForm, collateral: e.target.value})}
-                      placeholder="Ex: 50000" 
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="requested">Valor Solicitado (MZN)</Label>
-                    <Input 
-                      id="requested" 
-                      type="number"
-                      value={analysisForm.requested}
-                      onChange={(e) => setAnalysisForm({...analysisForm, requested: e.target.value})}
-                      placeholder="Ex: 20000" 
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="description">Descrição do Penhor</Label>
-                  <Textarea 
-                    id="description" 
-                    value={analysisForm.description}
-                    onChange={(e) => setAnalysisForm({...analysisForm, description: e.target.value})}
-                    placeholder="Descreva o bem oferecido como garantia..." 
-                  />
-                </div>
-
-                <Button type="submit" className="w-full">
-                  <Save className="mr-2 h-4 w-4" />
-                  Analisar Capacidade
-                </Button>
-
-                {analysisForm.income && analysisForm.expenses && (
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <h3 className="font-semibold mb-2">Resultado da Análise</h3>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-600">Capacidade de Pagamento</p>
-                        <p className="font-bold text-green-600">
-                          {(((parseFloat(analysisForm.income) - parseFloat(analysisForm.expenses)) / parseFloat(analysisForm.income)) * 100).toFixed(1)}%
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Risco Calculado</p>
-                        <p className="font-bold text-yellow-600">Médio</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-600">Recomendação</p>
-                        <p className="font-bold text-green-600">Aprovar</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </form>
             </CardContent>
           </Card>
         </TabsContent>
@@ -619,6 +753,36 @@ const CreditDashboard = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="reports" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Relatório de Carteira</CardTitle>
+                <CardDescription>Análise completa da carteira de crédito</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">
+                  <Download className="mr-2 h-4 w-4" />
+                  Gerar Relatório
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Relatório de Inadimplência</CardTitle>
+                <CardDescription>Análise de clientes em atraso</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">
+                  <Download className="mr-2 h-4 w-4" />
+                  Gerar Relatório
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
