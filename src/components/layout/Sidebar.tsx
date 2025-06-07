@@ -12,7 +12,12 @@ import {
   FileText,
   Calculator,
   Building2,
-  BarChart3
+  BarChart3,
+  Receipt,
+  Phone,
+  ShieldCheck,
+  Bell,
+  Wallet
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -21,9 +26,14 @@ const navigation = [
   { name: 'Administração', href: '/admin', icon: Settings },
   { name: 'Crédito e Risco', href: '/credit', icon: CreditCard },
   { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator },
+  { name: 'Despesas', href: '/expenses', icon: Receipt },
+  { name: 'Cobrança', href: '/collection', icon: Phone },
   { name: 'Jurídico', href: '/legal', icon: Scale },
   { name: 'Operações', href: '/operations', icon: FileText },
   { name: 'Marketing', href: '/marketing', icon: TrendingUp },
+  { name: 'Notificações', href: '/notifications', icon: Bell },
+  { name: 'Auditoria', href: '/audit', icon: ShieldCheck },
+  { name: 'Caixa', href: '/cashflow', icon: Wallet },
   { name: 'Relatórios', href: '/reports', icon: BarChart3 },
   { name: 'Relatório BM', href: '/bank-report', icon: Building2 },
   { name: 'Configurações', href: '/settings', icon: Settings },

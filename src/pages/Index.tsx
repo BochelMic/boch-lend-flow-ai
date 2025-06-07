@@ -13,6 +13,11 @@ import CreditSimulatorModule from '../components/credit-simulator/CreditSimulato
 import ReportsModule from '../components/reports/ReportsModule';
 import BankReportModule from '../components/bank-report/BankReportModule';
 import SettingsModule from '../components/settings/SettingsModule';
+import ExpensesModule from '../components/expenses/ExpensesModule';
+import CollectionModule from '../components/collection/CollectionModule';
+import NotificationsModule from '../components/notifications/NotificationsModule';
+import AuditModule from '../components/audit/AuditModule';
+import CashFlowModule from '../components/cashflow/CashFlowModule';
 import Layout from '../components/layout/Layout';
 
 const Index = () => {
@@ -30,9 +35,14 @@ const Index = () => {
         <Route path="/admin/*" element={<AdminModule />} />
         <Route path="/credit/*" element={<CreditModule />} />
         <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
+        <Route path="/expenses/*" element={<ExpensesModule />} />
+        <Route path="/collection/*" element={<CollectionModule />} />
         <Route path="/legal/*" element={<LegalModule />} />
         <Route path="/operations/*" element={<OperationsModule />} />
         <Route path="/marketing/*" element={<MarketingModule />} />
+        <Route path="/notifications/*" element={<NotificationsModule />} />
+        <Route path="/audit/*" element={<AuditModule />} />
+        <Route path="/cashflow/*" element={<CashFlowModule />} />
         <Route path="/reports/*" element={<ReportsModule />} />
         <Route path="/bank-report/*" element={<BankReportModule />} />
         <Route path="/settings/*" element={<SettingsModule />} />
