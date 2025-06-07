@@ -17,7 +17,8 @@ import {
   Phone,
   ShieldCheck,
   Bell,
-  Wallet
+  Wallet,
+  ArrowUpDown
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -26,6 +27,7 @@ const navigation = [
   { name: 'Administração', href: '/admin', icon: Settings },
   { name: 'Crédito e Risco', href: '/credit', icon: CreditCard },
   { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator },
+  { name: 'Saldo Disponível', href: '/balance', icon: ArrowUpDown },
   { name: 'Despesas', href: '/expenses', icon: Receipt },
   { name: 'Cobrança', href: '/collection', icon: Phone },
   { name: 'Jurídico', href: '/legal', icon: Scale },

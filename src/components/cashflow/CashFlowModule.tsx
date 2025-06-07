@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -18,7 +17,8 @@ import {
   Target,
   PieChart,
   BarChart3,
-  Download
+  Download,
+  Edit
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
@@ -51,6 +51,16 @@ const CashFlowModule = () => {
     }
   });
 
+  // Estado para projeções editáveis
+  const [projections, setProjections] = useState({
+    days30: { income: 180000, expenses: 145000, net: 35000 },
+    days60: { income: 360000, expenses: 290000, net: 70000 },
+    days90: { income: 540000, expenses: 435000, net: 105000 }
+  });
+
+  const [editingProjection, setEditingProjection] = useState(null);
+  const [projectionForm, setProjectionForm] = useState({ period: '', income: '', expenses: '' });
+
   const categories = {
     entrada: ['Pagamentos', 'Juros', 'Multas', 'Novos Empréstimos', 'Outros Recebimentos'],
     saida: ['Despesas Operacionais', 'Folha de Pagamento', 'Impostos', 'Marketing', 'Combustível', 'Outros']
@@ -81,6 +91,44 @@ const CashFlowModule = () => {
     toast({
       title: "Transação Registrada",
       description: `${cashForm.type} de MZN ${cashForm.amount} registrada com sucesso.`,
+    });
+  };
+
+  const handleEditProjection = (period) => {
+    const projection = projections[period];
+    setEditingProjection(period);
+    setProjectionForm({
+      period,
+      income: projection.income.toString(),
+      expenses: projection.expenses.toString()
+    });
+  };
+
+  const handleSaveProjection = () => {
+    if (!projectionForm.income || !projectionForm.expenses) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos da projeção.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const income = parseFloat(projectionForm.income);
+    const expenses = parseFloat(projectionForm.expenses);
+    const net = income - expenses;
+
+    setProjections(prev => ({
+      ...prev,
+      [projectionForm.period]: { income, expenses, net }
+    }));
+
+    setEditingProjection(null);
+    setProjectionForm({ period: '', income: '', expenses: '' });
+
+    toast({
+      title: "Projeção Atualizada",
+      description: "Projeção de fluxo de caixa atualizada com sucesso.",
     });
   };
 
@@ -347,66 +395,90 @@ const CashFlowModule = () => {
         <TabsContent value="projections" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Projeções de Fluxo de Caixa</CardTitle>
+              <CardTitle>Projeções de Fluxo de Caixa - Editáveis</CardTitle>
               <CardDescription>Previsões baseadas em histórico e empréstimos ativos</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-medium text-center">Próximos 30 dias</h3>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Entradas previstas:</span>
-                        <span className="text-green-600 font-medium">MZN 180,000</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Saídas previstas:</span>
-                        <span className="text-red-600 font-medium">MZN 145,000</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="font-medium">Saldo projetado:</span>
-                        <span className="text-green-600 font-bold">MZN 35,000</span>
-                      </div>
-                    </div>
-                  </div>
+                  {Object.entries(projections).map(([period, data]) => {
+                    const periodLabels = {
+                      days30: 'Próximos 30 dias',
+                      days60: 'Próximos 60 dias',
+                      days90: 'Próximos 90 dias'
+                    };
 
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-medium text-center">Próximos 60 dias</h3>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Entradas previstas:</span>
-                        <span className="text-green-600 font-medium">MZN 360,000</span>
+                    return (
+                      <div key={period} className="p-4 border rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-medium text-center">{periodLabels[period]}</h3>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleEditProjection(period)}
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex justify-between">
+                            <span className="text-sm">Entradas previstas:</span>
+                            <span className="text-green-600 font-medium">MZN {data.income.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm">Saídas previstas:</span>
+                            <span className="text-red-600 font-medium">MZN {data.expenses.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between border-t pt-2">
+                            <span className="font-medium">Saldo projetado:</span>
+                            <span className={`font-bold ${data.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              MZN {data.net.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Saídas previstas:</span>
-                        <span className="text-red-600 font-medium">MZN 290,000</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="font-medium">Saldo projetado:</span>
-                        <span className="text-green-600 font-bold">MZN 70,000</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 border rounded-lg">
-                    <h3 className="font-medium text-center">Próximos 90 dias</h3>
-                    <div className="mt-2 space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">Entradas previstas:</span>
-                        <span className="text-green-600 font-medium">MZN 540,000</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-sm">Saídas previstas:</span>
-                        <span className="text-red-600 font-medium">MZN 435,000</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="font-medium">Saldo projetado:</span>
-                        <span className="text-green-600 font-bold">MZN 105,000</span>
-                      </div>
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
+
+                {editingProjection && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Editar Projeção</CardTitle>
+                      <CardDescription>Alterar valores da projeção de fluxo de caixa</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="projectedIncome">Entradas Previstas (MZN)</Label>
+                          <Input 
+                            id="projectedIncome"
+                            type="number"
+                            value={projectionForm.income}
+                            onChange={(e) => setProjectionForm({...projectionForm, income: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="projectedExpenses">Saídas Previstas (MZN)</Label>
+                          <Input 
+                            id="projectedExpenses"
+                            type="number"
+                            value={projectionForm.expenses}
+                            onChange={(e) => setProjectionForm({...projectionForm, expenses: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button onClick={handleSaveProjection}>
+                          Salvar Projeção
+                        </Button>
+                        <Button variant="outline" onClick={() => setEditingProjection(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <h3 className="font-medium text-blue-800 mb-2">Cenários de Risco</h3>

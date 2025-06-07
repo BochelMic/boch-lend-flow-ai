@@ -9,15 +9,35 @@ import {
   CreditCard,
   Calendar,
   Target,
-  PieChart
+  PieChart,
+  Bell,
+  MessageSquare,
+  FileText,
+  CheckCircle,
+  Clock,
+  XCircle
 } from 'lucide-react';
 import MetricCard from './MetricCard';
 import CashFlowChart from './CashFlowChart';
 import RiskAnalysis from './RiskAnalysis';
 
 const Dashboard = () => {
+  // Dados de empréstimos e estatísticas
+  const loanStats = {
+    totalLoans: 2400000, // MZN
+    totalInterest: 432000, // MZN
+    lateInterest: 25600, // MZN
+    totalValue: 2857600, // MZN (total + juros + mora)
+    activeLoans: 145,
+    pendingLoans: 23,
+    notificationsSent: 1247,
+    messagesReceived: 892,
+    creditRequests: 67
+  };
+
   return (
     <div className="space-y-6">
+      {/* Métricas principais */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
           title="Clientes Ativos"
@@ -28,7 +48,7 @@ const Dashboard = () => {
         />
         <MetricCard
           title="Carteira de Crédito"
-          value="MZN 2.4M"
+          value={`MZN ${(loanStats.totalLoans / 1000000).toFixed(1)}M`}
           icon={CreditCard}
           trend="+8%"
           description="Total emprestado"
@@ -51,6 +71,121 @@ const Dashboard = () => {
         />
       </div>
 
+      {/* Informações detalhadas de empréstimos */}
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Empréstimo Total</p>
+                <p className="text-lg font-bold">MZN {loanStats.totalLoans.toLocaleString()}</p>
+              </div>
+              <DollarSign className="h-6 w-6 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Juros Totais</p>
+                <p className="text-lg font-bold text-green-600">MZN {loanStats.totalInterest.toLocaleString()}</p>
+              </div>
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Juros de Mora</p>
+                <p className="text-lg font-bold text-red-600">MZN {loanStats.lateInterest.toLocaleString()}</p>
+              </div>
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Valor Total</p>
+                <p className="text-lg font-bold text-purple-600">MZN {loanStats.totalValue.toLocaleString()}</p>
+              </div>
+              <Target className="h-6 w-6 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Solicitações</p>
+                <p className="text-lg font-bold text-orange-600">{loanStats.creditRequests}</p>
+              </div>
+              <FileText className="h-6 w-6 text-orange-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Status de empréstimos e comunicações */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Empréstimos Ativos</p>
+                <p className="text-xl font-bold text-green-600">{loanStats.activeLoans}</p>
+              </div>
+              <CheckCircle className="h-6 w-6 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Pendentes</p>
+                <p className="text-xl font-bold text-yellow-600">{loanStats.pendingLoans}</p>
+              </div>
+              <Clock className="h-6 w-6 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Notificações Enviadas</p>
+                <p className="text-xl font-bold text-blue-600">{loanStats.notificationsSent}</p>
+              </div>
+              <Bell className="h-6 w-6 text-blue-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">Mensagens Recebidas</p>
+                <p className="text-xl font-bold text-purple-600">{loanStats.messagesReceived}</p>
+              </div>
+              <MessageSquare className="h-6 w-6 text-purple-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Gráficos e análises */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -83,6 +218,7 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* Alertas e ações */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
