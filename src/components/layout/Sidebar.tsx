@@ -9,7 +9,10 @@ import {
   Settings, 
   TrendingUp,
   Shield,
-  FileText
+  FileText,
+  Calculator,
+  Building2,
+  BarChart3
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -17,9 +20,13 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Administração', href: '/admin', icon: Settings },
   { name: 'Crédito e Risco', href: '/credit', icon: CreditCard },
+  { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator },
   { name: 'Jurídico', href: '/legal', icon: Scale },
   { name: 'Operações', href: '/operations', icon: FileText },
   { name: 'Marketing', href: '/marketing', icon: TrendingUp },
+  { name: 'Relatórios', href: '/reports', icon: BarChart3 },
+  { name: 'Relatório BM', href: '/bank-report', icon: Building2 },
+  { name: 'Configurações', href: '/settings', icon: Settings },
 ];
 
 const Sidebar = () => {
