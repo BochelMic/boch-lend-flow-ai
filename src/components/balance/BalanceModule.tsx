@@ -5,48 +5,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { 
-  ArrowUpDown, 
-  ArrowUpCircle, 
-  ArrowDownCircle, 
-  Smartphone, 
-  RefreshCw,
-  Bell,
-  DollarSign,
-  CreditCard,
-  Activity,
-  Zap
-} from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { 
+  ArrowUpDown, 
+  ArrowUp, 
+  ArrowDown, 
+  Wallet, 
+  CreditCard,
+  Smartphone,
+  Bell,
+  CheckCircle,
+  AlertCircle,
+  Download,
+  Plus
+} from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
-const BalanceModule = () => {
+const BalanceDashboard = () => {
   const { toast } = useToast();
-  const [balance, setBalance] = useState({
-    available: 485000,
-    pending: 25000,
-    reserved: 15000
-  });
-
+  const [currentBalance, setCurrentBalance] = useState(125000);
   const [transactions, setTransactions] = useState([
-    { id: 1, type: 'Entrada', description: 'Depósito via M-Pesa', amount: 50000, date: '15/06/2024', time: '14:30', reference: 'MPESA001234' },
-    { id: 2, type: 'Saída', description: 'Transferência para cliente', amount: 15000, date: '15/06/2024', time: '13:45', reference: 'TRF001235' },
-    { id: 3, type: 'Entrada', description: 'Recarga via e-Mola', amount: 25000, date: '14/06/2024', time: '16:20', reference: 'EMOLA5678' },
-    { id: 4, type: 'Saída', description: 'Pagamento de salário', amount: 35000, date: '14/06/2024', time: '09:15', reference: 'SAL001236' },
+    { id: 1, type: 'entrada', amount: 50000, description: 'Depósito via M-Pesa', date: '15/06/2024', reference: 'MP123456', status: 'Concluído' },
+    { id: 2, type: 'saida', amount: 25000, description: 'Empréstimo para João Silva', date: '14/06/2024', reference: 'EMP001', status: 'Concluído' },
+    { id: 3, type: 'entrada', amount: 15000, description: 'Pagamento de empréstimo', date: '13/06/2024', reference: 'PAG002', status: 'Concluído' },
+    { id: 4, type: 'saida', amount: 5000, description: 'Taxa de operação', date: '12/06/2024', reference: 'TAX001', status: 'Pendente' }
   ]);
 
-  const [transferForm, setTransferForm] = useState({
+  const [transactionForm, setTransactionForm] = useState({
     type: '',
     amount: '',
-    reference: '',
-    provider: ''
+    description: '',
+    method: '',
+    reference: ''
   });
 
-  const mobileProviders = ['M-Pesa', 'e-Mola', 'mkesh'];
-
-  const handleTransfer = () => {
-    if (!transferForm.type || !transferForm.amount) {
+  const handleTransaction = () => {
+    if (!transactionForm.type || !transactionForm.amount || !transactionForm.description) {
       toast({
         title: "Erro",
         description: "Preencha todos os campos obrigatórios.",
@@ -57,93 +52,75 @@ const BalanceModule = () => {
 
     const newTransaction = {
       id: transactions.length + 1,
-      type: transferForm.type,
-      description: `${transferForm.type} via ${transferForm.provider}`,
-      amount: parseFloat(transferForm.amount),
+      type: transactionForm.type,
+      amount: parseFloat(transactionForm.amount),
+      description: transactionForm.description,
       date: new Date().toLocaleDateString('pt-BR'),
-      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      reference: transferForm.reference || `AUTO${Date.now()}`
+      reference: transactionForm.reference || `REF${Date.now()}`,
+      status: 'Concluído'
     };
 
     setTransactions([newTransaction, ...transactions]);
     
-    // Atualizar saldo
-    if (transferForm.type === 'Entrada') {
-      setBalance(prev => ({ ...prev, available: prev.available + parseFloat(transferForm.amount) }));
+    if (transactionForm.type === 'entrada') {
+      setCurrentBalance(prev => prev + parseFloat(transactionForm.amount));
     } else {
-      setBalance(prev => ({ ...prev, available: prev.available - parseFloat(transferForm.amount) }));
+      setCurrentBalance(prev => prev - parseFloat(transactionForm.amount));
     }
 
-    setTransferForm({ type: '', amount: '', reference: '', provider: '' });
-    
+    setTransactionForm({ type: '', amount: '', description: '', method: '', reference: '' });
+
     // Notificação automática
     toast({
-      title: "Transação Realizada",
-      description: `${transferForm.type} de MZN ${transferForm.amount} processada com sucesso via ${transferForm.provider}.`,
+      title: "Transação Processada",
+      description: `${transactionForm.type === 'entrada' ? 'Entrada' : 'Saída'} de MZN ${transactionForm.amount} processada com sucesso.`,
     });
 
-    // Simular notificação SMS
+    // Simular notificação IPE
     setTimeout(() => {
       toast({
-        title: "Notificação Enviada",
-        description: `SMS enviado confirmando ${transferForm.type.toLowerCase()} de MZN ${transferForm.amount}.`,
+        title: "Notificação IPE",
+        description: `Confirmação recebida da carteira móvel para ${transactionForm.type === 'entrada' ? 'entrada' : 'saída'} de MZN ${transactionForm.amount}.`,
       });
     }, 2000);
   };
 
-  const handleBalanceSync = () => {
-    toast({
-      title: "Sincronização Iniciada",
-      description: "Sincronizando saldo com operadoras de carteira móvel...",
-    });
+  const totalEntradas = transactions
+    .filter(t => t.type === 'entrada')
+    .reduce((sum, t) => sum + t.amount, 0);
 
-    setTimeout(() => {
-      setBalance(prev => ({ ...prev, available: prev.available + Math.floor(Math.random() * 10000) }));
-      toast({
-        title: "Saldo Atualizado",
-        description: "Sincronização com IPE concluída com sucesso.",
-      });
-    }, 3000);
-  };
-
-  const getTransactionIcon = (type: string) => {
-    return type === 'Entrada' 
-      ? <ArrowUpCircle className="h-4 w-4 text-green-600" />
-      : <ArrowDownCircle className="h-4 w-4 text-red-600" />;
-  };
-
-  const getTransactionColor = (type: string) => {
-    return type === 'Entrada' ? 'text-green-600' : 'text-red-600';
-  };
+  const totalSaidas = transactions
+    .filter(t => t.type === 'saida')
+    .reduce((sum, t) => sum + t.amount, 0);
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Gestão de Saldo</h1>
-        <Button onClick={handleBalanceSync}>
-          <RefreshCw className="mr-2 h-4 w-4" />
-          Sincronizar IPE
+        <h1 className="text-3xl font-bold">Saldo Disponível</h1>
+        <Button onClick={() => toast({ title: "IPE Conectado", description: "Conectado à carteira móvel IPE." })}>
+          <Smartphone className="mr-2 h-4 w-4" />
+          Conectar IPE
         </Button>
       </div>
 
-      <Tabs defaultValue="overview" className="w-full">
+      <Tabs defaultValue="saldo" className="w-full">
         <TabsList>
-          <TabsTrigger value="overview">Visão Geral</TabsTrigger>
-          <TabsTrigger value="transactions">Transações</TabsTrigger>
-          <TabsTrigger value="mobile-wallets">Carteiras Móveis</TabsTrigger>
-          <TabsTrigger value="notifications">Notificações</TabsTrigger>
+          <TabsTrigger value="saldo">Saldo Atual</TabsTrigger>
+          <TabsTrigger value="transacoes">Transações</TabsTrigger>
+          <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+          <TabsTrigger value="configuracoes">Configurações</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <TabsContent value="saldo" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Saldo Disponível</p>
-                    <p className="text-2xl font-bold text-green-600">MZN {balance.available.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-gray-600">Saldo Atual</p>
+                    <p className="text-3xl font-bold text-green-600">MZN {currentBalance.toLocaleString()}</p>
                   </div>
-                  <DollarSign className="h-8 w-8 text-green-600" />
+                  <Wallet className="h-8 w-8 text-green-600" />
                 </div>
               </CardContent>
             </Card>
@@ -152,10 +129,10 @@ const BalanceModule = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Saldo Pendente</p>
-                    <p className="text-2xl font-bold text-yellow-600">MZN {balance.pending.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-gray-600">Total Entradas</p>
+                    <p className="text-2xl font-bold text-blue-600">MZN {totalEntradas.toLocaleString()}</p>
                   </div>
-                  <Activity className="h-8 w-8 text-yellow-600" />
+                  <ArrowUp className="h-8 w-8 text-blue-600" />
                 </div>
               </CardContent>
             </Card>
@@ -164,143 +141,144 @@ const BalanceModule = () => {
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Saldo Reservado</p>
-                    <p className="text-2xl font-bold text-blue-600">MZN {balance.reserved.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-gray-600">Total Saídas</p>
+                    <p className="text-2xl font-bold text-red-600">MZN {totalSaidas.toLocaleString()}</p>
                   </div>
-                  <CreditCard className="h-8 w-8 text-blue-600" />
+                  <ArrowDown className="h-8 w-8 text-red-600" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Saldo Líquido</p>
+                    <p className={`text-2xl font-bold ${(totalEntradas - totalSaidas) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      MZN {(totalEntradas - totalSaidas).toLocaleString()}
+                    </p>
+                  </div>
+                  <ArrowUpDown className="h-8 w-8 text-gray-600" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Nova Transação</CardTitle>
-                <CardDescription>Realizar entrada ou saída de saldo</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Nova Transação</CardTitle>
+              <CardDescription>Registrar entrada ou saída de saldo</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="transactionType">Tipo de Transação</Label>
-                  <Select onValueChange={(value) => setTransferForm({...transferForm, type: value})}>
+                  <Select onValueChange={(value) => setTransactionForm({...transactionForm, type: value})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Entrada">Entrada de Saldo</SelectItem>
-                      <SelectItem value="Saída">Saída de Saldo</SelectItem>
+                      <SelectItem value="entrada">Entrada</SelectItem>
+                      <SelectItem value="saida">Saída</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div>
-                  <Label htmlFor="provider">Operadora</Label>
-                  <Select onValueChange={(value) => setTransferForm({...transferForm, provider: value})}>
+                  <Label htmlFor="transactionAmount">Valor (MZN)</Label>
+                  <Input 
+                    id="transactionAmount"
+                    type="number"
+                    value={transactionForm.amount}
+                    onChange={(e) => setTransactionForm({...transactionForm, amount: e.target.value})}
+                    placeholder="Ex: 50000"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="transactionDescription">Descrição</Label>
+                <Input 
+                  id="transactionDescription"
+                  value={transactionForm.description}
+                  onChange={(e) => setTransactionForm({...transactionForm, description: e.target.value})}
+                  placeholder="Ex: Depósito via M-Pesa"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="transactionMethod">Método</Label>
+                  <Select onValueChange={(value) => setTransactionForm({...transactionForm, method: value})}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecione a operadora" />
+                      <SelectValue placeholder="Selecione o método" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mobileProviders.map(provider => (
-                        <SelectItem key={provider} value={provider}>{provider}</SelectItem>
-                      ))}
+                      <SelectItem value="mpesa">M-Pesa</SelectItem>
+                      <SelectItem value="emola">E-Mola</SelectItem>
+                      <SelectItem value="transfer">Transferência Bancária</SelectItem>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="amount">Valor (MZN)</Label>
-                    <Input 
-                      id="amount"
-                      type="number"
-                      value={transferForm.amount}
-                      onChange={(e) => setTransferForm({...transferForm, amount: e.target.value})}
-                      placeholder="Ex: 50000"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="reference">Referência (Opcional)</Label>
-                    <Input 
-                      id="reference"
-                      value={transferForm.reference}
-                      onChange={(e) => setTransferForm({...transferForm, reference: e.target.value})}
-                      placeholder="Ex: MPESA001234"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="transactionReference">Referência</Label>
+                  <Input 
+                    id="transactionReference"
+                    value={transactionForm.reference}
+                    onChange={(e) => setTransactionForm({...transactionForm, reference: e.target.value})}
+                    placeholder="Ex: MP123456"
+                  />
                 </div>
+              </div>
 
-                <Button onClick={handleTransfer} className="w-full">
-                  <ArrowUpDown className="mr-2 h-4 w-4" />
-                  Processar Transação
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Transações Recentes</CardTitle>
-                <CardDescription>Últimas movimentações de saldo</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {transactions.slice(0, 5).map((transaction) => (
-                    <div key={transaction.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        {getTransactionIcon(transaction.type)}
-                        <div>
-                          <p className="font-medium">{transaction.description}</p>
-                          <p className="text-sm text-gray-600">{transaction.date} às {transaction.time}</p>
-                          <p className="text-xs text-gray-500">Ref: {transaction.reference}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-bold ${getTransactionColor(transaction.type)}`}>
-                          {transaction.type === 'Entrada' ? '+' : '-'}MZN {transaction.amount.toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              <Button onClick={handleTransaction} className="w-full">
+                <Plus className="mr-2 h-4 w-4" />
+                Processar Transação
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
 
-        <TabsContent value="transactions" className="space-y-6">
+        <TabsContent value="transacoes" className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Histórico de Transações</CardTitle>
               <CardDescription>Todas as movimentações de saldo</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-7 gap-4 p-3 bg-gray-50 rounded font-medium">
+              <div className="space-y-2">
+                <div className="grid grid-cols-6 gap-4 p-3 bg-gray-50 rounded font-medium">
+                  <span>Data</span>
                   <span>Tipo</span>
                   <span>Descrição</span>
-                  <span>Operadora</span>
-                  <span>Data</span>
-                  <span>Hora</span>
                   <span>Valor</span>
                   <span>Referência</span>
+                  <span>Status</span>
                 </div>
                 {transactions.map((transaction) => (
-                  <div key={transaction.id} className="grid grid-cols-7 gap-4 p-3 border-b items-center">
-                    <div className="flex items-center space-x-2">
-                      {getTransactionIcon(transaction.type)}
-                      <span>{transaction.type}</span>
-                    </div>
+                  <div key={transaction.id} className="grid grid-cols-6 gap-4 p-3 border-b items-center">
+                    <span className="text-sm">{transaction.date}</span>
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      transaction.type === 'entrada' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {transaction.type === 'entrada' ? 'Entrada' : 'Saída'}
+                    </span>
                     <span className="text-sm">{transaction.description}</span>
-                    <span className="text-sm">
-                      <Smartphone className="h-4 w-4 inline mr-1" />
-                      {transaction.description.includes('M-Pesa') ? 'M-Pesa' : 
-                       transaction.description.includes('e-Mola') ? 'e-Mola' : 'Sistema'}
+                    <span className={`font-bold ${
+                      transaction.type === 'entrada' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {transaction.type === 'entrada' ? '+' : '-'}MZN {transaction.amount.toLocaleString()}
                     </span>
-                    <span>{transaction.date}</span>
-                    <span>{transaction.time}</span>
-                    <span className={`font-bold ${getTransactionColor(transaction.type)}`}>
-                      {transaction.type === 'Entrada' ? '+' : '-'}MZN {transaction.amount.toLocaleString()}
+                    <span className="text-sm text-gray-600">{transaction.reference}</span>
+                    <span className={`px-2 py-1 rounded text-xs ${
+                      transaction.status === 'Concluído' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {transaction.status}
                     </span>
-                    <span className="text-xs text-gray-500">{transaction.reference}</span>
                   </div>
                 ))}
               </div>
@@ -308,82 +286,80 @@ const BalanceModule = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="mobile-wallets" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {mobileProviders.map((provider) => (
-              <Card key={provider}>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Smartphone className="mr-2 h-5 w-5" />
-                    {provider}
-                  </CardTitle>
-                  <CardDescription>Integração com carteira móvel</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span>Status:</span>
-                      <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Conectado</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Última sync:</span>
-                      <span className="text-sm">Agora mesmo</span>
-                    </div>
-                    <Button size="sm" className="w-full">
-                      <Zap className="mr-2 h-4 w-4" />
-                      Reconectar
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+        <TabsContent value="relatorios" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Relatório de Movimentações</CardTitle>
+                <CardDescription>Exportar histórico de transações</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">
+                  <Download className="mr-2 h-4 w-4" />
+                  Exportar Relatório
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Conciliação Bancária</CardTitle>
+                <CardDescription>Comparar com extratos bancários</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button className="w-full">
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Iniciar Conciliação
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
+        <TabsContent value="configuracoes" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Configuração de Notificações</CardTitle>
-              <CardDescription>Configurar alertas de entrada e saída de saldo</CardDescription>
+              <CardTitle>Configurações IPE</CardTitle>
+              <CardDescription>Configurar integração com carteira móvel</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded">
-                  <div>
-                    <h3 className="font-medium">Notificar entradas de saldo</h3>
-                    <p className="text-sm text-gray-600">Receber SMS quando houver entrada de saldo</p>
-                  </div>
-                  <Button variant="outline">
-                    <Bell className="mr-2 h-4 w-4" />
-                    Ativo
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded">
-                  <div>
-                    <h3 className="font-medium">Notificar saídas de saldo</h3>
-                    <p className="text-sm text-gray-600">Receber SMS quando houver saída de saldo</p>
-                  </div>
-                  <Button variant="outline">
-                    <Bell className="mr-2 h-4 w-4" />
-                    Ativo
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between p-4 border rounded">
-                  <div>
-                    <h3 className="font-medium">Alertas de saldo baixo</h3>
-                    <p className="text-sm text-gray-600">Avisar quando saldo estiver abaixo de MZN 50.000</p>
-                  </div>
-                  <Button variant="outline">
-                    <Bell className="mr-2 h-4 w-4" />
-                    Ativo
-                  </Button>
-                </div>
+              <div>
+                <Label htmlFor="ipeAccount">Conta IPE</Label>
+                <Input 
+                  id="ipeAccount"
+                  placeholder="Ex: 258841234567"
+                />
               </div>
+              <div>
+                <Label htmlFor="ipePin">PIN de Segurança</Label>
+                <Input 
+                  id="ipePin"
+                  type="password"
+                  placeholder="PIN de 4 dígitos"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <input type="checkbox" id="notifications" />
+                <Label htmlFor="notifications">Receber notificações automáticas</Label>
+              </div>
+              <Button>
+                <Bell className="mr-2 h-4 w-4" />
+                Salvar Configurações
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
+  );
+};
+
+const BalanceModule = () => {
+  return (
+    <Routes>
+      <Route path="/" element={<BalanceDashboard />} />
+      <Route path="/*" element={<BalanceDashboard />} />
+    </Routes>
   );
 };
 
