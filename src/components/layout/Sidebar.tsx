@@ -71,18 +71,6 @@ const Sidebar = () => {
           );
         })}
       </nav>
-      
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="bg-blue-800 p-3 rounded">
-          <div className="flex items-center">
-            <Shield className="h-5 w-5 mr-2" />
-            <div>
-              <p className="text-xs font-medium">Compliance</p>
-              <p className="text-xs text-blue-200">Anti-lavagem ativo</p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
