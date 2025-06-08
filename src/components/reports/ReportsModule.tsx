@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,6 +6,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { exportToExcel, downloadDocument } from '@/utils/exportUtils';
 
 const ReportsModule = () => {
   const { toast } = useToast();
@@ -28,11 +28,187 @@ const ReportsModule = () => {
     return currentDay >= 20 || currentDate <= nextMonth;
   };
 
+  const generateCarteiraReport = () => {
+    const reportData = {
+      title: 'Relatório de Carteira de Crédito',
+      headers: ['Cliente', 'Valor Crédito', 'Valor Pago', 'Saldo Devedor', 'Status'],
+      data: [
+        ['João Silva', '50000', '15000', '35000', 'Em Dia'],
+        ['Maria Santos', '30000', '30000', '0', 'Quitado'],
+        ['Carlos Pereira', '75000', '20000', '55000', 'Atraso'],
+        ['Ana Costa', '40000', '10000', '30000', 'Em Dia']
+      ],
+      summary: {
+        'Total de Créditos': '195000',
+        'Total Pago': '75000',
+        'Saldo Devedor Total': '120000',
+        'Taxa de Inadimplência': '27.3%'
+      }
+    };
+
+    const success = exportToExcel(reportData, 'Relatorio_Carteira_Credito');
+    if (success) {
+      toast({
+        title: "Relatório de Carteira gerado",
+        description: "Análise completa da carteira de crédito exportada com sucesso."
+      });
+    }
+  };
+
+  const generateInadimplenciaReport = () => {
+    const reportData = {
+      title: 'Relatório de Inadimplência',
+      headers: ['Cliente', 'Valor Original', 'Dias Atraso', 'Valor Devido', 'Última Cobrança'],
+      data: [
+        ['Carlos Pereira', '75000', '45', '58500', '15/11/2024'],
+        ['Pedro Oliveira', '25000', '30', '26250', '20/11/2024'],
+        ['Luiza Fernandes', '60000', '15', '61800', '25/11/2024']
+      ],
+      summary: {
+        'Total em Atraso': '146550',
+        'Clientes Inadimplentes': '3',
+        'Média de Dias em Atraso': '30',
+        'Taxa de Inadimplência': '15.2%'
+      }
+    };
+
+    const success = exportToExcel(reportData, 'Relatorio_Inadimplencia');
+    if (success) {
+      toast({
+        title: "Relatório de Inadimplência gerado",
+        description: "Análise de clientes em atraso exportada com sucesso."
+      });
+    }
+  };
+
+  const generateClientesReport = () => {
+    const reportData = {
+      title: 'Relatório de Clientes',
+      headers: ['Nome', 'NUIT', 'Telefone', 'Crédito Ativo', 'Score', 'Status'],
+      data: [
+        ['João Silva', '123456789', '84123456', 'Sim', '85', 'Ativo'],
+        ['Maria Santos', '987654321', '85987654', 'Não', '92', 'Ativo'],
+        ['Carlos Pereira', '456789123', '86456789', 'Sim', '65', 'Inadimplente'],
+        ['Ana Costa', '789123456', '87789123', 'Sim', '78', 'Ativo']
+      ],
+      summary: {
+        'Total de Clientes': '4',
+        'Clientes Ativos': '4',
+        'Com Crédito Ativo': '3',
+        'Score Médio': '80'
+      }
+    };
+
+    const success = exportToExcel(reportData, 'Relatorio_Clientes');
+    if (success) {
+      toast({
+        title: "Relatório de Clientes gerado",
+        description: "Informações detalhadas dos clientes exportadas com sucesso."
+      });
+    }
+  };
+
+  const generateFinanceiroReport = () => {
+    const reportData = {
+      title: 'Relatório Financeiro',
+      headers: ['Mês', 'Receitas', 'Despesas', 'Resultado', 'Margem (%)'],
+      data: [
+        ['Janeiro', '150000', '80000', '70000', '46.7'],
+        ['Fevereiro', '180000', '95000', '85000', '47.2'],
+        ['Março', '165000', '88000', '77000', '46.7'],
+        ['Abril', '200000', '110000', '90000', '45.0']
+      ],
+      summary: {
+        'Receita Total': '695000',
+        'Despesa Total': '373000',
+        'Resultado Líquido': '322000',
+        'Margem Média': '46.4%'
+      }
+    };
+
+    const success = exportToExcel(reportData, 'Relatorio_Financeiro');
+    if (success) {
+      toast({
+        title: "Relatório Financeiro gerado",
+        description: "Demonstrativos financeiros exportados com sucesso."
+      });
+    }
+  };
+
   const handleGenerateReport = (reportType: string) => {
-    toast({
-      title: "Gerando relatório",
-      description: `Relatório de ${reportType} sendo processado...`
-    });
+    console.log('Gerando relatório do tipo:', reportType);
+    
+    switch (reportType) {
+      case 'carteira':
+        generateCarteiraReport();
+        break;
+      case 'inadimplencia':
+        generateInadimplenciaReport();
+        break;
+      case 'clientes':
+        generateClientesReport();
+        break;
+      case 'financeiro':
+        generateFinanceiroReport();
+        break;
+      default:
+        toast({
+          title: "Tipo de relatório não reconhecido",
+          description: "Por favor, selecione um tipo válido de relatório.",
+          variant: "destructive"
+        });
+    }
+  };
+
+  const handleDownloadReport = (reportType: string) => {
+    console.log('Baixando relatório do tipo:', reportType);
+    
+    const reportHTML = generateReportHTML(reportType);
+    const success = downloadDocument(reportHTML, `Relatorio_${reportType}_${new Date().toISOString().split('T')[0]}`);
+    
+    if (success) {
+      toast({
+        title: "Download iniciado",
+        description: `Relatório de ${reportType} sendo baixado...`
+      });
+    }
+  };
+
+  const generateReportHTML = (reportType: string) => {
+    const currentDate = new Date().toLocaleDateString('pt-BR');
+    
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <meta charset="UTF-8">
+          <title>Relatório ${reportType}</title>
+          <style>
+              body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+              .header { text-align: center; margin-bottom: 30px; }
+              .title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+              .subtitle { font-size: 16px; color: #666; }
+              .content { margin: 20px 0; }
+              .footer { margin-top: 50px; text-align: center; font-size: 12px; color: #666; }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <div class="title">BOCHEL MICROCRÉDITO</div>
+              <div class="subtitle">Relatório de ${reportType.charAt(0).toUpperCase() + reportType.slice(1)}</div>
+          </div>
+          
+          <div class="content">
+              <p>Este relatório foi gerado automaticamente pelo sistema de gestão.</p>
+              <p>Para informações detalhadas, consulte o arquivo Excel correspondente.</p>
+          </div>
+          
+          <div class="footer">
+              <p>Documento gerado em ${currentDate}</p>
+          </div>
+      </body>
+      </html>
+    `;
   };
 
   const handleGenerateINSS = () => {
@@ -45,25 +221,25 @@ const ReportsModule = () => {
       return;
     }
 
-    // Gerar declaração INSS
-    const inssContent = generateINSSDeclaration(inssData);
-    
-    // Criar e baixar arquivo
-    const blob = new Blob([inssContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Declaracao_INSS_${inssData.mesReferencia.replace('-', '_')}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if (!inssData.nomeEmpresa || !inssData.nuit) {
+      toast({
+        title: "Dados incompletos",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    toast({
-      title: "Declaração INSS gerada",
-      description: "Declaração de INSS foi gerada e baixada com sucesso."
-    });
-    setInssDialogOpen(false);
+    const inssContent = generateINSSDeclaration(inssData);
+    const success = downloadDocument(inssContent, `Declaracao_INSS_${inssData.mesReferencia.replace('-', '_')}`);
+
+    if (success) {
+      toast({
+        title: "Declaração INSS gerada",
+        description: "Declaração de INSS foi gerada e baixada com sucesso."
+      });
+      setInssDialogOpen(false);
+    }
   };
 
   const generateINSSDeclaration = (data: typeof inssData) => {
@@ -212,7 +388,7 @@ const ReportsModule = () => {
                 </Button>
                 <Button 
                   variant="outline"
-                  onClick={() => handleGenerateReport(report.type)}
+                  onClick={() => handleDownloadReport(report.type)}
                 >
                   <Download className="h-4 w-4" />
                 </Button>
