@@ -27,13 +27,6 @@ import { useToast } from '@/hooks/use-toast';
 const LegalDashboard = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
-  const [contractData, setContractData] = useState({
-    clientName: '',
-    amount: '',
-    term: '',
-    interestRate: '',
-    purpose: ''
-  });
   const [complianceChecks, setComplianceChecks] = useState([
     { id: 1, item: "Verificação de identidade", status: "Concluído", date: "15/03/2024" },
     { id: 2, item: "Análise de origem de fundos", status: "Pendente", date: "14/03/2024" },
@@ -41,90 +34,121 @@ const LegalDashboard = () => {
   ]);
 
   const handleComplianceAction = (action: string, clientName?: string) => {
-    switch (action) {
-      case 'verify_identity':
-        toast({
-          title: "Verificação de Identidade",
-          description: `Iniciando verificação de identidade para ${clientName || 'cliente selecionado'}.`,
-        });
-        break;
-      case 'check_sanctions':
-        toast({
-          title: "Verificação de Sanções",
-          description: `Consultando listas de sanções para ${clientName || 'cliente selecionado'}.`,
-        });
-        break;
-      case 'analyze_funds':
-        toast({
-          title: "Análise de Fundos",
-          description: `Analisando origem dos fundos para ${clientName || 'cliente selecionado'}.`,
-        });
-        break;
-      case 'generate_report':
-        toast({
-          title: "Relatório de Compliance",
-          description: "Gerando relatório de conformidade regulatória.",
-        });
-        break;
-      case 'generate_detailed_report':
-        toast({
-          title: "Relatório Detalhado",
-          description: "Gerando relatório detalhado de compliance.",
-        });
-        break;
-      default:
-        toast({
-          title: "Ação de Compliance",
-          description: `Executando ação: ${action}`,
-        });
+    const actions = {
+      'verify_identity': () => toast({
+        title: "Verificação de Identidade",
+        description: `Iniciando verificação de identidade para ${clientName || 'cliente selecionado'}.`,
+      }),
+      'check_sanctions': () => toast({
+        title: "Verificação de Sanções",
+        description: `Consultando listas de sanções para ${clientName || 'cliente selecionado'}.`,
+      }),
+      'analyze_funds': () => toast({
+        title: "Análise de Fundos",
+        description: `Analisando origem dos fundos para ${clientName || 'cliente selecionado'}.`,
+      }),
+      'generate_report': () => toast({
+        title: "Relatório de Compliance",
+        description: "Gerando relatório de conformidade regulatória.",
+      }),
+      'generate_detailed_report': () => toast({
+        title: "Relatório Detalhado",
+        description: "Gerando relatório detalhado de compliance.",
+      })
+    };
+
+    const actionFunction = actions[action as keyof typeof actions];
+    if (actionFunction) {
+      actionFunction();
+    } else {
+      toast({
+        title: "Ação de Compliance",
+        description: `Executando ação: ${action}`,
+      });
     }
   };
 
-  const handleEditContract = (contractId: string) => {
+  const handleContractAction = (action: string, contractName: string) => {
+    const actions = {
+      'edit': () => toast({
+        title: "Editando Contrato",
+        description: `Abrindo editor para ${contractName}.`,
+      }),
+      'use': () => toast({
+        title: "Usando Template",
+        description: `Aplicando template ${contractName} ao novo contrato.`,
+      }),
+      'download': () => toast({
+        title: "Download Iniciado",
+        description: `Baixando ${contractName}.`,
+      })
+    };
+
+    const actionFunction = actions[action as keyof typeof actions];
+    if (actionFunction) {
+      actionFunction();
+    }
+  };
+
+  const handleLicenseAction = (licenseName: string) => {
     toast({
-      title: "Contrato Editado",
-      description: `Contrato ${contractId} foi editado com sucesso.`,
+      title: "Renovação de Licença",
+      description: `Processando renovação de ${licenseName}.`,
     });
   };
 
-  const handleUseTemplate = (templateName: string) => {
-    toast({
-      title: "Template Aplicado",
-      description: `Template ${templateName} foi aplicado ao contrato.`,
-    });
+  const handleDocumentAction = (action: string, docName: string) => {
+    const actions = {
+      'view': () => toast({
+        title: "Visualizando Documento",
+        description: `Abrindo ${docName} para visualização.`,
+      }),
+      'download': () => toast({
+        title: "Download do Documento",
+        description: `Baixando ${docName}.`,
+      }),
+      'generate': () => toast({
+        title: "Gerando Relatório",
+        description: `Gerando relatório de ${docName}.`,
+      })
+    };
+
+    const actionFunction = actions[action as keyof typeof actions];
+    if (actionFunction) {
+      actionFunction();
+    }
   };
 
-  const handleRenewLicense = (licenseName: string) => {
-    toast({
-      title: "Licença Renovada",
-      description: `Renovação de ${licenseName} foi processada.`,
-    });
-  };
+  const handleAMLAction = (action: string, clientName?: string) => {
+    const actions = {
+      'verify': () => toast({
+        title: "Verificação AML",
+        description: `Verificação anti-lavagem para ${clientName} foi processada.`,
+      }),
+      'resolve': () => toast({
+        title: "Resolvendo Pendência",
+        description: `Processando documentação pendente para ${clientName}.`,
+      }),
+      'search': () => toast({
+        title: "Busca AML",
+        description: `Buscando informações para: ${searchTerm}`,
+      })
+    };
 
-  const handleAMLVerification = (clientName: string) => {
-    toast({
-      title: "Verificação AML",
-      description: `Verificação anti-lavagem para ${clientName} foi concluída.`,
-    });
-  };
-
-  const handleGenerateReport = (reportType: string) => {
-    toast({
-      title: "Relatório Gerado",
-      description: `Relatório de ${reportType} foi gerado com sucesso.`,
-    });
+    const actionFunction = actions[action as keyof typeof actions];
+    if (actionFunction) {
+      actionFunction();
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Jurídico e Compliance</h1>
-        <div className="flex space-x-2">
-          <Button onClick={() => handleComplianceAction('generate_report')}>
-            <FileText className="mr-2 h-4 w-4" />
-            Relatório Compliance
-          </Button>
-        </div>
+        <Button onClick={() => handleComplianceAction('generate_report')}>
+          <FileText className="mr-2 h-4 w-4" />
+          Relatório Compliance
+        </Button>
       </div>
 
       <Tabs defaultValue="compliance" className="w-full">
@@ -254,49 +278,33 @@ const LegalDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Contrato de Empréstimo Padrão</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Modelo base para concessão de crédito com taxa de 25% a.m.
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleEditContract('Contrato de Empréstimo')}>Editar</Button>
-                    <Button size="sm" onClick={() => handleUseTemplate('Contrato de Empréstimo')}>Usar Modelo</Button>
+                {[
+                  { name: 'Contrato de Empréstimo Padrão', desc: 'Modelo base para concessão de crédito com taxa de 25% a.m.' },
+                  { name: 'Termo de Garantia/Penhor', desc: 'Contrato para formalização de garantias e penhores' },
+                  { name: 'Termo de Responsabilidade', desc: 'Documento para formalização de fiadores' },
+                  { name: 'Termos e Condições Gerais', desc: 'Condições gerais de uso dos serviços' }
+                ].map((contract) => (
+                  <div key={contract.name} className="p-4 border rounded-lg">
+                    <h3 className="font-semibold mb-2">{contract.name}</h3>
+                    <p className="text-sm text-gray-600 mb-3">{contract.desc}</p>
+                    <div className="flex space-x-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => handleContractAction('edit', contract.name)}
+                      >
+                        <Edit className="h-3 w-3 mr-1" />
+                        Editar
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        onClick={() => handleContractAction('use', contract.name)}
+                      >
+                        Usar Modelo
+                      </Button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Termo de Garantia/Penhor</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Contrato para formalização de garantias e penhores
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleEditContract('Termo de Garantia')}>Editar</Button>
-                    <Button size="sm" onClick={() => handleUseTemplate('Termo de Garantia')}>Usar Modelo</Button>
-                  </div>
-                </div>
-
-                <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Termo de Responsabilidade</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Documento para formalização de fiadores
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleEditContract('Termo de Responsabilidade')}>Editar</Button>
-                    <Button size="sm" onClick={() => handleUseTemplate('Termo de Responsabilidade')}>Usar Modelo</Button>
-                  </div>
-                </div>
-
-                <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Termos e Condições Gerais</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    Condições gerais de uso dos serviços
-                  </p>
-                  <div className="flex space-x-2">
-                    <Button size="sm" variant="outline" onClick={() => handleEditContract('Termos e Condições')}>Editar</Button>
-                    <Button size="sm" onClick={() => handleUseTemplate('Termos e Condições')}>Usar Modelo</Button>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -312,40 +320,37 @@ const LegalDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-semibold">Licença do Banco de Moçambique</h3>
-                    <p className="text-sm text-gray-600">Válida até: 31/12/2024</p>
+                {[
+                  { name: 'Licença do Banco de Moçambique', validity: '31/12/2024', status: 'warning', action: 'Renovar em 90 dias' },
+                  { name: 'Estatuto Social', validity: '15/01/2024', status: 'valid', action: 'Válido' },
+                  { name: 'Certificado de Registo Comercial', validity: '30/06/2025', status: 'valid', action: 'Válido' }
+                ].map((license) => (
+                  <div key={license.name} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <h3 className="font-semibold">{license.name}</h3>
+                      <p className="text-sm text-gray-600">
+                        {license.status === 'valid' ? 'Última atualização' : 'Válida até'}: {license.validity}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-3 py-1 rounded text-sm ${
+                        license.status === 'valid' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {license.action}
+                      </span>
+                      {license.status === 'warning' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleLicenseAction(license.name)}
+                        >
+                          Renovar
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded text-sm">
-                      Renovar em 90 dias
-                    </span>
-                    <Button size="sm" onClick={() => handleRenewLicense('Licença do Banco de Moçambique')}>
-                      Renovar
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-semibold">Estatuto Social</h3>
-                    <p className="text-sm text-gray-600">Última atualização: 15/01/2024</p>
-                  </div>
-                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded text-sm">
-                    Válido
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-semibold">Certificado de Registo Comercial</h3>
-                    <p className="text-sm text-gray-600">Válido até: 30/06/2025</p>
-                  </div>
-                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded text-sm">
-                    Válido
-                  </span>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -364,46 +369,44 @@ const LegalDashboard = () => {
                 <div>
                   <h3 className="font-semibold mb-3">Políticas Internas</h3>
                   <div className="space-y-2">
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
-                      <span className="text-sm">Política de Crédito</span>
-                      <div className="flex space-x-1">
-                        <Button size="sm" variant="outline" onClick={() => handleGenerateReport('Política de Crédito')}>
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Download className="h-3 w-3" />
-                        </Button>
+                    {['Política de Crédito', 'Manual de Procedimentos'].map((doc) => (
+                      <div key={doc} className="flex justify-between items-center p-3 bg-blue-50 rounded">
+                        <span className="text-sm">{doc}</span>
+                        <div className="flex space-x-1">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => handleDocumentAction('view', doc)}
+                          >
+                            <Eye className="h-3 w-3" />
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => handleDocumentAction('download', doc)}
+                          >
+                            <Download className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded">
-                      <span className="text-sm">Manual de Procedimentos</span>
-                      <div className="flex space-x-1">
-                        <Button size="sm" variant="outline" onClick={() => handleGenerateReport('Manual de Procedimentos')}>
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline">
-                          <Download className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
                 <div>
                   <h3 className="font-semibold mb-3">Documentos Regulamentares</h3>
                   <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('Regulamento Interno')}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Regulamento Interno
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('Código de Conduta')}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Código de Conduta
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('Política de Privacidade')}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Política de Privacidade
-                    </Button>
+                    {['Regulamento Interno', 'Código de Conduta', 'Política de Privacidade'].map((doc) => (
+                      <Button 
+                        key={doc}
+                        variant="outline" 
+                        className="w-full justify-start" 
+                        onClick={() => handleDocumentAction('generate', doc)}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        {doc}
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -443,13 +446,24 @@ const LegalDashboard = () => {
                   </ul>
                 </div>
                 <div className="flex space-x-2 mt-4">
-                  <Button size="sm" onClick={() => handleComplianceAction('verify_identity')}>
+                  <Button 
+                    size="sm" 
+                    onClick={() => handleComplianceAction('verify_identity')}
+                  >
                     Verificar Identidade
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleComplianceAction('check_sanctions')}>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleComplianceAction('check_sanctions')}
+                  >
                     Consultar Sanções
                   </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleComplianceAction('analyze_funds')}>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={() => handleComplianceAction('analyze_funds')}
+                  >
                     Analisar Fundos
                   </Button>
                 </div>
@@ -473,7 +487,10 @@ const LegalDashboard = () => {
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
-                  <Button variant="outline">
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleAMLAction('search')}
+                  >
                     <Search className="h-4 w-4" />
                   </Button>
                 </div>
@@ -487,7 +504,11 @@ const LegalDashboard = () => {
                       <span className="text-sm">Ana Silva - Verificação completa</span>
                       <div className="flex space-x-1">
                         <CheckCircle className="h-4 w-4 text-green-600" />
-                        <Button size="sm" variant="outline" onClick={() => handleAMLVerification('Ana Silva')}>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleAMLAction('verify', 'Ana Silva')}
+                        >
                           Ver Detalhes
                         </Button>
                       </div>
@@ -496,7 +517,11 @@ const LegalDashboard = () => {
                       <span className="text-sm">João Mussa - Documentação pendente</span>
                       <div className="flex space-x-1">
                         <AlertTriangle className="h-4 w-4 text-yellow-600" />
-                        <Button size="sm" variant="outline" onClick={() => handleAMLVerification('João Mussa')}>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleAMLAction('resolve', 'João Mussa')}
+                        >
                           Resolver
                         </Button>
                       </div>
@@ -507,18 +532,19 @@ const LegalDashboard = () => {
                 <div>
                   <h3 className="font-semibold mb-3">Relatórios Obrigatórios</h3>
                   <div className="space-y-2">
-                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('AML Mensal')}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Relatório Mensal AML
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('Operações Suspeitas')}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Operações Suspeitas
-                    </Button>
-                    <Button variant="outline" className="w-full justify-start" onClick={() => handleGenerateReport('Relatório GIF')}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      Relatório para GIF
-                    </Button>
+                    {['AML Mensal', 'Operações Suspeitas', 'Relatório GIF'].map((report) => (
+                      <Button 
+                        key={report}
+                        variant="outline" 
+                        className="w-full justify-start" 
+                        onClick={() => handleDocumentAction('generate', report)}
+                      >
+                        <FileText className="mr-2 h-4 w-4" />
+                        {report === 'AML Mensal' ? 'Relatório Mensal AML' : 
+                         report === 'Operações Suspeitas' ? 'Operações Suspeitas' : 
+                         'Relatório para GIF'}
+                      </Button>
+                    ))}
                   </div>
                 </div>
               </div>
