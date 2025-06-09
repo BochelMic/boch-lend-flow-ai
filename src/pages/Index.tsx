@@ -19,6 +19,7 @@ import NotificationsModule from '../components/notifications/NotificationsModule
 import AuditModule from '../components/audit/AuditModule';
 import CashFlowModule from '../components/cashflow/CashFlowModule';
 import BalanceModule from '../components/balance/BalanceModule';
+import CreditFormModule from '../components/credit-form/CreditFormModule';
 import Layout from '../components/layout/Layout';
 
 const Index = () => {
@@ -36,6 +37,7 @@ const Index = () => {
         <Route path="/admin/*" element={<AdminModule />} />
         <Route path="/credit/*" element={<CreditModule />} />
         <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
+        <Route path="/credit-form/*" element={<CreditFormModule />} />
         <Route path="/balance/*" element={<BalanceModule />} />
         <Route path="/expenses/*" element={<ExpensesModule />} />
         <Route path="/collection/*" element={<CollectionModule />} />
