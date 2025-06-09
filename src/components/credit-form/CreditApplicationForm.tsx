@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -24,6 +24,9 @@ const creditFormSchema = z.object({
   paymentTerm: z.string().min(1, 'Prazo para pagamento é obrigatório'),
   creditPurpose: z.string().min(5, 'Finalidade do crédito é obrigatória'),
   guaranteeType: z.string().optional(),
+  truthDeclaration: z.boolean().refine(val => val === true, {
+    message: 'Deve concordar com a declaração de veracidade'
+  }),
 });
 
 type CreditFormData = z.infer<typeof creditFormSchema>;
@@ -46,6 +49,7 @@ const CreditApplicationForm = () => {
       paymentTerm: '',
       creditPurpose: '',
       guaranteeType: '',
+      truthDeclaration: false,
     },
   });
 
@@ -375,6 +379,30 @@ const CreditApplicationForm = () => {
                 </div>
               )}
             </div>
+
+            <FormField
+              control={form.control}
+              name="truthDeclaration"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>
+                      Declaração de Veracidade *
+                    </FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Declaro que todas as informações fornecidas são verdadeiras e concordo com os termos e condições do pedido de crédito.
+                    </p>
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
