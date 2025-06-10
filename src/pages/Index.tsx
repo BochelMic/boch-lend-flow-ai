@@ -5,7 +5,6 @@ import { useAuth } from '../hooks/useAuth';
 import LoginForm from '../components/auth/LoginForm';
 import Dashboard from '../components/dashboard/Dashboard';
 import AdminModule from '../components/admin/AdminModule';
-import HRModule from '../components/hr/HRModule';
 import CreditModule from '../components/credit/CreditModule';
 import LegalModule from '../components/legal/LegalModule';
 import OperationsModule from '../components/operations/OperationsModule';
@@ -36,7 +35,6 @@ const Index = () => {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/admin/*" element={<AdminModule />} />
-        <Route path="/hr/*" element={<HRModule />} />
         <Route path="/credit/*" element={<CreditModule />} />
         <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
         <Route path="/credit-form/*" element={<CreditFormModule />} />

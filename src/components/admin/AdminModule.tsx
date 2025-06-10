@@ -16,14 +16,23 @@ import {
   FileText,
   Settings,
   BarChart3,
-  AlertTriangle
+  AlertTriangle,
+  UserCheck,
+  Calendar,
+  Award,
+  Briefcase,
+  GraduationCap
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { exportToExcel, exportToWord, ReportData } from '../../utils/exportUtils';
+import { useAuth } from '../../hooks/useAuth';
+import RegisterForm from '../auth/RegisterForm';
 
 const AdminDashboard = () => {
   const { toast } = useToast();
+  const { register } = useAuth();
+  const [showRegisterForm, setShowRegisterForm] = useState(false);
   const [newEmployee, setNewEmployee] = useState({
     name: '',
     email: '',
@@ -35,6 +44,27 @@ const AdminDashboard = () => {
     amount: '',
     description: '',
     category: ''
+  });
+
+  // HR related states
+  const [hrEmployee, setHrEmployee] = useState({
+    name: '',
+    position: '',
+    department: '',
+    salary: '',
+    startDate: ''
+  });
+  const [vacationRequest, setVacationRequest] = useState({
+    employeeId: '',
+    startDate: '',
+    endDate: '',
+    reason: ''
+  });
+  const [evaluation, setEvaluation] = useState({
+    employeeId: '',
+    period: '',
+    rating: '',
+    comments: ''
   });
 
   const handleAddEmployee = (e: React.FormEvent) => {
@@ -54,7 +84,6 @@ const AdminDashboard = () => {
       description: `${newEmployee.name} foi adicionado ao sistema.`,
     });
     
-    // Limpar formulário
     setNewEmployee({
       name: '',
       email: '',
@@ -63,20 +92,79 @@ const AdminDashboard = () => {
     });
   };
 
-  const handleDeleteEmployee = () => {
-    console.log('Removendo funcionário');
+  const handleRegisterUser = (data: any) => {
+    const result = register(data);
+    
+    if (result.success) {
+      toast({
+        title: "Usuário Cadastrado",
+        description: result.message,
+      });
+      setShowRegisterForm(false);
+    } else {
+      toast({
+        title: "Erro",
+        description: result.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleHREmployeeAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!hrEmployee.name || !hrEmployee.position || !hrEmployee.department || !hrEmployee.salary) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('Adicionando funcionário (RH):', hrEmployee);
     toast({
-      title: "Funcionário Removido",
-      description: "Funcionário foi removido do sistema.",
-      variant: "destructive"
+      title: "Funcionário Cadastrado (RH)",
+      description: `${hrEmployee.name} foi cadastrado no sistema de RH.`,
+    });
+    
+    setHrEmployee({
+      name: '',
+      position: '',
+      department: '',
+      salary: '',
+      startDate: ''
     });
   };
 
-  const handleEditEmployee = () => {
-    console.log('Editando funcionário');
+  const handleVacationRequest = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Solicitação de férias:', vacationRequest);
     toast({
-      title: "Funcionário Editado",
-      description: "Dados do funcionário foram atualizados.",
+      title: "Solicitação Registrada",
+      description: "Solicitação de férias foi registrada com sucesso.",
+    });
+    
+    setVacationRequest({
+      employeeId: '',
+      startDate: '',
+      endDate: '',
+      reason: ''
+    });
+  };
+
+  const handleEvaluation = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Avaliação registrada:', evaluation);
+    toast({
+      title: "Avaliação Registrada",
+      description: "Avaliação de desempenho foi registrada com sucesso.",
+    });
+    
+    setEvaluation({
+      employeeId: '',
+      period: '',
+      rating: '',
+      comments: ''
     });
   };
 
@@ -144,7 +232,6 @@ const AdminDashboard = () => {
       description: `Transação de ${transaction.type} registrada com sucesso.`,
     });
     
-    // Limpar formulário
     setTransaction({
       type: '',
       amount: '',
@@ -177,20 +264,45 @@ const AdminDashboard = () => {
     });
   };
 
+  if (showRegisterForm) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold">Cadastro de Usuário</h1>
+          <Button variant="outline" onClick={() => setShowRegisterForm(false)}>
+            Voltar
+          </Button>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <RegisterForm onSwitchToLogin={() => setShowRegisterForm(false)} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Administração</h1>
-        <Button onClick={() => setNewEmployee({ name: '', email: '', role: '', department: '' })}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Adicionar Funcionário
-        </Button>
+        <div className="flex space-x-2">
+          <Button onClick={() => setShowRegisterForm(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Cadastrar Usuário
+          </Button>
+          <Button onClick={() => setNewEmployee({ name: '', email: '', role: '', department: '' })}>
+            <Users className="mr-2 h-4 w-4" />
+            Adicionar Funcionário
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="dashboard" className="w-full">
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="employees">Funcionários</TabsTrigger>
+          <TabsTrigger value="hr">Recursos Humanos</TabsTrigger>
           <TabsTrigger value="finance">Finanças</TabsTrigger>
           <TabsTrigger value="reports">Relatórios</TabsTrigger>
           <TabsTrigger value="settings">Configurações</TabsTrigger>
@@ -339,12 +451,293 @@ const AdminDashboard = () => {
 
                 <div className="flex space-x-2">
                   <Button type="submit" className="w-1/3">Adicionar</Button>
-                  <Button type="button" variant="outline" className="w-1/3" onClick={handleEditEmployee}>Editar</Button>
-                  <Button type="button" variant="destructive" className="w-1/3" onClick={handleDeleteEmployee}>Remover</Button>
+                  <Button type="button" variant="outline" className="w-1/3">Editar</Button>
+                  <Button type="button" variant="destructive" className="w-1/3">Remover</Button>
                 </div>
               </form>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="hr" className="space-y-6">
+          <Tabs defaultValue="employees" className="w-full">
+            <TabsList>
+              <TabsTrigger value="employees">Funcionários RH</TabsTrigger>
+              <TabsTrigger value="vacations">Férias</TabsTrigger>
+              <TabsTrigger value="evaluations">Avaliações</TabsTrigger>
+              <TabsTrigger value="payroll">Folha de Pagamento</TabsTrigger>
+              <TabsTrigger value="training">Treinamentos</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="employees" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gestão de Funcionários (RH)</CardTitle>
+                  <CardDescription>
+                    Cadastro e gestão completa de funcionários
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleHREmployeeAdd} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="hrEmployeeName">Nome Completo *</Label>
+                        <Input 
+                          id="hrEmployeeName" 
+                          placeholder="Nome completo" 
+                          value={hrEmployee.name}
+                          onChange={(e) => setHrEmployee({...hrEmployee, name: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="hrEmployeePosition">Cargo *</Label>
+                        <Input 
+                          id="hrEmployeePosition" 
+                          placeholder="Cargo" 
+                          value={hrEmployee.position}
+                          onChange={(e) => setHrEmployee({...hrEmployee, position: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="hrEmployeeDepartment">Departamento *</Label>
+                        <Input 
+                          id="hrEmployeeDepartment" 
+                          placeholder="Departamento" 
+                          value={hrEmployee.department}
+                          onChange={(e) => setHrEmployee({...hrEmployee, department: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="hrEmployeeSalary">Salário (MZN) *</Label>
+                        <Input 
+                          id="hrEmployeeSalary" 
+                          placeholder="Salário" 
+                          type="number"
+                          value={hrEmployee.salary}
+                          onChange={(e) => setHrEmployee({...hrEmployee, salary: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="hrEmployeeStartDate">Data de Início</Label>
+                      <Input 
+                        id="hrEmployeeStartDate" 
+                        type="date"
+                        value={hrEmployee.startDate}
+                        onChange={(e) => setHrEmployee({...hrEmployee, startDate: e.target.value})}
+                      />
+                    </div>
+
+                    <Button type="submit" className="w-full">
+                      <UserCheck className="mr-2 h-4 w-4" />
+                      Cadastrar Funcionário
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="vacations" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Gestão de Férias e Licenças</CardTitle>
+                  <CardDescription>
+                    Solicitações e aprovações de férias
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleVacationRequest} className="space-y-4">
+                    <div>
+                      <Label htmlFor="vacationEmployeeId">ID do Funcionário</Label>
+                      <Input 
+                        id="vacationEmployeeId" 
+                        placeholder="ID do funcionário" 
+                        value={vacationRequest.employeeId}
+                        onChange={(e) => setVacationRequest({...vacationRequest, employeeId: e.target.value})}
+                        required
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="vacationStartDate">Data de Início</Label>
+                        <Input 
+                          id="vacationStartDate" 
+                          type="date"
+                          value={vacationRequest.startDate}
+                          onChange={(e) => setVacationRequest({...vacationRequest, startDate: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="vacationEndDate">Data de Fim</Label>
+                        <Input 
+                          id="vacationEndDate" 
+                          type="date"
+                          value={vacationRequest.endDate}
+                          onChange={(e) => setVacationRequest({...vacationRequest, endDate: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="vacationReason">Motivo</Label>
+                      <Textarea 
+                        id="vacationReason" 
+                        placeholder="Motivo da solicitação" 
+                        value={vacationRequest.reason}
+                        onChange={(e) => setVacationRequest({...vacationRequest, reason: e.target.value})}
+                      />
+                    </div>
+
+                    <Button type="submit" className="w-full">
+                      <Calendar className="mr-2 h-4 w-4" />
+                      Registrar Solicitação
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="evaluations" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Avaliações de Desempenho</CardTitle>
+                  <CardDescription>
+                    Registro e acompanhamento de avaliações
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleEvaluation} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="evaluationEmployeeId">ID do Funcionário</Label>
+                        <Input 
+                          id="evaluationEmployeeId" 
+                          placeholder="ID do funcionário" 
+                          value={evaluation.employeeId}
+                          onChange={(e) => setEvaluation({...evaluation, employeeId: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="evaluationPeriod">Período</Label>
+                        <Input 
+                          id="evaluationPeriod" 
+                          placeholder="Ex: Q1 2024" 
+                          value={evaluation.period}
+                          onChange={(e) => setEvaluation({...evaluation, period: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="evaluationRating">Classificação (1-5)</Label>
+                      <Input 
+                        id="evaluationRating" 
+                        type="number" 
+                        min="1" 
+                        max="5"
+                        placeholder="Classificação" 
+                        value={evaluation.rating}
+                        onChange={(e) => setEvaluation({...evaluation, rating: e.target.value})}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <Label htmlFor="evaluationComments">Comentários</Label>
+                      <Textarea 
+                        id="evaluationComments" 
+                        placeholder="Comentários sobre o desempenho" 
+                        value={evaluation.comments}
+                        onChange={(e) => setEvaluation({...evaluation, comments: e.target.value})}
+                      />
+                    </div>
+
+                    <Button type="submit" className="w-full">
+                      <Award className="mr-2 h-4 w-4" />
+                      Registrar Avaliação
+                    </Button>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="payroll" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Folha de Pagamento</CardTitle>
+                  <CardDescription>
+                    Gestão de salários e benefícios
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 border rounded-lg text-center">
+                      <Briefcase className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                      <h3 className="font-semibold mb-2">Gerar Folha</h3>
+                      <Button size="sm" className="w-full">Gerar</Button>
+                    </div>
+
+                    <div className="p-4 border rounded-lg text-center">
+                      <DollarSign className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                      <h3 className="font-semibold mb-2">Calcular Impostos</h3>
+                      <Button size="sm" variant="outline" className="w-full">Calcular</Button>
+                    </div>
+
+                    <div className="p-4 border rounded-lg text-center">
+                      <FileText className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                      <h3 className="font-semibold mb-2">Relatório Mensal</h3>
+                      <Button size="sm" variant="outline" className="w-full">Exportar</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="training" className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Programas de Treinamento</CardTitle>
+                  <CardDescription>
+                    Gestão de capacitação e desenvolvimento
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <GraduationCap className="h-8 w-8 mb-2 text-blue-600" />
+                      <h3 className="font-semibold mb-2">Curso de Microcrédito</h3>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Treinamento básico sobre microcrédito
+                      </p>
+                      <Button size="sm" className="w-full">Inscrever Funcionários</Button>
+                    </div>
+
+                    <div className="p-4 border rounded-lg">
+                      <Award className="h-8 w-8 mb-2 text-green-600" />
+                      <h3 className="font-semibold mb-2">Certificação em Análise de Risco</h3>
+                      <p className="text-sm text-gray-600 mb-3">
+                        Programa avançado de análise de crédito
+                      </p>
+                      <Button size="sm" variant="outline" className="w-full">Ver Detalhes</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="finance" className="space-y-6">
@@ -471,14 +864,14 @@ const AdminDashboard = () => {
                 </div>
 
                 <div className="p-4 border rounded-lg">
-                  <h3 className="font-semibold mb-2">Relatório de Atividades</h3>
+                  <h3 className="font-semibold mb-2">Relatório de RH</h3>
                   <p className="text-sm text-gray-600 mb-3">
-                    Registro de atividades dos usuários
+                    Informações sobre funcionários e RH
                   </p>
                   <div className="flex flex-col space-y-2">
                     <Button 
                       size="sm" 
-                      onClick={() => handleExportReport('excel', 'Atividades')}
+                      onClick={() => handleExportReport('excel', 'RH')}
                       className="w-full"
                     >
                       <FileText className="mr-2 h-4 w-4" />
@@ -487,7 +880,7 @@ const AdminDashboard = () => {
                     <Button 
                       size="sm" 
                       variant="outline"
-                      onClick={() => handleExportReport('word', 'Atividades')}
+                      onClick={() => handleExportReport('word', 'RH')}
                       className="w-full"
                     >
                       <FileText className="mr-2 h-4 w-4" />
