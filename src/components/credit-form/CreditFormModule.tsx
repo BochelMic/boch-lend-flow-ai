@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Share2, BarChart3, Settings } from 'lucide-react';
+import { FileText, Share2, BarChart3, Settings, Inbox } from 'lucide-react';
 import CreditApplicationForm from './CreditApplicationForm';
+import CreditRequestsManager from './CreditRequestsManager';
 import FormAnalytics from './FormAnalytics';
 import FormSharing from './FormSharing';
 import FormSettings from './FormSettings';
@@ -24,6 +25,7 @@ const CreditFormModule = () => {
       <Routes>
         <Route path="/" element={<CreditFormDashboard />} />
         <Route path="/form" element={<CreditApplicationForm />} />
+        <Route path="/requests" element={<CreditRequestsManager />} />
         <Route path="/analytics" element={<FormAnalytics />} />
         <Route path="/sharing" element={<FormSharing />} />
         <Route path="/settings" element={<FormSettings />} />
@@ -34,8 +36,12 @@ const CreditFormModule = () => {
 
 const CreditFormDashboard = () => {
   return (
-    <Tabs defaultValue="form" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
+    <Tabs defaultValue="requests" className="space-y-6">
+      <TabsList className="grid w-full grid-cols-5">
+        <TabsTrigger value="requests" className="flex items-center gap-2">
+          <Inbox className="h-4 w-4" />
+          Pedidos
+        </TabsTrigger>
         <TabsTrigger value="form" className="flex items-center gap-2">
           <FileText className="h-4 w-4" />
           Formulário
@@ -53,6 +59,10 @@ const CreditFormDashboard = () => {
           Configurações
         </TabsTrigger>
       </TabsList>
+
+      <TabsContent value="requests">
+        <CreditRequestsManager />
+      </TabsContent>
 
       <TabsContent value="form">
         <CreditApplicationForm />
