@@ -11,7 +11,7 @@ const PublicCreditForm = () => {
             <h1 className="text-3xl font-bold text-blue-900">BOCHEL MICROCREDITO</h1>
             <p className="text-blue-600 mt-2">Solicite seu crédito de forma rápida e segura</p>
           </div>
-          <CreditApplicationForm />
+          <CreditApplicationForm isPublicAccess={true} />
         </div>
       </div>
     </div>

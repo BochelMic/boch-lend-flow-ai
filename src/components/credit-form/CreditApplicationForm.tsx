@@ -31,7 +31,11 @@ const creditFormSchema = z.object({
 
 type CreditFormData = z.infer<typeof creditFormSchema>;
 
-const CreditApplicationForm = () => {
+interface CreditApplicationFormProps {
+  isPublicAccess?: boolean;
+}
+
+const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationFormProps) => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -98,7 +102,6 @@ const CreditApplicationForm = () => {
   };
 
   const analyzeApplication = async (data: CreditFormData) => {
-    // Simular análise automática
     const analysisResult = {
       riskScore: Math.floor(Math.random() * 100),
       recommendation: Math.random() > 0.5 ? 'APROVADO' : 'ANÁLISE_MANUAL',
@@ -110,13 +113,11 @@ const CreditApplicationForm = () => {
   };
 
   const sendEmailNotification = async (data: CreditFormData) => {
-    // Simular envio de email
     console.log('Enviando notificação por email para administradores...');
     console.log('Dados do pedido:', data);
   };
 
   const sendWhatsAppNotification = async (data: CreditFormData) => {
-    // Simular integração com WhatsApp Business API
     console.log('Enviando notificação via WhatsApp Business API...');
     console.log('Novo pedido de crédito recebido para:', data.fullName);
   };
@@ -134,16 +135,28 @@ const CreditApplicationForm = () => {
                 Entraremos em contacto através do telefone fornecido.
               </AlertDescription>
             </Alert>
-            <Button 
-              onClick={() => {
-                setIsSubmitted(false);
-                form.reset();
-                setUploadedFiles([]);
-              }}
-              variant="outline"
-            >
-              Fazer Novo Pedido
-            </Button>
+            {isPublicAccess && (
+              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-800">
+                  <strong>Próximos Passos:</strong><br/>
+                  • Nossa equipe analisará seu pedido<br/>
+                  • Você receberá uma chamada telefônica em até 24h<br/>
+                  • Mantenha seus documentos organizados para agilizar o processo
+                </p>
+              </div>
+            )}
+            {!isPublicAccess && (
+              <Button 
+                onClick={() => {
+                  setIsSubmitted(false);
+                  form.reset();
+                  setUploadedFiles([]);
+                }}
+                variant="outline"
+              >
+                Fazer Novo Pedido
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
