@@ -6,21 +6,39 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { useAuth } from '../../hooks/useAuth';
 import { toast } from '../ui/use-toast';
+import RegisterForm from './RegisterForm';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showRegister, setShowRegister] = useState(false);
   const { login } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (login(email, password)) {
+    const result = login(email, password);
+    
+    if (result.success) {
       toast({
-        title: "Login realizado com sucesso",
-        description: "Bem-vindo ao sistema BOCHEL MICROCREDITO",
+        title: "Sucesso",
+        description: result.message,
+      });
+    } else {
+      toast({
+        title: "Erro",
+        description: result.message,
+        variant: "destructive",
       });
     }
   };
+
+  if (showRegister) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+        <RegisterForm onSwitchToLogin={() => setShowRegister(false)} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -57,6 +75,14 @@ const LoginForm = () => {
             </div>
             <Button type="submit" className="w-full">
               Entrar
+            </Button>
+            <Button 
+              type="button" 
+              variant="ghost" 
+              className="w-full"
+              onClick={() => setShowRegister(true)}
+            >
+              Não tem conta? Cadastre-se
             </Button>
           </form>
         </CardContent>
