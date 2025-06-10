@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -18,13 +19,15 @@ import {
   Bell,
   Wallet,
   ArrowUpDown,
-  FormInput
+  FormInput,
+  UserCheck
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Administração', href: '/admin', icon: Settings },
+  { name: 'Recursos Humanos', href: '/hr', icon: UserCheck },
   { name: 'Crédito e Risco', href: '/credit', icon: CreditCard },
   { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator },
   { name: 'Formulário de Crédito', href: '/credit-form', icon: FormInput },

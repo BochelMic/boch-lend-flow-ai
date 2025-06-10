@@ -5,7 +5,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'credit' | 'legal' | 'operations' | 'marketing';
+  role: 'admin' | 'credit' | 'legal' | 'operations' | 'marketing' | 'hr';
   permissions: string[];
 }
 
@@ -13,7 +13,7 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'credit' | 'legal' | 'operations' | 'marketing';
+  role: 'admin' | 'credit' | 'legal' | 'operations' | 'marketing' | 'hr';
 }
 
 export const useAuth = () => {
@@ -21,6 +21,23 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Criar usuário administrador padrão se não existir
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const adminExists = users.find((u: any) => u.email === 'admin@bochel.com');
+    
+    if (!adminExists) {
+      const defaultAdmin = {
+        id: 'admin-default',
+        name: 'Administrador',
+        email: 'admin@bochel.com',
+        password: 'admin123',
+        role: 'admin',
+        permissions: ['all']
+      };
+      users.push(defaultAdmin);
+      localStorage.setItem('users', JSON.stringify(users));
+    }
+
     // Verificar se há usuário logado no localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {

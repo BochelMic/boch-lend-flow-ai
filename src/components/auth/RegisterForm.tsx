@@ -17,7 +17,7 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'credit' | 'legal' | 'operations' | 'marketing'>('credit');
+  const [role, setRole] = useState<'admin' | 'credit' | 'legal' | 'operations' | 'marketing' | 'hr'>('credit');
   const { register } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -102,6 +102,7 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
                 <SelectItem value="legal">Jurídico</SelectItem>
                 <SelectItem value="operations">Operações</SelectItem>
                 <SelectItem value="marketing">Marketing</SelectItem>
+                <SelectItem value="hr">Recursos Humanos</SelectItem>
               </SelectContent>
             </Select>
           </div>
