@@ -4,6 +4,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import LoginForm from '../components/auth/LoginForm';
 import Dashboard from '../components/dashboard/Dashboard';
+import ClientDashboard from '../components/dashboard/ClientDashboard';
+import AgentDashboard from '../components/dashboard/AgentDashboard';
 import AdminModule from '../components/admin/AdminModule';
 import CreditModule from '../components/credit/CreditModule';
 import LegalModule from '../components/legal/LegalModule';
@@ -43,6 +45,8 @@ const Index = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard-cliente" element={<ClientDashboard />} />
+        <Route path="/dashboard-agente" element={<AgentDashboard />} />
         
         {/* Rotas para Gestor */}
         {hasPermission('all') && (
