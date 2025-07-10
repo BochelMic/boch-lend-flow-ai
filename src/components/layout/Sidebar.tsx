@@ -19,42 +19,77 @@ import {
   Bell,
   Wallet,
   ArrowUpDown,
-  FormInput
+  FormInput,
+  UserCheck,
+  DollarSign,
+  Briefcase,
+  Globe,
+  HelpCircle
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Administração', href: '/admin', icon: Settings },
-  { name: 'Crédito e Risco', href: '/credit', icon: CreditCard },
-  { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator },
-  { name: 'Formulário de Crédito', href: '/credit-form', icon: FormInput },
-  { name: 'Saldo Disponível', href: '/balance', icon: ArrowUpDown },
-  { name: 'Despesas', href: '/expenses', icon: Receipt },
-  { name: 'Cobrança', href: '/collection', icon: Phone },
-  { name: 'Jurídico', href: '/legal', icon: Scale },
-  { name: 'Operações', href: '/operations', icon: FileText },
-  { name: 'Marketing', href: '/marketing', icon: TrendingUp },
-  { name: 'Notificações', href: '/notifications', icon: Bell },
-  { name: 'Auditoria', href: '/audit', icon: ShieldCheck },
-  { name: 'Caixa', href: '/cashflow', icon: Wallet },
-  { name: 'Relatórios', href: '/reports', icon: BarChart3 },
-  { name: 'Relatório BM', href: '/bank-report', icon: Building2 },
-  { name: 'Configurações', href: '/settings', icon: Settings },
-];
+import { useAuth } from '../../hooks/useAuth';
 
 const Sidebar = () => {
   const location = useLocation();
+  const { user, hasPermission } = useAuth();
+
+  // Definir navegação baseada no papel do usuário
+  const getNavigation = () => {
+    if (user?.role === 'gestor') {
+      return [
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'all' },
+        { name: 'Gestão de Clientes', href: '/clientes', icon: Users, permission: 'all' },
+        { name: 'Gestão de Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'all' },
+        { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator, permission: 'all' },
+        { name: 'Formulário de Crédito', href: '/credit-form', icon: FormInput, permission: 'all' },
+        { name: 'Pagamentos e Cobranças', href: '/cobrancas', icon: Phone, permission: 'all' },
+        { name: 'Caixa e Tesouraria', href: '/caixa', icon: Wallet, permission: 'all' },
+        { name: 'Gestão de Agentes', href: '/agentes', icon: UserCheck, permission: 'all' },
+        { name: 'Auditoria', href: '/audit', icon: ShieldCheck, permission: 'all' },
+        { name: 'Relatórios', href: '/reports', icon: BarChart3, permission: 'all' },
+        { name: 'Relatório BM', href: '/bank-report', icon: Building2, permission: 'all' },
+        { name: 'Administração', href: '/admin', icon: Settings, permission: 'all' },
+        { name: 'Configurações', href: '/settings', icon: Settings, permission: 'all' },
+      ];
+    } else if (user?.role === 'agente') {
+      return [
+        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'clientes' },
+        { name: 'Meus Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
+        { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'emprestimos' },
+        { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator, permission: 'emprestimos' },
+        { name: 'Formulário de Crédito', href: '/credit-form', icon: FormInput, permission: 'emprestimos' },
+        { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'cobrancas' },
+        { name: 'Pagamentos', href: '/pagamentos', icon: DollarSign, permission: 'pagamentos' },
+      ];
+    } else if (user?.role === 'cliente') {
+      return [
+        { name: 'Minha Conta', href: '/conta', icon: Users, permission: 'conta' },
+        { name: 'Histórico', href: '/historico', icon: FileText, permission: 'historico' },
+        { name: 'Meus Pedidos', href: '/pedidos', icon: FormInput, permission: 'pedidos' },
+        { name: 'Solicitar Crédito', href: '/credit-form', icon: Calculator, permission: 'pedidos' },
+      ];
+    }
+    return [];
+  };
+
+  const navigation = getNavigation();
 
   return (
     <div className="w-64 bg-blue-900 text-white">
       <div className="p-6">
         <h1 className="text-xl font-bold">BOCHEL MICROCREDITO</h1>
         <p className="text-blue-200 text-sm">Sistema de Gestão</p>
+        {user && (
+          <div className="mt-2 text-xs text-blue-300">
+            {user.name} - {user.role === 'gestor' ? 'Gestor' : user.role === 'agente' ? 'Agente' : 'Cliente'}
+          </div>
+        )}
       </div>
       
       <nav className="mt-6">
         {navigation.map((item) => {
+          if (!hasPermission(item.permission)) return null;
+          
           const isActive = location.pathname.startsWith(item.href);
           return (
             <Link

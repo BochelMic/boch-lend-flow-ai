@@ -5,7 +5,7 @@ interface User {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'credit' | 'legal' | 'operations' | 'marketing' | 'hr';
+  role: 'gestor' | 'agente' | 'cliente';
   permissions: string[];
 }
 
@@ -13,7 +13,7 @@ interface RegisterData {
   name: string;
   email: string;
   password: string;
-  role: 'admin' | 'credit' | 'legal' | 'operations' | 'marketing' | 'hr';
+  role: 'gestor' | 'agente' | 'cliente';
 }
 
 export const useAuth = () => {
@@ -21,20 +21,20 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Criar usuário administrador padrão se não existir
+    // Criar usuário gestor padrão se não existir
     const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const adminExists = users.find((u: any) => u.email === 'admin@bochel.com');
+    const gestorExists = users.find((u: any) => u.email === 'gestor@bochel.com');
     
-    if (!adminExists) {
-      const defaultAdmin = {
-        id: 'admin-default',
-        name: 'Administrador',
-        email: 'admin@bochel.com',
-        password: 'admin123',
-        role: 'admin',
+    if (!gestorExists) {
+      const defaultGestor = {
+        id: 'gestor-default',
+        name: 'Gestor Principal',
+        email: 'gestor@bochel.com',
+        password: 'gestor123',
+        role: 'gestor',
         permissions: ['all']
       };
-      users.push(defaultAdmin);
+      users.push(defaultGestor);
       localStorage.setItem('users', JSON.stringify(users));
     }
 
@@ -73,6 +73,20 @@ export const useAuth = () => {
       return { success: false, message: 'Já existe um usuário com este email.' };
     }
 
+    // Definir permissões baseadas no papel
+    let permissions: string[] = [];
+    switch (data.role) {
+      case 'gestor':
+        permissions = ['all'];
+        break;
+      case 'agente':
+        permissions = ['clientes', 'emprestimos', 'cobrancas', 'pagamentos'];
+        break;
+      case 'cliente':
+        permissions = ['conta', 'historico', 'pedidos'];
+        break;
+    }
+
     // Criar novo usuário
     const newUser = {
       id: Date.now().toString(),
@@ -80,7 +94,7 @@ export const useAuth = () => {
       email: data.email,
       password: data.password,
       role: data.role,
-      permissions: data.role === 'admin' ? ['all'] : [data.role]
+      permissions: permissions
     };
 
     // Salvar no localStorage
@@ -96,11 +110,17 @@ export const useAuth = () => {
     localStorage.removeItem('user');
   };
 
+  const hasPermission = (permission: string): boolean => {
+    if (!user) return false;
+    return user.permissions.includes('all') || user.permissions.includes(permission);
+  };
+
   return {
     isAuthenticated,
     user,
     login,
     register,
-    logout
+    logout,
+    hasPermission
   };
 };

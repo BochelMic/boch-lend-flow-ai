@@ -20,10 +20,19 @@ import AuditModule from '../components/audit/AuditModule';
 import CashFlowModule from '../components/cashflow/CashFlowModule';
 import BalanceModule from '../components/balance/BalanceModule';
 import CreditFormModule from '../components/credit-form/CreditFormModule';
+import ClientsModule from '../components/clients/ClientsModule';
+import LoansModule from '../components/loans/LoansModule';
+import CollectionsModule from '../components/collections/CollectionsModule';
+import CashierModule from '../components/cashier/CashierModule';
+import AgentsModule from '../components/agents/AgentsModule';
+import PaymentsModule from '../components/payments/PaymentsModule';
+import ClientAccountModule from '../components/client-account/ClientAccountModule';
+import ClientHistoryModule from '../components/client-history/ClientHistoryModule';
+import ClientRequestsModule from '../components/client-requests/ClientRequestsModule';
 import Layout from '../components/layout/Layout';
 
 const Index = () => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, hasPermission } = useAuth();
 
   if (!isAuthenticated) {
     return <LoginForm />;
@@ -34,22 +43,52 @@ const Index = () => {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/admin/*" element={<AdminModule />} />
-        <Route path="/credit/*" element={<CreditModule />} />
+        
+        {/* Rotas para Gestor */}
+        {hasPermission('all') && (
+          <>
+            <Route path="/admin/*" element={<AdminModule />} />
+            <Route path="/clientes/*" element={<ClientsModule />} />
+            <Route path="/emprestimos/*" element={<LoansModule />} />
+            <Route path="/cobrancas/*" element={<CollectionsModule />} />
+            <Route path="/caixa/*" element={<CashierModule />} />
+            <Route path="/agentes/*" element={<AgentsModule />} />
+            <Route path="/audit/*" element={<AuditModule />} />
+            <Route path="/reports/*" element={<ReportsModule />} />
+            <Route path="/bank-report/*" element={<BankReportModule />} />
+            <Route path="/settings/*" element={<SettingsModule />} />
+          </>
+        )}
+        
+        {/* Rotas para Agente */}
+        {hasPermission('clientes') && (
+          <Route path="/clientes/*" element={<ClientsModule />} />
+        )}
+        {hasPermission('emprestimos') && (
+          <Route path="/emprestimos/*" element={<LoansModule />} />
+        )}
+        {hasPermission('cobrancas') && (
+          <Route path="/cobrancas/*" element={<CollectionsModule />} />
+        )}
+        {hasPermission('pagamentos') && (
+          <Route path="/pagamentos/*" element={<PaymentsModule />} />
+        )}
+        
+        {/* Rotas para Cliente */}
+        {hasPermission('conta') && (
+          <Route path="/conta/*" element={<ClientAccountModule />} />
+        )}
+        {hasPermission('historico') && (
+          <Route path="/historico/*" element={<ClientHistoryModule />} />
+        )}
+        {hasPermission('pedidos') && (
+          <Route path="/pedidos/*" element={<ClientRequestsModule />} />
+        )}
+        
+        {/* Rotas compartilhadas */}
         <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
         <Route path="/credit-form/*" element={<CreditFormModule />} />
-        <Route path="/balance/*" element={<BalanceModule />} />
-        <Route path="/expenses/*" element={<ExpensesModule />} />
-        <Route path="/collection/*" element={<CollectionModule />} />
-        <Route path="/legal/*" element={<LegalModule />} />
-        <Route path="/operations/*" element={<OperationsModule />} />
-        <Route path="/marketing/*" element={<MarketingModule />} />
-        <Route path="/notifications/*" element={<NotificationsModule />} />
-        <Route path="/audit/*" element={<AuditModule />} />
-        <Route path="/cashflow/*" element={<CashFlowModule />} />
-        <Route path="/reports/*" element={<ReportsModule />} />
-        <Route path="/bank-report/*" element={<BankReportModule />} />
-        <Route path="/settings/*" element={<SettingsModule />} />
+        
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>

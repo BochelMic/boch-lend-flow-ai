@@ -17,7 +17,7 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<'admin' | 'credit' | 'legal' | 'operations' | 'marketing' | 'hr'>('credit');
+  const [role, setRole] = useState<'gestor' | 'agente' | 'cliente'>('agente');
   const { register } = useAuth();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -91,18 +91,15 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="role">Função</Label>
+            <Label htmlFor="role">Papel no Sistema</Label>
             <Select value={role} onValueChange={(value: any) => setRole(value)}>
               <SelectTrigger>
-                <SelectValue placeholder="Selecione sua função" />
+                <SelectValue placeholder="Selecione seu papel" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="admin">Administrador</SelectItem>
-                <SelectItem value="credit">Crédito e Risco</SelectItem>
-                <SelectItem value="legal">Jurídico</SelectItem>
-                <SelectItem value="operations">Operações</SelectItem>
-                <SelectItem value="marketing">Marketing</SelectItem>
-                <SelectItem value="hr">Recursos Humanos</SelectItem>
+                <SelectItem value="gestor">Gestor / Proprietário</SelectItem>
+                <SelectItem value="agente">Agente de Campo</SelectItem>
+                <SelectItem value="cliente">Cliente</SelectItem>
               </SelectContent>
             </Select>
           </div>
