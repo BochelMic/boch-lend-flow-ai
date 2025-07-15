@@ -4,84 +4,88 @@
 
 @layer base {
   :root {
-    /* Modern color palette - Professional and modern */
+    /* Modern Mozambique-inspired color palette */
     --background: 0 0% 98%;
-    --foreground: 240 10% 15%;
+    --foreground: 220 15% 12%;
 
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 15%;
+    --card-foreground: 220 15% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 15%;
+    --popover-foreground: 220 15% 12%;
 
-    /* Primary - Professional Green */
-    --primary: 155 85% 35%;
+    /* Primary - Verde de folha de mangueira (Mango leaf green) */
+    --primary: 150 85% 35%;
     --primary-foreground: 0 0% 98%;
-    --primary-light: 155 70% 45%;
-    --primary-dark: 155 90% 25%;
+    --primary-light: 150 75% 45%;
+    --primary-dark: 150 90% 28%;
 
-    /* Secondary - Wine/Burgundy */
-    --secondary: 342 75% 35%;
+    /* Secondary - Cor de vinho (Wine color) */
+    --secondary: 345 78% 32%;
     --secondary-foreground: 0 0% 98%;
-    --secondary-light: 342 65% 45%;
+    --secondary-light: 345 68% 42%;
 
-    /* Accent - Professional Blue */
-    --accent: 217 85% 55%;
+    /* Accent - Azul do céu (Sky blue) */
+    --accent: 200 85% 55%;
     --accent-foreground: 0 0% 98%;
-    --accent-light: 217 75% 65%;
+    --accent-light: 200 75% 65%;
 
-    /* Orange accent */
-    --orange: 25 95% 55%;
+    /* Orange */
+    --orange: 30 95% 55%;
     --orange-foreground: 0 0% 98%;
 
-    /* Muted - Professional Gray */
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 8% 46%;
+    /* Vermelho (Red) */
+    --red: 0 85% 58%;
+    --red-foreground: 0 0% 98%;
 
-    /* Destructive */
-    --destructive: 0 85% 60%;
+    /* Cinza (Gray) */
+    --muted: 220 8% 96%;
+    --muted-foreground: 220 12% 46%;
+
+    /* Destructive - Vermelho */
+    --destructive: 0 85% 58%;
     --destructive-foreground: 0 0% 98%;
 
     /* Border and inputs */
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 155 85% 35%;
+    --border: 220 10% 88%;
+    --input: 220 10% 88%;
+    --ring: 150 85% 35%;
 
-    /* Success - Green variations */
-    --success: 142 76% 36%;
+    /* Success - Verde de folha */
+    --success: 150 85% 35%;
     --success-foreground: 0 0% 98%;
 
-    /* Warning */
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 15%;
+    /* Warning - Laranja */
+    --warning: 30 95% 55%;
+    --warning-foreground: 0 0% 12%;
 
-    /* Info */
-    --info: 217 85% 55%;
+    /* Info - Azul do céu */
+    --info: 200 85% 55%;
     --info-foreground: 0 0% 98%;
 
     --radius: 0.75rem;
 
-    /* Sidebar - Using primary green theme */
-    --sidebar-background: 155 20% 97%;
-    --sidebar-foreground: 240 10% 20%;
-    --sidebar-primary: 155 85% 35%;
+    /* Sidebar - Tema verde mangueira */
+    --sidebar-background: 150 15% 97%;
+    --sidebar-foreground: 220 15% 15%;
+    --sidebar-primary: 150 85% 35%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 155 15% 92%;
-    --sidebar-accent-foreground: 240 10% 20%;
-    --sidebar-border: 155 20% 85%;
-    --sidebar-ring: 155 85% 35%;
+    --sidebar-accent: 150 12% 92%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 150 15% 85%;
+    --sidebar-ring: 150 85% 35%;
 
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(155 85% 35%), hsl(155 70% 45%));
-    --gradient-secondary: linear-gradient(135deg, hsl(342 75% 35%), hsl(342 65% 45%));
-    --gradient-accent: linear-gradient(135deg, hsl(217 85% 55%), hsl(217 75% 65%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 98%), hsl(240 5% 96%));
+    /* Gradients - Cores moçambicanas */
+    --gradient-primary: linear-gradient(135deg, hsl(150 85% 35%), hsl(150 75% 45%));
+    --gradient-secondary: linear-gradient(135deg, hsl(345 78% 32%), hsl(345 68% 42%));
+    --gradient-accent: linear-gradient(135deg, hsl(200 85% 55%), hsl(200 75% 65%));
+    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 98%), hsl(220 8% 96%));
 
-    /* Shadows */
-    --shadow-soft: 0 2px 4px -1px hsl(240 10% 15% / 0.1);
-    --shadow-medium: 0 4px 6px -1px hsl(240 10% 15% / 0.1), 0 2px 4px -1px hsl(240 10% 15% / 0.06);
-    --shadow-large: 0 10px 15px -3px hsl(240 10% 15% / 0.1), 0 4px 6px -2px hsl(240 10% 15% / 0.05);
-    --shadow-primary: 0 4px 14px 0 hsl(155 85% 35% / 0.25);
+    /* Shadows - Sombras profissionais */
+    --shadow-soft: 0 2px 4px -1px hsl(220 15% 12% / 0.1);
+    --shadow-medium: 0 4px 6px -1px hsl(220 15% 12% / 0.1), 0 2px 4px -1px hsl(220 15% 12% / 0.06);
+    --shadow-large: 0 10px 15px -3px hsl(220 15% 12% / 0.1), 0 4px 6px -2px hsl(220 15% 12% / 0.05);
+    --shadow-primary: 0 4px 14px 0 hsl(150 85% 35% / 0.25);
   }
 
   .dark {

@@ -40,15 +40,33 @@ const Index = () => {
     return <LoginForm />;
   }
 
+  // Redirecionar para dashboard específico baseado no papel do usuário
+  const getDashboardPath = () => {
+    if (!user) return '/dashboard';
+    
+    switch (user.role) {
+      case 'gestor':
+        return '/dashboard';
+      case 'agente':
+        return '/dashboard-agente';
+      case 'cliente':
+        return '/dashboard-cliente';
+      default:
+        return '/dashboard';
+    }
+  };
+
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/dashboard-cliente" element={<ClientDashboard />} />
-        <Route path="/dashboard-agente" element={<AgentDashboard />} />
+        <Route path="/" element={<Navigate to={getDashboardPath()} replace />} />
         
-        {/* Rotas para Gestor */}
+        {/* Dashboards específicos por papel */}
+        {hasPermission('all') && <Route path="/dashboard" element={<Dashboard />} />}
+        {hasPermission('clientes') && <Route path="/dashboard-agente" element={<AgentDashboard />} />}
+        {hasPermission('conta') && <Route path="/dashboard-cliente" element={<ClientDashboard />} />}
+        
+        {/* Rotas para Gestor - Acesso total */}
         {hasPermission('all') && (
           <>
             <Route path="/admin/*" element={<AdminModule />} />
@@ -61,39 +79,43 @@ const Index = () => {
             <Route path="/reports/*" element={<ReportsModule />} />
             <Route path="/bank-report/*" element={<BankReportModule />} />
             <Route path="/settings/*" element={<SettingsModule />} />
+            <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
+            <Route path="/credit-form/*" element={<CreditFormModule />} />
           </>
         )}
         
-        {/* Rotas para Agente */}
-        {hasPermission('clientes') && (
+        {/* Rotas para Agente - Acesso limitado */}
+        {hasPermission('clientes') && !hasPermission('all') && (
           <Route path="/clientes/*" element={<ClientsModule />} />
         )}
-        {hasPermission('emprestimos') && (
+        {hasPermission('emprestimos') && !hasPermission('all') && (
           <Route path="/emprestimos/*" element={<LoansModule />} />
         )}
-        {hasPermission('cobrancas') && (
+        {hasPermission('cobrancas') && !hasPermission('all') && (
           <Route path="/cobrancas/*" element={<CollectionsModule />} />
         )}
-        {hasPermission('pagamentos') && (
+        {hasPermission('pagamentos') && !hasPermission('all') && (
           <Route path="/pagamentos/*" element={<PaymentsModule />} />
         )}
-        
-        {/* Rotas para Cliente */}
-        {hasPermission('conta') && (
-          <Route path="/conta/*" element={<ClientAccountModule />} />
-        )}
-        {hasPermission('historico') && (
-          <Route path="/historico/*" element={<ClientHistoryModule />} />
-        )}
-        {hasPermission('pedidos') && (
-          <Route path="/pedidos/*" element={<ClientRequestsModule />} />
+        {(hasPermission('clientes') || hasPermission('emprestimos')) && !hasPermission('all') && (
+          <>
+            <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
+            <Route path="/credit-form/*" element={<CreditFormModule />} />
+          </>
         )}
         
-        {/* Rotas compartilhadas */}
-        <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
-        <Route path="/credit-form/*" element={<CreditFormModule />} />
+        {/* Rotas para Cliente - Acesso restrito */}
+        {hasPermission('conta') && !hasPermission('all') && (
+          <>
+            <Route path="/conta/*" element={<ClientAccountModule />} />
+            <Route path="/historico/*" element={<ClientHistoryModule />} />
+            <Route path="/pedidos/*" element={<ClientRequestsModule />} />
+            <Route path="/credit-form/*" element={<CreditFormModule />} />
+          </>
+        )}
         
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to={getDashboardPath()} replace />} />
       </Routes>
     </Layout>
   );
