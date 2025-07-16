@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import LoginForm from '../components/auth/LoginForm';
 import Dashboard from '../components/dashboard/Dashboard';
 import ClientDashboard from '../components/dashboard/ClientDashboard';
+import CreditRequestManager from '../components/credit-requests/CreditRequestManager';
 import AgentDashboard from '../components/dashboard/AgentDashboard';
 import AdminModule from '../components/admin/AdminModule';
 import CreditModule from '../components/credit/CreditModule';
@@ -69,6 +70,7 @@ const Index = () => {
         {/* Rotas para Gestor - Acesso total */}
         {hasPermission('all') && (
           <>
+            <Route path="/credit-requests/*" element={<CreditRequestManager />} />
             <Route path="/admin/*" element={<AdminModule />} />
             <Route path="/clientes/*" element={<ClientsModule />} />
             <Route path="/emprestimos/*" element={<LoansModule />} />
@@ -86,7 +88,10 @@ const Index = () => {
         
         {/* Rotas para Agente - Acesso limitado */}
         {hasPermission('clientes') && !hasPermission('all') && (
-          <Route path="/clientes/*" element={<ClientsModule />} />
+          <>
+            <Route path="/credit-requests/*" element={<CreditRequestManager />} />
+            <Route path="/clientes/*" element={<ClientsModule />} />
+          </>
         )}
         {hasPermission('emprestimos') && !hasPermission('all') && (
           <Route path="/emprestimos/*" element={<LoansModule />} />

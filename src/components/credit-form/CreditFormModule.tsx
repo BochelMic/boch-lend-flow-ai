@@ -5,7 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Share2, BarChart3, Settings, Inbox } from 'lucide-react';
 import CreditApplicationForm from './CreditApplicationForm';
-import CreditRequestsManager from './CreditRequestsManager';
+import CreditRequestManager from '../credit-requests/CreditRequestManager';
+import CreditRequestForm from '../credit-requests/CreditRequestForm';
 import FormAnalytics from './FormAnalytics';
 import FormSharing from './FormSharing';
 import FormSettings from './FormSettings';
@@ -25,7 +26,7 @@ const CreditFormModule = () => {
       <Routes>
         <Route path="/" element={<CreditFormDashboard />} />
         <Route path="/form" element={<CreditApplicationForm />} />
-        <Route path="/requests" element={<CreditRequestsManager />} />
+        <Route path="/requests" element={<CreditRequestManager />} />
         <Route path="/analytics" element={<FormAnalytics />} />
         <Route path="/sharing" element={<FormSharing />} />
         <Route path="/settings" element={<FormSettings />} />
@@ -61,11 +62,11 @@ const CreditFormDashboard = () => {
       </TabsList>
 
       <TabsContent value="requests">
-        <CreditRequestsManager />
+        <CreditRequestManager />
       </TabsContent>
 
       <TabsContent value="form">
-        <CreditApplicationForm />
+        <CreditRequestForm />
       </TabsContent>
 
       <TabsContent value="analytics">

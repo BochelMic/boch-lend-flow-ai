@@ -38,6 +38,7 @@ const Sidebar = () => {
     if (user?.role === 'gestor') {
       return [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'all' },
+        { name: 'Pedidos de Crédito', href: '/credit-requests', icon: FormInput, permission: 'all' },
         { name: 'Gestão de Clientes', href: '/clientes', icon: Users, permission: 'all' },
         { name: 'Gestão de Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'all' },
         { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator, permission: 'all' },
@@ -53,11 +54,12 @@ const Sidebar = () => {
       ];
     } else if (user?.role === 'agente') {
       return [
-        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'clientes' },
+        { name: 'Dashboard', href: '/dashboard-agente', icon: LayoutDashboard, permission: 'clientes' },
+        { name: 'Pedidos de Crédito', href: '/credit-requests', icon: FormInput, permission: 'clientes' },
+        { name: 'Novo Pedido', href: '/credit-form', icon: FormInput, permission: 'emprestimos' },
         { name: 'Meus Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
         { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'emprestimos' },
         { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator, permission: 'emprestimos' },
-        { name: 'Formulário de Crédito', href: '/credit-form', icon: FormInput, permission: 'emprestimos' },
         { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'cobrancas' },
         { name: 'Pagamentos', href: '/pagamentos', icon: DollarSign, permission: 'pagamentos' },
       ];
