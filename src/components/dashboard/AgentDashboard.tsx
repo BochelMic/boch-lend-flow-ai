@@ -37,7 +37,7 @@ const collectionTrend = [
 
 const AgentDashboard = () => {
   return (
-    <div className="min-h-screen bg-gray-900 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-green-900 to-gray-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="bg-gradient-accent rounded-2xl p-6 text-white shadow-large">
