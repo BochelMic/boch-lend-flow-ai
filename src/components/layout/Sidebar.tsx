@@ -75,12 +75,12 @@ const Sidebar = () => {
   const navigation = getNavigation();
 
   return (
-    <div className="w-64 bg-blue-900 text-white">
+    <div className="w-64 bg-gray-800 text-white border-r border-gray-700">
       <div className="p-6">
         <h1 className="text-xl font-bold">BOCHEL MICROCREDITO</h1>
-        <p className="text-blue-200 text-sm">Sistema de Gestão</p>
+        <p className="text-gray-300 text-sm">Sistema de Gestão</p>
         {user && (
-          <div className="mt-2 text-xs text-blue-300">
+          <div className="mt-2 text-xs text-gray-400">
             {user.name} - {user.role === 'gestor' ? 'Gestor' : user.role === 'agente' ? 'Agente' : 'Cliente'}
           </div>
         )}
@@ -98,8 +98,8 @@ const Sidebar = () => {
               className={cn(
                 'flex items-center px-6 py-3 text-sm font-medium transition-colors',
                 isActive 
-                  ? 'bg-blue-800 text-white border-r-2 border-blue-300' 
-                  : 'text-blue-200 hover:bg-blue-800 hover:text-white'
+                  ? 'bg-gray-700 text-white border-r-2 border-primary' 
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
               )}
             >
               <item.icon className="mr-3 h-5 w-5" />

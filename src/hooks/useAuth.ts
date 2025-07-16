@@ -108,6 +108,8 @@ export const useAuth = () => {
     setUser(null);
     setIsAuthenticated(false);
     localStorage.removeItem('user');
+    // Redirecionar para a página de login
+    window.location.href = '/';
   };
 
   const hasPermission = (permission: string): boolean => {
