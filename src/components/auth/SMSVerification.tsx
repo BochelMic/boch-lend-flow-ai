@@ -25,8 +25,8 @@ const SMSVerification: React.FC<SMSVerificationProps> = ({ phoneNumber, onVerifi
     // Simular delay de envio
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Código específico para o número 8428205
-    const simulatedCode = phoneNumber === '8428205' ? '842820' : '123456';
+    // Código específico para o número 845828205
+    const simulatedCode = phoneNumber === '845828205' ? '845828' : '123456';
     
     toast({
       title: "SMS Enviado",
@@ -59,7 +59,7 @@ const SMSVerification: React.FC<SMSVerificationProps> = ({ phoneNumber, onVerifi
     }
 
     // Simular verificação (em produção seria validado no backend)
-    const expectedCode = phoneNumber === '8428205' ? '842820' : '123456';
+    const expectedCode = phoneNumber === '845828205' ? '845828' : '123456';
     
     if (verificationCode === expectedCode) {
       toast({
@@ -148,7 +148,7 @@ const SMSVerification: React.FC<SMSVerificationProps> = ({ phoneNumber, onVerifi
               <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
               <div className="text-sm text-muted-foreground">
                 <p className="font-medium mb-1">Demonstração:</p>
-                <p>Para o número <strong>8428205</strong> use: <strong>842820</strong></p>
+                <p>Para o número <strong>845828205</strong> use: <strong>845828</strong></p>
                 <p>Para outros números use: <strong>123456</strong></p>
               </div>
             </div>
