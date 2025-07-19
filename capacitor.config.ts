@@ -12,6 +12,12 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 0
     }
+  },
+  android: {
+    webContentsDebuggingEnabled: true
+  },
+  ios: {
+    webContentsDebuggingEnabled: true
   }
 };
 
