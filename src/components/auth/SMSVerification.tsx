@@ -25,8 +25,11 @@ const SMSVerification: React.FC<SMSVerificationProps> = ({ phoneNumber, onVerifi
     // Simular delay de envio
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Código específico para o número 845828205
-    const simulatedCode = phoneNumber === '845828205' ? '845828' : '123456';
+    // Gerar código aleatório que muda sempre
+    const simulatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    // Armazenar o código gerado no localStorage para validação posterior
+    localStorage.setItem('smsCode', simulatedCode);
     
     toast({
       title: "SMS Enviado",
@@ -58,8 +61,8 @@ const SMSVerification: React.FC<SMSVerificationProps> = ({ phoneNumber, onVerifi
       return;
     }
 
-    // Simular verificação (em produção seria validado no backend)
-    const expectedCode = phoneNumber === '845828205' ? '845828' : '123456';
+    // Verificar código armazenado no localStorage
+    const expectedCode = localStorage.getItem('smsCode') || '123456';
     
     if (verificationCode === expectedCode) {
       toast({
@@ -148,8 +151,8 @@ const SMSVerification: React.FC<SMSVerificationProps> = ({ phoneNumber, onVerifi
               <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
               <div className="text-sm text-muted-foreground">
                 <p className="font-medium mb-1">Demonstração:</p>
-                <p>Para o número <strong>845828205</strong> use: <strong>845828</strong></p>
-                <p>Para outros números use: <strong>123456</strong></p>
+                <p>O código é exibido na notificação acima e muda a cada envio.</p>
+                <p>Para SMS real, conecte com Supabase.</p>
               </div>
             </div>
           </div>
