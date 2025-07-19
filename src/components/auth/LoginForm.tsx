@@ -25,7 +25,7 @@ const LoginForm = () => {
     
     if (result.success) {
       // Se as credenciais estão corretas, solicitar verificação SMS
-      setPhoneNumber('+258 84 123 4567'); // Número simulado
+      setPhoneNumber('8428205'); // Número solicitado pelo usuário
       setShowSMSVerification(true);
     } else {
       toast({
