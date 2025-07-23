@@ -2,8 +2,7 @@ const CACHE_NAME = 'boch-lend-v2';
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  '/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png'
 ];
 
 // Install event - cache resources
