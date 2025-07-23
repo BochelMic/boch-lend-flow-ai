@@ -3,11 +3,19 @@
   "short_name": "Boch Lend",
   "description": "Sistema de gestão financeira e créditos",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0f1419",
   "theme_color": "#22c55e",
   "orientation": "portrait-primary",
   "categories": ["finance", "business"],
+  "prefer_related_applications": false,
+  "protocol_handlers": [
+    {
+      "protocol": "web+bochlend",
+      "url": "/?protocol=%s"
+    }
+  ],
   "icons": [
     {
       "src": "/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png",
