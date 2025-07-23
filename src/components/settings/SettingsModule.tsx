@@ -9,11 +9,25 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings, User, Shield, Bell, Database, Users, MessageSquare, Building2, Percent, Calendar, Upload, Phone, Globe, MapPin, Shield as ShieldIcon, Clock, Key, Smartphone, Download, RefreshCw, FileText, BarChart3, AlertTriangle, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { clearAllData } from '@/utils/clearData';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const SettingsModule = () => {
   const { toast } = useToast();
+
+  const handleClearData = () => {
+    if (window.confirm('Tem certeza que deseja limpar todos os dados de demonstração? Esta ação não pode ser desfeita.')) {
+      clearAllData();
+      toast({
+        title: "Dados Limpos",
+        description: "Todos os dados de demonstração foram removidos. Sistema pronto para dados reais.",
+      });
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    }
+  };
   const [settings, setSettings] = useState({
     companyName: 'BOCHEL MICROCREDITO',
     email: 'admin@bochel.mz',
@@ -1020,10 +1034,14 @@ const SettingsModule = () => {
                     <AlertTriangle className="mr-2 h-4 w-4" />
                     Reinicializar Sistema
                   </Button>
-                  <Button variant="destructive" className="w-full">
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Limpar Todos os Dados (Irreversível)
-                  </Button>
+                <Button 
+                  variant="destructive" 
+                  className="w-full"
+                  onClick={handleClearData}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Dados de Demonstração
+                </Button>
                 </div>
               </div>
             </CardContent>

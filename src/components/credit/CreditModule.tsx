@@ -36,17 +36,8 @@ import { useToast } from '@/hooks/use-toast';
 const CreditDashboard = () => {
   const { toast } = useToast();
   const [selectedClient, setSelectedClient] = useState(null);
-  const [clients, setClients] = useState([
-    { id: 1, name: "António Silva", classification: "Fiel", score: 850, lastOp: "15/03/2024", phone: "84123456", email: "antonio@email.com", balance: 25000, status: "Ativo", contracts: [] },
-    { id: 2, name: "Beatriz Costa", classification: "Fiel", score: 780, lastOp: "10/03/2024", phone: "87654321", email: "beatriz@email.com", balance: 15000, status: "Ativo", contracts: [] },
-    { id: 3, name: "Carlos Mussa", classification: "Não Fiel", score: 520, lastOp: "02/02/2024", phone: "85987654", email: "carlos@email.com", balance: 0, status: "Inadimplente", contracts: [] },
-  ]);
-
-  const [loans, setLoans] = useState([
-    { id: 1, clientId: 1, amount: 50000, interestRate: 15, term: 12, monthlyPayment: 4500, remainingBalance: 25000, nextPayment: "15/07/2024", status: "Ativo", daysOverdue: 0 },
-    { id: 2, clientId: 2, amount: 30000, interestRate: 18, term: 6, monthlyPayment: 5500, remainingBalance: 15000, nextPayment: "10/07/2024", status: "Ativo", daysOverdue: 0 },
-    { id: 3, clientId: 3, amount: 20000, interestRate: 20, term: 12, monthlyPayment: 1850, remainingBalance: 18500, nextPayment: "02/06/2024", status: "Vencido", daysOverdue: 35 }
-  ]);
+  const [clients, setClients] = useState([]);
+  const [loans, setLoans] = useState([]);
 
   const [loanForm, setLoanForm] = useState({
     clientId: '',
@@ -204,7 +195,7 @@ const CreditDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Carteira Total</p>
-                    <p className="text-2xl font-bold">MZN 58.5K</p>
+                    <p className="text-2xl font-bold">MZN 0</p>
                   </div>
                   <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
@@ -216,7 +207,7 @@ const CreditDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Empréstimos Ativos</p>
-                    <p className="text-2xl font-bold">23</p>
+                    <p className="text-2xl font-bold">0</p>
                   </div>
                   <CheckCircle className="h-8 w-8 text-blue-600" />
                 </div>
@@ -228,7 +219,7 @@ const CreditDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Em Atraso</p>
-                    <p className="text-2xl font-bold">3</p>
+                    <p className="text-2xl font-bold">0</p>
                   </div>
                   <XCircle className="h-8 w-8 text-red-600" />
                 </div>
@@ -240,7 +231,7 @@ const CreditDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Taxa Inadimplência</p>
-                    <p className="text-2xl font-bold">13%</p>
+                    <p className="text-2xl font-bold">0%</p>
                   </div>
                   <AlertTriangle className="h-8 w-8 text-yellow-600" />
                 </div>

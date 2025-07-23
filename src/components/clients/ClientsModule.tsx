@@ -14,29 +14,7 @@ const ClientsModule = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  // Mock data para demonstração
-  const clients = [
-    {
-      id: 1,
-      name: 'João Silva',
-      email: 'joao@email.com',
-      phone: '+258 84 123 4567',
-      status: 'ativo',
-      creditScore: 'Bom',
-      totalLoans: 3,
-      totalDebt: 15000
-    },
-    {
-      id: 2,
-      name: 'Maria Santos',
-      email: 'maria@email.com',
-      phone: '+258 84 987 6543',
-      status: 'ativo',
-      creditScore: 'Excelente',
-      totalLoans: 1,
-      totalDebt: 5000
-    }
-  ];
+  const [clients, setClients] = useState([]);
 
   const filteredClients = clients.filter(client => {
     const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

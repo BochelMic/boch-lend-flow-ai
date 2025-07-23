@@ -6,53 +6,31 @@ import { Label } from '../ui/label';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import RegisterForm from './RegisterForm';
-import SMSVerification from './SMSVerification';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showRegister, setShowRegister] = useState(false);
-  const [showSMSVerification, setShowSMSVerification] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState('');
   const { login } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Primeiro, validar as credenciais
     const result = login(email, password);
-    
     if (result.success) {
-      // Se as credenciais estão corretas, solicitar verificação SMS
-      setPhoneNumber('845828205'); // Número solicitado pelo usuário
-      setShowSMSVerification(true);
+      toast({
+        title: "Login realizado com sucesso!",
+        description: "Redirecionando...",
+      });
     } else {
       toast({
-        title: "Erro no login",
+        title: "Erro",
         description: result.message,
         variant: "destructive",
       });
     }
   };
-
-  const handleSMSVerified = () => {
-    setShowSMSVerification(false);
-    toast({
-      title: "Login realizado com sucesso!",
-      description: "Bem-vindo ao sistema BOCHEL!",
-    });
-  };
-
-  if (showSMSVerification) {
-    return (
-      <SMSVerification 
-        phoneNumber={phoneNumber}
-        onVerified={handleSMSVerified}
-        onBack={() => setShowSMSVerification(false)}
-      />
-    );
-  }
 
   if (showRegister) {
     return <RegisterForm onSwitchToLogin={() => setShowRegister(false)} />;
@@ -100,7 +78,7 @@ const LoginForm = () => {
               />
             </div>
             <Button type="submit" className="w-full h-12 bg-gradient-primary hover:opacity-90 text-lg font-semibold">
-              Entrar com SMS
+              Entrar
             </Button>
           </form>
           
@@ -123,13 +101,6 @@ const LoginForm = () => {
             </Button>
           </div>
 
-          <div className="bg-muted/50 p-4 rounded-lg text-center">
-            <p className="text-sm text-muted-foreground">
-              <strong>Acesso de demonstração:</strong><br />
-              Email: gestor@bochel.com<br />
-              Senha: gestor123
-            </p>
-          </div>
         </CardContent>
       </Card>
     </div>

@@ -7,25 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { DollarSign, Receipt, Clock, CheckCircle } from 'lucide-react';
 
 const PaymentsModule = () => {
-  // Mock data para demonstração
-  const payments = [
-    {
-      id: 1,
-      clientName: 'João Silva',
-      amount: 4850,
-      dueDate: '2024-01-15',
-      status: 'pendente',
-      contractId: 'CTR-001'
-    },
-    {
-      id: 2,
-      clientName: 'Maria Santos',
-      amount: 2500,
-      dueDate: '2024-01-10',
-      status: 'pago',
-      contractId: 'CTR-002'
-    }
-  ];
+  const [payments, setPayments] = useState([]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -54,7 +36,7 @@ const PaymentsModule = () => {
               <DollarSign className="h-5 w-5 text-green-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Recebido Hoje</p>
-                <p className="text-lg font-semibold">12.350 MZN</p>
+                <p className="text-lg font-semibold">0 MZN</p>
               </div>
             </div>
           </CardContent>
@@ -65,7 +47,7 @@ const PaymentsModule = () => {
               <Clock className="h-5 w-5 text-yellow-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Pendentes</p>
-                <p className="text-lg font-semibold">8</p>
+                <p className="text-lg font-semibold">0</p>
               </div>
             </div>
           </CardContent>
@@ -76,7 +58,7 @@ const PaymentsModule = () => {
               <Receipt className="h-5 w-5 text-blue-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Recibos Emitidos</p>
-                <p className="text-lg font-semibold">25</p>
+                <p className="text-lg font-semibold">0</p>
               </div>
             </div>
           </CardContent>
@@ -87,7 +69,7 @@ const PaymentsModule = () => {
               <CheckCircle className="h-5 w-5 text-purple-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Taxa de Cobrança</p>
-                <p className="text-lg font-semibold">94%</p>
+                <p className="text-lg font-semibold">0%</p>
               </div>
             </div>
           </CardContent>
