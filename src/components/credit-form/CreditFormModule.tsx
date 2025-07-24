@@ -42,7 +42,7 @@ const CreditFormDashboard = () => {
 
   return (
     <Tabs defaultValue="requests" className="space-y-6">
-      <TabsList className={`grid w-full ${isGestor ? 'grid-cols-5' : 'grid-cols-4'}`}>
+      <TabsList className={`grid w-full ${isGestor ? 'grid-cols-5' : 'grid-cols-3'}`}>
         <TabsTrigger value="requests" className="flex items-center gap-2">
           <Inbox className="h-4 w-4" />
           Pedidos
@@ -55,10 +55,12 @@ const CreditFormDashboard = () => {
           <BarChart3 className="h-4 w-4" />
           Análises
         </TabsTrigger>
-        <TabsTrigger value="sharing" className="flex items-center gap-2">
-          <Share2 className="h-4 w-4" />
-          Compartilhamento
-        </TabsTrigger>
+        {isGestor && (
+          <TabsTrigger value="sharing" className="flex items-center gap-2">
+            <Share2 className="h-4 w-4" />
+            Compartilhamento
+          </TabsTrigger>
+        )}
         {isGestor && (
           <TabsTrigger value="settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
@@ -79,9 +81,11 @@ const CreditFormDashboard = () => {
         <FormAnalytics />
       </TabsContent>
 
-      <TabsContent value="sharing">
-        <FormSharing />
-      </TabsContent>
+      {isGestor && (
+        <TabsContent value="sharing">
+          <FormSharing />
+        </TabsContent>
+      )}
 
       {isGestor && (
         <TabsContent value="settings">
