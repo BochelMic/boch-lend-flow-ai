@@ -3,12 +3,12 @@ import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const data = [
-  { month: 'Jan', entrada: 240000, saida: 180000 },
-  { month: 'Fev', entrada: 280000, saida: 200000 },
-  { month: 'Mar', entrada: 320000, saida: 240000 },
-  { month: 'Abr', entrada: 350000, saida: 260000 },
-  { month: 'Mai', entrada: 380000, saida: 290000 },
-  { month: 'Jun', entrada: 420000, saida: 310000 },
+  { month: 'Jan', entrada: 0, saida: 0 },
+  { month: 'Fev', entrada: 0, saida: 0 },
+  { month: 'Mar', entrada: 0, saida: 0 },
+  { month: 'Abr', entrada: 0, saida: 0 },
+  { month: 'Mai', entrada: 0, saida: 0 },
+  { month: 'Jun', entrada: 0, saida: 0 },
 ];
 
 const CashFlowChart = () => {

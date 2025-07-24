@@ -10,6 +10,7 @@ import CreditRequestForm from '../credit-requests/CreditRequestForm';
 import FormAnalytics from './FormAnalytics';
 import FormSharing from './FormSharing';
 import FormSettings from './FormSettings';
+import { useAuth } from '../../hooks/useAuth';
 
 const CreditFormModule = () => {
   return (
@@ -36,9 +37,12 @@ const CreditFormModule = () => {
 };
 
 const CreditFormDashboard = () => {
+  const { user } = useAuth();
+  const isGestor = user?.role === 'gestor';
+
   return (
     <Tabs defaultValue="requests" className="space-y-6">
-      <TabsList className="grid w-full grid-cols-5">
+      <TabsList className={`grid w-full ${isGestor ? 'grid-cols-5' : 'grid-cols-4'}`}>
         <TabsTrigger value="requests" className="flex items-center gap-2">
           <Inbox className="h-4 w-4" />
           Pedidos
@@ -55,10 +59,12 @@ const CreditFormDashboard = () => {
           <Share2 className="h-4 w-4" />
           Compartilhamento
         </TabsTrigger>
-        <TabsTrigger value="settings" className="flex items-center gap-2">
-          <Settings className="h-4 w-4" />
-          Configurações
-        </TabsTrigger>
+        {isGestor && (
+          <TabsTrigger value="settings" className="flex items-center gap-2">
+            <Settings className="h-4 w-4" />
+            Configurações
+          </TabsTrigger>
+        )}
       </TabsList>
 
       <TabsContent value="requests">
@@ -77,9 +83,11 @@ const CreditFormDashboard = () => {
         <FormSharing />
       </TabsContent>
 
-      <TabsContent value="settings">
-        <FormSettings />
-      </TabsContent>
+      {isGestor && (
+        <TabsContent value="settings">
+          <FormSettings />
+        </TabsContent>
+      )}
     </Tabs>
   );
 };

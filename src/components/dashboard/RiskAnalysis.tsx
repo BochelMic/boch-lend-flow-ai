@@ -3,10 +3,10 @@ import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 
 const data = [
-  { name: 'Clientes Fiéis', value: 75, color: '#10b981' },
-  { name: 'Risco Baixo', value: 15, color: '#3b82f6' },
-  { name: 'Risco Médio', value: 8, color: '#f59e0b' },
-  { name: 'Risco Alto', value: 2, color: '#ef4444' },
+  { name: 'Sistema Limpo', value: 100, color: '#10b981' },
+  { name: 'Sem Dados', value: 0, color: '#3b82f6' },
+  { name: 'Aguardando', value: 0, color: '#f59e0b' },
+  { name: 'Clientes', value: 0, color: '#ef4444' },
 ];
 
 const RiskAnalysis = () => {

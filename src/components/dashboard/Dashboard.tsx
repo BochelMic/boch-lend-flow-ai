@@ -22,17 +22,17 @@ import CashFlowChart from './CashFlowChart';
 import RiskAnalysis from './RiskAnalysis';
 
 const Dashboard = () => {
-  // Dados de empréstimos e estatísticas
+  // Dashboard em branco - sistema limpo para dados reais
   const loanStats = {
-    totalLoans: 2400000, // MZN
-    totalInterest: 432000, // MZN
-    lateInterest: 25600, // MZN
-    totalValue: 2857600, // MZN (total + juros + mora)
-    activeLoans: 145,
-    pendingLoans: 23,
-    notificationsSent: 1247,
-    messagesReceived: 892,
-    creditRequests: 67
+    totalLoans: 0,
+    totalInterest: 0,
+    lateInterest: 0,
+    totalValue: 0,
+    activeLoans: 0,
+    pendingLoans: 0,
+    notificationsSent: 0,
+    messagesReceived: 0,
+    creditRequests: 0
   };
 
   return (
@@ -41,32 +41,32 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <MetricCard
           title="Clientes Ativos"
-          value="1,247"
+          value="0"
           icon={Users}
-          trend="+12%"
-          description="vs mês anterior"
+          trend="+0%"
+          description="Sistema em branco"
         />
         <MetricCard
           title="Carteira de Crédito"
-          value={`MZN ${(loanStats.totalLoans / 1000000).toFixed(1)}M`}
+          value="MZN 0.0M"
           icon={CreditCard}
-          trend="+8%"
-          description="Total emprestado"
+          trend="+0%"
+          description="Aguardando dados reais"
         />
         <MetricCard
           title="Taxa de Inadimplência"
-          value="3.2%"
+          value="0%"
           icon={AlertTriangle}
-          trend="-0.5%"
-          description="Redução mensal"
+          trend="+0%"
+          description="Sistema limpo"
           variant="warning"
         />
         <MetricCard
           title="ROI Mensal"
-          value="18.5%"
+          value="0%"
           icon={TrendingUp}
-          trend="+2.1%"
-          description="Retorno sobre investimento"
+          trend="+0%"
+          description="Pronto para operar"
           variant="success"
         />
       </div>
@@ -218,27 +218,17 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Alertas e ações */}
+      {/* Sistema em branco - pronto para dados reais */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Alertas de Cobrança</CardTitle>
+            <CardTitle>Sistema Limpo</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-red-50 rounded">
-                <div>
-                  <p className="font-medium">João Silva</p>
-                  <p className="text-sm text-gray-600">Venceu há 5 dias</p>
-                </div>
-                <span className="text-red-600 font-bold">MZN 15,000</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-yellow-50 rounded">
-                <div>
-                  <p className="font-medium">Maria Santos</p>
-                  <p className="text-sm text-gray-600">Vence hoje</p>
-                </div>
-                <span className="text-yellow-600 font-bold">MZN 8,500</span>
+              <div className="text-center py-8">
+                <p className="text-gray-500">Nenhum alerta de cobrança</p>
+                <p className="text-sm text-gray-400">Sistema pronto para operar</p>
               </div>
             </div>
           </CardContent>
@@ -246,23 +236,13 @@ const Dashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Novos Pedidos</CardTitle>
+            <CardTitle>Pedidos</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded">
-                <div>
-                  <p className="font-medium">Ana Costa</p>
-                  <p className="text-sm text-gray-600">Aguarda análise</p>
-                </div>
-                <span className="text-blue-600 font-bold">MZN 25,000</span>
-              </div>
-              <div className="flex items-center justify-between p-3 bg-green-50 rounded">
-                <div>
-                  <p className="font-medium">Pedro Mussa</p>
-                  <p className="text-sm text-gray-600">Pré-aprovado</p>
-                </div>
-                <span className="text-green-600 font-bold">MZN 12,000</span>
+              <div className="text-center py-8">
+                <p className="text-gray-500">Nenhum pedido pendente</p>
+                <p className="text-sm text-gray-400">Aguardando novos clientes</p>
               </div>
             </div>
           </CardContent>
@@ -270,21 +250,21 @@ const Dashboard = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>Compliance Status</CardTitle>
+            <CardTitle>Status do Sistema</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span>Verificação AML</span>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Ativo</span>
+                <span>Sistema</span>
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Operacional</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Relatório Mensal</span>
-                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Em dia</span>
+                <span>Base de Dados</span>
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded text-sm">Limpa</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Licença Banco Central</span>
-                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm">Renovar</span>
+                <span>Configurações</span>
+                <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-sm">Prontas</span>
               </div>
             </div>
           </CardContent>
