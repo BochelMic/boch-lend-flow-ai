@@ -188,7 +188,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
             <Alert>
               <AlertDescription className="text-center">
                 <strong>Obrigado!</strong> Seu pedido será analisado em menos de 24h úteis.
-                <br />Taxa de juro: 30% por mês (pode variar conforme o valor).
+                <br />Taxa de juro: 25% por mês (pode variar conforme o valor).
                 <br />Entraremos em contacto através do telefone fornecido.
               </AlertDescription>
             </Alert>
@@ -221,14 +221,14 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   }
 
   return (
-    <Card className="max-w-6xl mx-auto">
-      <CardHeader>
-        <CardTitle>Pedido de Crédito</CardTitle>
-        <CardDescription>
-          Preencha todos os campos obrigatórios para solicitar seu crédito. Taxa de juro: 30% por mês (pode variar conforme o valor).
+    <Card className="max-w-6xl mx-auto m-2 md:m-4">
+      <CardHeader className="p-4 md:p-6">
+        <CardTitle className="text-lg md:text-xl">Pedido de Crédito</CardTitle>
+        <CardDescription className="text-sm md:text-base">
+          Preencha todos os campos obrigatórios para solicitar seu crédito. Taxa de juro: 25% por mês (pode variar conforme o valor).
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-4 md:p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             
@@ -781,7 +781,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                       Declaração de Veracidade *
                     </FormLabel>
                     <p className="text-sm text-muted-foreground">
-                      Declaro que todas as informações fornecidas são verdadeiras e concordo com os termos e condições do pedido de crédito. Taxa de juro: 30% por mês (pode variar conforme o valor).
+                      Declaro que todas as informações fornecidas são verdadeiras e concordo com os termos e condições do pedido de crédito. Taxa de juro: 25% por mês (pode variar conforme o valor).
                     </p>
                   </div>
                   <FormMessage />

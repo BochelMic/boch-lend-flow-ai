@@ -33,42 +33,36 @@ const Sidebar = () => {
   const location = useLocation();
   const { user, hasPermission } = useAuth();
 
-  // Definir navegação baseada no papel do usuário
+  // Definir navegação baseada no papel do usuário - simplificada
   const getNavigation = () => {
     if (user?.role === 'gestor') {
       return [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'all' },
-        { name: 'Pedidos de Crédito', href: '/credit-requests', icon: FormInput, permission: 'all' },
-        { name: 'Gestão de Clientes', href: '/clientes', icon: Users, permission: 'all' },
-        { name: 'Gestão de Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'all' },
-        { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator, permission: 'all' },
-        { name: 'Formulário de Crédito', href: '/credit-form', icon: FormInput, permission: 'all' },
-        { name: 'Pagamentos e Cobranças', href: '/cobrancas', icon: Phone, permission: 'all' },
-        { name: 'Caixa e Tesouraria', href: '/caixa', icon: Wallet, permission: 'all' },
-        { name: 'Gestão de Agentes', href: '/agentes', icon: UserCheck, permission: 'all' },
-        { name: 'Auditoria', href: '/audit', icon: ShieldCheck, permission: 'all' },
+        { name: 'Pedidos', href: '/credit-requests', icon: FormInput, permission: 'all' },
+        { name: 'Clientes', href: '/clientes', icon: Users, permission: 'all' },
+        { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'all' },
+        { name: 'Simulador', href: '/credit-simulator', icon: Calculator, permission: 'all' },
+        { name: 'Crédito', href: '/credit-form', icon: FormInput, permission: 'all' },
+        { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'all' },
+        { name: 'Agentes', href: '/agentes', icon: UserCheck, permission: 'all' },
         { name: 'Relatórios', href: '/reports', icon: BarChart3, permission: 'all' },
-        { name: 'Relatório BM', href: '/bank-report', icon: Building2, permission: 'all' },
-        { name: 'Administração', href: '/admin', icon: Settings, permission: 'all' },
         { name: 'Configurações', href: '/settings', icon: Settings, permission: 'all' },
       ];
     } else if (user?.role === 'agente') {
       return [
         { name: 'Dashboard', href: '/dashboard-agente', icon: LayoutDashboard, permission: 'clientes' },
-        { name: 'Pedidos de Crédito', href: '/credit-requests', icon: FormInput, permission: 'clientes' },
+        { name: 'Pedidos', href: '/credit-requests', icon: FormInput, permission: 'clientes' },
         { name: 'Novo Pedido', href: '/credit-form', icon: FormInput, permission: 'emprestimos' },
-        { name: 'Meus Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
+        { name: 'Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
         { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'emprestimos' },
-        { name: 'Simulador de Crédito', href: '/credit-simulator', icon: Calculator, permission: 'emprestimos' },
         { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'cobrancas' },
-        { name: 'Pagamentos', href: '/pagamentos', icon: DollarSign, permission: 'pagamentos' },
       ];
     } else if (user?.role === 'cliente') {
       return [
-        { name: 'Minha Conta', href: '/conta', icon: Users, permission: 'conta' },
+        { name: 'Conta', href: '/conta', icon: Users, permission: 'conta' },
         { name: 'Histórico', href: '/historico', icon: FileText, permission: 'historico' },
-        { name: 'Meus Pedidos', href: '/pedidos', icon: FormInput, permission: 'pedidos' },
-        { name: 'Solicitar Crédito', href: '/credit-form', icon: Calculator, permission: 'pedidos' },
+        { name: 'Pedidos', href: '/pedidos', icon: FormInput, permission: 'pedidos' },
+        { name: 'Novo Crédito', href: '/credit-form', icon: Calculator, permission: 'pedidos' },
       ];
     }
     return [];
@@ -77,18 +71,18 @@ const Sidebar = () => {
   const navigation = getNavigation();
 
   return (
-    <div className="w-64 bg-gray-800 text-white border-r border-gray-700">
-      <div className="p-6">
-        <h1 className="text-xl font-bold">BOCHEL MICROCREDITO</h1>
-        <p className="text-gray-300 text-sm">Sistema de Gestão</p>
+    <div className="w-full md:w-64 bg-card border-r border-border">
+      <div className="p-4 md:p-6">
+        <h1 className="text-lg md:text-xl font-bold text-foreground">BOCHEL</h1>
+        <p className="text-muted-foreground text-xs md:text-sm">Microcrédito</p>
         {user && (
-          <div className="mt-2 text-xs text-gray-400">
+          <div className="mt-2 text-xs text-muted-foreground">
             {user.name} - {user.role === 'gestor' ? 'Gestor' : user.role === 'agente' ? 'Agente' : 'Cliente'}
           </div>
         )}
       </div>
       
-      <nav className="mt-6">
+      <nav className="mt-2 md:mt-6">
         {navigation.map((item) => {
           if (!hasPermission(item.permission)) return null;
           
@@ -98,14 +92,14 @@ const Sidebar = () => {
               key={item.name}
               to={item.href}
               className={cn(
-                'flex items-center px-6 py-3 text-sm font-medium transition-colors',
+                'flex items-center px-4 md:px-6 py-2 md:py-3 text-xs md:text-sm font-medium transition-colors',
                 isActive 
-                  ? 'bg-gray-700 text-white border-r-2 border-primary' 
-                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+                  ? 'bg-primary/10 text-primary border-r-2 border-primary' 
+                  : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               )}
             >
-              <item.icon className="mr-3 h-5 w-5" />
-              {item.name}
+              <item.icon className="mr-2 md:mr-3 h-4 w-4 md:h-5 md:w-5" />
+              <span className="hidden md:inline">{item.name}</span>
             </Link>
           );
         })}
