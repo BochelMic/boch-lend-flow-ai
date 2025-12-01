@@ -29,6 +29,12 @@ export const clearAllData = () => {
   console.log('Todos os dados foram limpos. Sistema pronto para dados reais.');
 };
 
+export const clearAllTestData = () => {
+  // Limpar ABSOLUTAMENTE TUDO, incluindo usuários
+  localStorage.clear();
+  console.log('Todos os dados de teste foram apagados completamente.');
+};
+
 export const resetToRealData = () => {
   // Limpar dados de demonstração
   clearAllData();

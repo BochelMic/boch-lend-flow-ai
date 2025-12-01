@@ -6,6 +6,8 @@ import { Label } from '../ui/label';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import RegisterForm from './RegisterForm';
+import { clearAllTestData } from '../../utils/clearData';
+import { Trash2 } from 'lucide-react';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -29,6 +31,17 @@ const LoginForm = () => {
         description: result.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleClearAllData = () => {
+    if (window.confirm('⚠️ Tem certeza que deseja apagar TODOS os dados de teste? Esta ação não pode ser desfeita e você precisará criar novos usuários.')) {
+      clearAllTestData();
+      toast({
+        title: "Dados apagados",
+        description: "Todos os dados de teste foram removidos.",
+      });
+      window.location.reload();
     }
   };
 
@@ -98,6 +111,18 @@ const LoginForm = () => {
               className="w-full h-12"
             >
               Criar Nova Conta
+            </Button>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-border">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearAllData}
+              className="w-full text-xs text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="h-3 w-3 mr-2" />
+              Apagar todos os dados de teste
             </Button>
           </div>
 
