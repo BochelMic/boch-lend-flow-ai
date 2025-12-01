@@ -59,25 +59,31 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
   };
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl font-bold text-blue-900">
-          Cadastro - BOCHEL MICROCREDITO
-        </CardTitle>
-        <CardDescription>
-          Criar nova conta no sistema
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-subtle py-12 px-4 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md border-0 shadow-large">
+        <CardHeader className="space-y-1 text-center">
+          <div className="mx-auto w-16 h-16 bg-gradient-primary rounded-2xl flex items-center justify-center mb-4">
+            <span className="text-2xl font-bold text-white">B</span>
+          </div>
+          <CardTitle className="text-3xl font-bold text-primary">
+            BOCHEL MICROCRÉDITO
+          </CardTitle>
+          <CardDescription className="text-muted-foreground">
+            Criar nova conta no sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Nome Completo</Label>
             <Input
               id="name"
               type="text"
+              placeholder="Seu nome completo"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
+              className="h-12"
             />
           </div>
           <div className="space-y-2">
@@ -85,9 +91,11 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             <Input
               id="email"
               type="email"
+              placeholder="seu@email.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              className="h-12"
             />
           </div>
           <div className="space-y-2">
@@ -108,10 +116,12 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             <Input
               id="password"
               type="password"
+              placeholder="Mínimo 6 caracteres"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={6}
+              className="h-12"
             />
           </div>
           <div className="space-y-2">
@@ -119,26 +129,41 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
             <Input
               id="confirmPassword"
               type="password"
+              placeholder="Digite a senha novamente"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
               minLength={6}
+              className="h-12"
             />
           </div>
-          <Button type="submit" className="w-full">
+          <Button type="submit" className="w-full h-12 bg-gradient-primary hover:opacity-90 text-lg font-semibold">
             Cadastrar
           </Button>
-          <Button 
-            type="button" 
-            variant="ghost" 
-            className="w-full"
-            onClick={onSwitchToLogin}
-          >
-            Já tem conta? Fazer login
-          </Button>
+          
+          <div className="space-y-4">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-muted" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Ou</span>
+              </div>
+            </div>
+            
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full h-12"
+              onClick={onSwitchToLogin}
+            >
+              Já tem conta? Fazer login
+            </Button>
+          </div>
         </form>
       </CardContent>
-    </Card>
+      </Card>
+    </div>
   );
 };
 

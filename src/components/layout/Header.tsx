@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { Bell, User, LogOut } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useAuth } from '../../hooks/useAuth';
+import { SidebarTrigger } from '../ui/sidebar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,31 +14,34 @@ const Header = () => {
   const { user, logout } = useAuth();
 
   return (
-    <header className="bg-gray-900 shadow-sm border-b border-gray-700">
-      <div className="flex items-center justify-between px-6 py-4">
-        <div>
-          <h2 className="text-lg font-semibold text-white">
-            Sistema de Gestão de Microcrédito
-          </h2>
-          <p className="text-sm text-gray-300">
-            Taxa de juros: 25% ao mês | Política AML ativa
-          </p>
+    <header className="sticky top-0 z-10 bg-card shadow-sm border-b border-border">
+      <div className="flex items-center justify-between px-3 md:px-6 py-3 md:py-4 gap-2">
+        <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+          <SidebarTrigger className="flex-shrink-0" />
+          <div className="min-w-0">
+            <h2 className="text-sm md:text-lg font-semibold text-foreground truncate">
+              Sistema de Gestão de Microcrédito
+            </h2>
+            <p className="text-xs text-muted-foreground hidden sm:block">
+              Taxa: 25%/mês | Política AML ativa
+            </p>
+          </div>
         </div>
         
-        <div className="flex items-center space-x-4">
-          <Button variant="ghost" size="icon" className="text-white hover:bg-gray-800">
-            <Bell className="h-5 w-5" />
+        <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8 md:h-10 md:w-10">
+            <Bell className="h-4 w-4 md:h-5 md:w-5" />
           </Button>
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-2 text-white hover:bg-gray-800">
-                <User className="h-5 w-5" />
-                <span>{user?.name}</span>
+              <Button variant="ghost" className="flex items-center gap-1 md:gap-2 h-8 md:h-10 px-2 md:px-3">
+                <User className="h-4 w-4 md:h-5 md:w-5" />
+                <span className="hidden sm:inline text-sm truncate max-w-[100px] md:max-w-none">{user?.name}</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="bg-gray-800 border-gray-700">
-              <DropdownMenuItem onClick={logout} className="text-white hover:bg-gray-700">
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={logout}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sair
               </DropdownMenuItem>
