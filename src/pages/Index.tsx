@@ -26,6 +26,7 @@ import PaymentsModule from '../components/payments/PaymentsModule';
 import ClientAccountModule from '../components/client-account/ClientAccountModule';
 import ClientHistoryModule from '../components/client-history/ClientHistoryModule';
 import ClientRequestsModule from '../components/client-requests/ClientRequestsModule';
+import ChatModule from '../components/chat/ChatModule';
 import Layout from '../components/layout/Layout';
 
 const Index = () => {
@@ -112,6 +113,9 @@ const Index = () => {
             <Route path="/credit-form/*" element={<CreditFormModule />} />
           </>
         )}
+        
+        {/* Chat - Disponível para todos os usuários autenticados */}
+        <Route path="/chat/*" element={<ChatModule />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to={getDashboardPath()} replace />} />

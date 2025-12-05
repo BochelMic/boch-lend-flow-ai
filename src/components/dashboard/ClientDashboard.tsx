@@ -13,9 +13,14 @@ import {
   TrendingUp,
   FileText,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Lock,
+  RefreshCw
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useClientAccess } from '@/hooks/useClientAccess';
+import { useAuth } from '@/hooks/useAuth';
+import { Link } from 'react-router-dom';
 
 const paymentHistory = [
   { month: 'Jan', paid: 5000, due: 5000 },
@@ -33,19 +38,127 @@ const loanStatus = [
 ];
 
 const ClientDashboard = () => {
+  const { user } = useAuth();
+  const { clientStatus, hasActiveLoan, currentLoan, loading, canViewHistory, canRequestNewLoan } = useClientAccess();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Se o cliente não tem acesso ativo, mostrar tela limitada
+  if (clientStatus === 'limited' || clientStatus === 'blocked') {
+    return (
+      <div className="min-h-screen bg-gradient-subtle p-4 md:p-6">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="bg-gradient-primary rounded-2xl p-6 text-white shadow-primary">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold">Olá, {user?.name || 'Cliente'}</h1>
+                <p className="text-white/80">Seu portal de microcrédito</p>
+              </div>
+              <Badge className="bg-white/20 text-white">
+                {clientStatus === 'limited' ? 'Acesso Limitado' : 'Aguardando Aprovação'}
+              </Badge>
+            </div>
+          </div>
+
+          {/* Status Card */}
+          <Card className="border-warning/50 bg-warning/5">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-warning/20 flex items-center justify-center">
+                  <Lock className="h-6 w-6 text-warning" />
+                </div>
+                <div>
+                  <CardTitle>Acesso Limitado</CardTitle>
+                  <CardDescription>
+                    {clientStatus === 'limited' 
+                      ? 'Você terminou de pagar seu empréstimo. Para ter acesso completo, solicite um novo crédito.'
+                      : 'Aguarde a aprovação do seu pedido de crédito para ter acesso completo ao sistema.'
+                    }
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {canViewHistory() && (
+                <Link to="/historico">
+                  <Button variant="outline" className="w-full justify-start">
+                    <FileText className="mr-2 h-4 w-4" />
+                    Ver Histórico de Pagamentos
+                  </Button>
+                </Link>
+              )}
+              {canRequestNewLoan() && (
+                <Link to="/formulario-credito">
+                  <Button className="w-full justify-start bg-primary">
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Solicitar Novo Empréstimo
+                  </Button>
+                </Link>
+              )}
+              <Link to="/chat">
+                <Button variant="outline" className="w-full justify-start">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Contactar Suporte
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Info Cards */}
+          {canViewHistory() && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-success" />
+                    Empréstimos Concluídos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">1</p>
+                  <p className="text-sm text-muted-foreground">Parabéns por completar seu empréstimo!</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                    Score de Crédito
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold text-success">Excelente</p>
+                  <Progress value={90} className="mt-2" />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
+    <div className="min-h-screen bg-gradient-subtle p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-gradient-primary rounded-2xl p-6 text-white shadow-primary">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-primary rounded-2xl p-4 md:p-6 text-white shadow-primary">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Olá, João Silva</h1>
-              <p className="text-white/80 text-lg">Seu portal de microcrédito</p>
+              <h1 className="text-2xl md:text-3xl font-bold">Olá, {user?.name || 'Cliente'}</h1>
+              <p className="text-white/80 text-sm md:text-lg">Seu portal de microcrédito</p>
             </div>
-            <div className="text-right">
+            <div className="text-left md:text-right">
+              <Badge className="bg-success/80 text-white mb-1">Empréstimo Ativo</Badge>
               <p className="text-sm text-white/80">Membro desde</p>
-              <p className="text-xl font-semibold">Janeiro 2023</p>
+              <p className="text-lg md:text-xl font-semibold">Janeiro 2023</p>
             </div>
           </div>
         </div>

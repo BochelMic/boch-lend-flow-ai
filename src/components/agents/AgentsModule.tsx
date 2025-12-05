@@ -1,16 +1,154 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { UserCheck, Plus, Target, DollarSign, TrendingUp, MapPin } from 'lucide-react';
+import { UserCheck, Plus, Target, DollarSign, TrendingUp, MapPin, Lock } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+
+interface Agent {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  zone: string;
+  clients: number;
+  activeLoans: number;
+  collections: number;
+  commission: number;
+  performance: number;
+}
 
 const AgentsModule = () => {
-  // Mock data para demonstração
-  const agents = [
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newAgent, setNewAgent] = useState({
+    name: '',
+    email: '',
+    password: '',
+    phone: '',
+    zone: ''
+  });
+
+  // Verificar se é o gestor principal (primeiro gestor cadastrado)
+  const isPrimaryManager = () => {
+    if (user?.role !== 'gestor') return false;
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const gestores = users.filter((u: any) => u.role === 'gestor');
+    return gestores.length > 0 && gestores[0].id === user.id;
+  };
+
+  useEffect(() => {
+    loadAgents();
+  }, []);
+
+  const loadAgents = () => {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const agentUsers = users.filter((u: any) => u.role === 'agente');
+    const agentData = JSON.parse(localStorage.getItem('agents_data') || '[]');
+    
+    const agentsList = agentUsers.map((u: any) => {
+      const data = agentData.find((a: any) => a.userId === u.id) || {};
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: data.phone || '',
+        zone: data.zone || 'Não atribuída',
+        clients: data.clients || 0,
+        activeLoans: data.activeLoans || 0,
+        collections: data.collections || 0,
+        commission: data.commission || 0,
+        performance: data.performance || 0
+      };
+    });
+    
+    setAgents(agentsList);
+  };
+
+  const handleCreateAgent = () => {
+    if (!isPrimaryManager()) {
+      toast({
+        title: "Acesso Negado",
+        description: "Apenas o gestor principal pode cadastrar novos agentes.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!newAgent.name || !newAgent.email || !newAgent.password) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const existingUser = users.find((u: any) => u.email === newAgent.email);
+    
+    if (existingUser) {
+      toast({
+        title: "Erro",
+        description: "Já existe um usuário com este email.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newUser = {
+      id: Date.now().toString(),
+      name: newAgent.name,
+      email: newAgent.email,
+      password: newAgent.password,
+      role: 'agente',
+      permissions: ['clientes', 'emprestimos', 'cobrancas', 'pagamentos']
+    };
+
+    users.push(newUser);
+    localStorage.setItem('users', JSON.stringify(users));
+
+    // Salvar dados extras do agente
+    const agentData = JSON.parse(localStorage.getItem('agents_data') || '[]');
+    agentData.push({
+      userId: newUser.id,
+      phone: newAgent.phone,
+      zone: newAgent.zone,
+      clients: 0,
+      activeLoans: 0,
+      collections: 0,
+      commission: 0,
+      performance: 0
+    });
+    localStorage.setItem('agents_data', JSON.stringify(agentData));
+
+    toast({
+      title: "Sucesso",
+      description: "Agente cadastrado com sucesso!",
+    });
+
+    setNewAgent({ name: '', email: '', password: '', phone: '', zone: '' });
+    setIsDialogOpen(false);
+    loadAgents();
+  };
+
+  // Mock data se não houver agentes
+  const displayAgents = agents.length > 0 ? agents : [
     {
       id: 1,
       name: 'Carlos Silva',
@@ -45,20 +183,87 @@ const AgentsModule = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Gestão de Agentes</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Gestão de Agentes</h1>
+          <p className="text-muted-foreground text-sm md:text-base">
             Gerencie agentes de campo e acompanhe desempenho
           </p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Agente
-        </Button>
+        
+        {isPrimaryManager() ? (
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Novo Agente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Cadastrar Novo Agente</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados para criar uma conta de agente
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Nome Completo *</Label>
+                  <Input
+                    value={newAgent.name}
+                    onChange={(e) => setNewAgent({...newAgent, name: e.target.value})}
+                    placeholder="Nome do agente"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Email *</Label>
+                  <Input
+                    type="email"
+                    value={newAgent.email}
+                    onChange={(e) => setNewAgent({...newAgent, email: e.target.value})}
+                    placeholder="email@exemplo.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Senha *</Label>
+                  <Input
+                    type="password"
+                    value={newAgent.password}
+                    onChange={(e) => setNewAgent({...newAgent, password: e.target.value})}
+                    placeholder="Senha de acesso"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Telefone</Label>
+                  <Input
+                    value={newAgent.phone}
+                    onChange={(e) => setNewAgent({...newAgent, phone: e.target.value})}
+                    placeholder="+258 84 xxx xxxx"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Zona de Atuação</Label>
+                  <Input
+                    value={newAgent.zone}
+                    onChange={(e) => setNewAgent({...newAgent, zone: e.target.value})}
+                    placeholder="Ex: Maputo Centro"
+                  />
+                </div>
+                <Button onClick={handleCreateAgent} className="w-full">
+                  Cadastrar Agente
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <Button disabled variant="outline">
+            <Lock className="mr-2 h-4 w-4" />
+            Apenas Gestor Principal
+          </Button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -123,7 +328,7 @@ const AgentsModule = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {agents.map((agent) => (
+                {displayAgents.map((agent) => (
                   <div key={agent.id} className="border rounded-lg p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
@@ -142,7 +347,7 @@ const AgentsModule = () => {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-4 gap-4 text-sm">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
                         <p className="text-muted-foreground">Clientes</p>
                         <p className="font-medium">{agent.clients}</p>
@@ -188,7 +393,7 @@ const AgentsModule = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {agents.sort((a, b) => b.performance - a.performance).map((agent, index) => (
+                  {displayAgents.sort((a, b) => b.performance - a.performance).map((agent, index) => (
                     <div key={agent.id} className="flex items-center justify-between p-3 border rounded">
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-lg">{index + 1}</span>
@@ -217,7 +422,7 @@ const AgentsModule = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {agents.map((agent) => (
+                  {displayAgents.map((agent) => (
                     <div key={agent.id} className="space-y-2">
                       <div className="flex justify-between">
                         <span className="text-sm font-medium">{agent.name}</span>
@@ -275,7 +480,7 @@ const AgentsModule = () => {
 
                 <div className="border-t pt-4">
                   <div className="space-y-3">
-                    {agents.map((agent) => (
+                    {displayAgents.map((agent) => (
                       <div key={agent.id} className="flex items-center justify-between p-3 border rounded">
                         <div>
                           <p className="font-medium">{agent.name}</p>
