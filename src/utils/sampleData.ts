@@ -149,7 +149,9 @@ export const clearSampleData = () => {
     'contracts',
     'collections',
     'expenses',
-    'reports'
+    'reports',
+    'chat_messages',
+    'agents_data'
   ];
   
   dataKeys.forEach(key => {

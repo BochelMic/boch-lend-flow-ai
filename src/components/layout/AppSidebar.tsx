@@ -10,6 +10,7 @@ import {
   FormInput,
   UserCheck,
   FileText,
+  MessageCircle,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -32,6 +33,8 @@ export function AppSidebar() {
   const currentPath = location.pathname;
 
   const getNavigation = () => {
+    const chatItem = { name: 'Chat', href: '/chat', icon: MessageCircle, permission: 'chat' };
+    
     if (user?.role === 'gestor') {
       return [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'all' },
@@ -43,6 +46,7 @@ export function AppSidebar() {
         { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'all' },
         { name: 'Agentes', href: '/agentes', icon: UserCheck, permission: 'all' },
         { name: 'Relatórios', href: '/reports', icon: BarChart3, permission: 'all' },
+        chatItem,
         { name: 'Configurações', href: '/settings', icon: Settings, permission: 'all' },
       ];
     } else if (user?.role === 'agente') {
@@ -53,13 +57,15 @@ export function AppSidebar() {
         { name: 'Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
         { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'emprestimos' },
         { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'cobrancas' },
+        chatItem,
       ];
     } else if (user?.role === 'cliente') {
       return [
-        { name: 'Conta', href: '/conta', icon: Users, permission: 'conta' },
+        { name: 'Minha Conta', href: '/dashboard-cliente', icon: LayoutDashboard, permission: 'conta' },
         { name: 'Histórico', href: '/historico', icon: FileText, permission: 'historico' },
-        { name: 'Pedidos', href: '/pedidos', icon: FormInput, permission: 'pedidos' },
+        { name: 'Meus Pedidos', href: '/pedidos', icon: FormInput, permission: 'pedidos' },
         { name: 'Novo Crédito', href: '/credit-form', icon: Calculator, permission: 'pedidos' },
+        chatItem,
       ];
     }
     return [];
@@ -97,7 +103,8 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((item) => {
-                if (!hasPermission(item.permission)) return null;
+                // Chat é permitido para todos os usuários autenticados
+                if (item.permission !== 'chat' && !hasPermission(item.permission)) return null;
                 
                 const isActive = currentPath.startsWith(item.href);
                 
