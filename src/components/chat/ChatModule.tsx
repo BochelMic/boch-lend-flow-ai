@@ -150,17 +150,17 @@ const ChatModule = () => {
   };
 
   return (
-    <div className="container mx-auto p-4 md:p-6">
-      <div className="flex items-center gap-2 mb-6">
-        <MessageCircle className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl md:text-3xl font-bold">Chat Interno</h1>
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <MessageCircle className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+        <h1 className="text-xl md:text-3xl font-bold">Chat Interno</h1>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 h-[calc(100vh-200px)]">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-180px)] md:h-[calc(100vh-200px)]">
         {/* Lista de Contatos */}
-        <Card className="md:col-span-1 flex flex-col">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg">Contatos</CardTitle>
+        <Card className={`lg:col-span-1 flex flex-col ${selectedContact ? 'hidden lg:flex' : 'flex'}`}>
+          <CardHeader className="p-3 md:p-4 pb-2">
+            <CardTitle className="text-base md:text-lg">Contatos</CardTitle>
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -175,7 +175,7 @@ const ChatModule = () => {
             <ScrollArea className="h-full">
               <div className="space-y-2">
                 {filteredContacts.length === 0 ? (
-                  <p className="text-center text-muted-foreground p-4">
+                  <p className="text-center text-muted-foreground p-4 text-sm">
                     Nenhum contato encontrado
                   </p>
                 ) : (
@@ -183,19 +183,19 @@ const ChatModule = () => {
                     <div
                       key={contact.id}
                       onClick={() => setSelectedContact(contact)}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      className={`p-2 md:p-3 rounded-lg cursor-pointer transition-colors ${
                         selectedContact?.id === contact.id
                           ? 'bg-primary/10 border border-primary'
                           : 'hover:bg-muted'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                          <User className="h-5 w-5 text-primary" />
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                          <User className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium truncate">{contact.name}</span>
+                            <span className="font-medium truncate text-sm md:text-base">{contact.name}</span>
                             {contact.unreadCount > 0 && (
                               <Badge variant="destructive" className="text-xs">
                                 {contact.unreadCount}
@@ -221,23 +221,31 @@ const ChatModule = () => {
         </Card>
 
         {/* Área de Chat */}
-        <Card className="md:col-span-2 flex flex-col">
+        <Card className={`lg:col-span-2 flex flex-col ${selectedContact ? 'flex' : 'hidden lg:flex'}`}>
           {selectedContact ? (
             <>
-              <CardHeader className="border-b pb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary" />
+              <CardHeader className="border-b p-3 md:p-4">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="lg:hidden"
+                    onClick={() => setSelectedContact(null)}
+                  >
+                    ←
+                  </Button>
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <User className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                   </div>
                   <div>
-                    <CardTitle className="text-lg">{selectedContact.name}</CardTitle>
+                    <CardTitle className="text-base md:text-lg">{selectedContact.name}</CardTitle>
                     {getRoleBadge(selectedContact.role)}
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="flex-1 overflow-hidden p-0">
-                <ScrollArea className="h-[calc(100vh-400px)] p-4">
-                  <div className="space-y-4">
+                <ScrollArea className="h-[calc(100vh-350px)] md:h-[calc(100vh-380px)] p-3 md:p-4">
+                  <div className="space-y-3 md:space-y-4">
                     {messages.map((message) => (
                       <div
                         key={message.id}
@@ -246,7 +254,7 @@ const ChatModule = () => {
                         }`}
                       >
                         <div
-                          className={`max-w-[80%] rounded-lg p-3 ${
+                          className={`max-w-[85%] md:max-w-[80%] rounded-lg p-2 md:p-3 ${
                             message.senderId === user?.id
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted'
@@ -269,7 +277,7 @@ const ChatModule = () => {
                   </div>
                 </ScrollArea>
               </CardContent>
-              <div className="border-t p-4">
+              <div className="border-t p-3 md:p-4">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Digite sua mensagem..."
@@ -286,9 +294,9 @@ const ChatModule = () => {
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Selecione um contato para iniciar uma conversa</p>
+              <div className="text-center p-4">
+                <MessageCircle className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-sm md:text-base">Selecione um contato para iniciar uma conversa</p>
               </div>
             </div>
           )}

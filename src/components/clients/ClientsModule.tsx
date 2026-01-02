@@ -24,49 +24,49 @@ const ClientsModule = () => {
   });
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-xl md:text-3xl font-bold tracking-tight">
             {user?.role === 'gestor' ? 'Gestão de Clientes' : 'Meus Clientes'}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Gerencie informações e histórico dos clientes
           </p>
         </div>
-        <Button>
+        <Button className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Novo Cliente
         </Button>
       </div>
 
-      <Tabs defaultValue="list" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="list">Lista de Clientes</TabsTrigger>
-          <TabsTrigger value="add">Adicionar Cliente</TabsTrigger>
-          <TabsTrigger value="import">Importar Dados</TabsTrigger>
+      <Tabs defaultValue="list" className="space-y-4 md:space-y-6">
+        <TabsList className="w-full grid grid-cols-3">
+          <TabsTrigger value="list" className="text-xs md:text-sm">Lista</TabsTrigger>
+          <TabsTrigger value="add" className="text-xs md:text-sm">Adicionar</TabsTrigger>
+          <TabsTrigger value="import" className="text-xs md:text-sm">Importar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4">
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
+            <CardHeader className="p-4 md:p-6">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <CardTitle className="flex items-center gap-2 text-base md:text-lg">
+                  <Users className="h-4 w-4 md:h-5 md:w-5" />
                   Clientes Cadastrados
                 </CardTitle>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <Search className="h-4 w-4" />
+                    <Search className="h-4 w-4 text-muted-foreground" />
                     <Input
-                      placeholder="Pesquisar cliente..."
+                      placeholder="Pesquisar..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-64"
+                      className="w-full sm:w-48 md:w-64"
                     />
                   </div>
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
-                    <SelectTrigger className="w-40">
+                    <SelectTrigger className="w-full sm:w-32 md:w-40">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -79,49 +79,50 @@ const ClientsModule = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {filteredClients.map((client) => (
-                  <div key={client.id} className="border rounded-lg p-4 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{client.name}</h3>
-                        <p className="text-sm text-muted-foreground">{client.email}</p>
-                        <p className="text-sm text-muted-foreground">{client.phone}</p>
-                      </div>
-                      <div className="text-right space-y-1">
-                        <div className="flex items-center gap-2">
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="space-y-3">
+                {filteredClients.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="mx-auto h-12 w-12 opacity-50 mb-2" />
+                    <p>Nenhum cliente cadastrado</p>
+                  </div>
+                ) : (
+                  filteredClients.map((client) => (
+                    <div key={client.id} className="border border-border rounded-lg p-3 md:p-4 space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold truncate">{client.name}</h3>
+                          <p className="text-sm text-muted-foreground truncate">{client.email}</p>
+                          <p className="text-sm text-muted-foreground">{client.phone}</p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className={`px-2 py-1 rounded-full text-xs ${
-                            client.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            client.status === 'ativo' ? 'bg-success/20 text-success' : 'bg-destructive/20 text-destructive'
                           }`}>
                             {client.status}
                           </span>
-                          <span className="text-sm text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             Score: {client.creditScore}
                           </span>
                         </div>
-                        <div className="text-sm">
-                          <span>Empréstimos: {client.totalLoans}</span>
-                          <span className="ml-4">Dívida: {client.totalDebt.toLocaleString()} MZN</span>
-                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" className="text-xs">
+                          <FileText className="mr-1 h-3 w-3" />
+                          Perfil
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs">
+                          <CreditCard className="mr-1 h-3 w-3" />
+                          Histórico
+                        </Button>
+                        <Button variant="outline" size="sm" className="text-xs">
+                          <Plus className="mr-1 h-3 w-3" />
+                          Empréstimo
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm">
-                        <FileText className="mr-1 h-3 w-3" />
-                        Ver Perfil
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <CreditCard className="mr-1 h-3 w-3" />
-                        Histórico
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        <Plus className="mr-1 h-3 w-3" />
-                        Novo Empréstimo
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -129,45 +130,45 @@ const ClientsModule = () => {
 
         <TabsContent value="add">
           <Card>
-            <CardHeader>
-              <CardTitle>Cadastrar Novo Cliente</CardTitle>
-              <CardDescription>
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="text-base md:text-lg">Cadastrar Novo Cliente</CardTitle>
+              <CardDescription className="text-xs md:text-sm">
                 Preencha os dados completos do cliente
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-4 md:p-6 pt-0">
               <form className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nome Completo</Label>
+                    <Label htmlFor="name" className="text-sm">Nome Completo</Label>
                     <Input id="name" placeholder="Nome do cliente" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email" className="text-sm">Email</Label>
                     <Input id="email" type="email" placeholder="email@exemplo.com" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone</Label>
+                    <Label htmlFor="phone" className="text-sm">Telefone</Label>
                     <Input id="phone" placeholder="+258 84 000 0000" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="document">Documento (BI)</Label>
+                    <Label htmlFor="document" className="text-sm">Documento (BI)</Label>
                     <Input id="document" placeholder="Número do BI" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="address">Endereço</Label>
+                    <Label htmlFor="address" className="text-sm">Endereço</Label>
                     <Input id="address" placeholder="Endereço completo" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="occupation">Profissão</Label>
+                    <Label htmlFor="occupation" className="text-sm">Profissão</Label>
                     <Input id="occupation" placeholder="Profissão do cliente" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="income">Renda Mensal</Label>
+                    <Label htmlFor="income" className="text-sm">Renda Mensal</Label>
                     <Input id="income" type="number" placeholder="Renda em MZN" />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="zone">Zona de Atendimento</Label>
+                    <Label htmlFor="zone" className="text-sm">Zona de Atendimento</Label>
                     <Select>
                       <SelectTrigger>
                         <SelectValue placeholder="Selecionar zona" />
@@ -190,16 +191,16 @@ const ClientsModule = () => {
 
         <TabsContent value="import">
           <Card>
-            <CardHeader>
-              <CardTitle>Importar Dados de Clientes</CardTitle>
-              <CardDescription>
+            <CardHeader className="p-4 md:p-6">
+              <CardTitle className="text-base md:text-lg">Importar Dados de Clientes</CardTitle>
+              <CardDescription className="text-xs md:text-sm">
                 Faça upload de uma planilha Excel com dados dos clientes
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                <FileText className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-sm text-gray-600">
+            <CardContent className="p-4 md:p-6 pt-0">
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                <FileText className="mx-auto h-10 w-10 md:h-12 md:w-12 text-muted-foreground" />
+                <p className="mt-2 text-xs md:text-sm text-muted-foreground">
                   Arraste um arquivo Excel aqui ou clique para selecionar
                 </p>
                 <Button variant="outline" className="mt-4">
