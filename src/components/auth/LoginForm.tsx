@@ -5,12 +5,10 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
-import RegisterForm from './RegisterForm';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showRegister, setShowRegister] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
 
@@ -31,11 +29,6 @@ const LoginForm = () => {
       });
     }
   };
-
-
-  if (showRegister) {
-    return <RegisterForm onSwitchToLogin={() => setShowRegister(false)} />;
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-subtle py-12 px-4 sm:px-6 lg:px-8">
@@ -83,24 +76,6 @@ const LoginForm = () => {
             </Button>
           </form>
           
-          <div className="space-y-4">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-muted" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Ou</span>
-              </div>
-            </div>
-            
-            <Button 
-              variant="outline" 
-              onClick={() => setShowRegister(true)}
-              className="w-full h-12"
-            >
-              Criar Nova Conta
-            </Button>
-          </div>
 
 
         </CardContent>
