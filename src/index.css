@@ -4,167 +4,167 @@
 
 @layer base {
   :root {
-    /* Modern Mozambique-inspired color palette */
-    --background: 0 0% 98%;
-    --foreground: 220 15% 12%;
+    /* Paleta escura - Verde escuro, Preto e Vinho escuro */
+    --background: 160 25% 8%;
+    --foreground: 0 0% 95%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 220 15% 12%;
+    --card: 160 20% 12%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 12%;
+    --popover: 160 20% 10%;
+    --popover-foreground: 0 0% 95%;
 
-    /* Primary - Verde de folha de mangueira (Mango leaf green) */
-    --primary: 150 85% 35%;
+    /* Primary - Verde escuro profundo (folha de mangueira escura) */
+    --primary: 155 65% 25%;
     --primary-foreground: 0 0% 98%;
-    --primary-light: 150 75% 45%;
-    --primary-dark: 150 90% 28%;
+    --primary-light: 155 55% 35%;
+    --primary-dark: 155 70% 18%;
 
-    /* Secondary - Cor de vinho (Wine color) */
-    --secondary: 345 78% 32%;
+    /* Secondary - Vinho escuro (Burgundy/Wine dark) */
+    --secondary: 345 65% 25%;
     --secondary-foreground: 0 0% 98%;
-    --secondary-light: 345 68% 42%;
+    --secondary-light: 345 55% 35%;
 
-    /* Accent - Azul do céu (Sky blue) */
-    --accent: 200 85% 55%;
+    /* Accent - Verde mais claro para contraste */
+    --accent: 155 50% 40%;
     --accent-foreground: 0 0% 98%;
-    --accent-light: 200 75% 65%;
+    --accent-light: 155 45% 50%;
 
-    /* Orange */
-    --orange: 30 95% 55%;
+    /* Orange para alertas */
+    --orange: 25 85% 50%;
     --orange-foreground: 0 0% 98%;
 
     /* Vermelho (Red) */
-    --red: 0 85% 58%;
+    --red: 0 70% 45%;
     --red-foreground: 0 0% 98%;
 
-    /* Cinza (Gray) */
-    --muted: 220 8% 96%;
-    --muted-foreground: 220 12% 46%;
+    /* Cinza escuro (Dark Gray) */
+    --muted: 160 15% 18%;
+    --muted-foreground: 160 10% 60%;
 
-    /* Destructive - Vermelho */
-    --destructive: 0 85% 58%;
+    /* Destructive - Vermelho escuro */
+    --destructive: 0 65% 40%;
     --destructive-foreground: 0 0% 98%;
 
-    /* Border and inputs */
-    --border: 220 10% 88%;
-    --input: 220 10% 88%;
-    --ring: 150 85% 35%;
+    /* Border and inputs - tons escuros */
+    --border: 160 15% 22%;
+    --input: 160 15% 22%;
+    --ring: 155 65% 25%;
 
-    /* Success - Verde de folha */
-    --success: 150 85% 35%;
+    /* Success - Verde */
+    --success: 155 65% 30%;
     --success-foreground: 0 0% 98%;
 
     /* Warning - Laranja */
-    --warning: 30 95% 55%;
-    --warning-foreground: 0 0% 12%;
+    --warning: 30 80% 50%;
+    --warning-foreground: 0 0% 8%;
 
-    /* Info - Azul do céu */
-    --info: 200 85% 55%;
+    /* Info - Verde claro */
+    --info: 155 50% 40%;
     --info-foreground: 0 0% 98%;
 
     --radius: 0.75rem;
 
-    /* Sidebar - Tema verde mangueira */
-    --sidebar-background: 150 15% 97%;
-    --sidebar-foreground: 220 15% 15%;
-    --sidebar-primary: 150 85% 35%;
+    /* Sidebar - Tema verde/preto escuro */
+    --sidebar-background: 160 30% 6%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 155 65% 30%;
     --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 150 12% 92%;
-    --sidebar-accent-foreground: 220 15% 15%;
-    --sidebar-border: 150 15% 85%;
-    --sidebar-ring: 150 85% 35%;
+    --sidebar-accent: 160 20% 15%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 160 20% 18%;
+    --sidebar-ring: 155 65% 25%;
 
-    /* Gradients - Cores moçambicanas */
-    --gradient-primary: linear-gradient(135deg, hsl(150 85% 35%), hsl(150 75% 45%));
-    --gradient-secondary: linear-gradient(135deg, hsl(345 78% 32%), hsl(345 68% 42%));
-    --gradient-accent: linear-gradient(135deg, hsl(200 85% 55%), hsl(200 75% 65%));
-    --gradient-subtle: linear-gradient(180deg, hsl(0 0% 98%), hsl(220 8% 96%));
+    /* Gradients - Verde escuro e vinho */
+    --gradient-primary: linear-gradient(135deg, hsl(155 65% 25%), hsl(155 55% 35%));
+    --gradient-secondary: linear-gradient(135deg, hsl(345 65% 25%), hsl(345 55% 35%));
+    --gradient-accent: linear-gradient(135deg, hsl(155 50% 40%), hsl(155 45% 50%));
+    --gradient-subtle: linear-gradient(180deg, hsl(160 25% 8%), hsl(160 20% 12%));
 
-    /* Shadows - Sombras profissionais */
-    --shadow-soft: 0 2px 4px -1px hsl(220 15% 12% / 0.1);
-    --shadow-medium: 0 4px 6px -1px hsl(220 15% 12% / 0.1), 0 2px 4px -1px hsl(220 15% 12% / 0.06);
-    --shadow-large: 0 10px 15px -3px hsl(220 15% 12% / 0.1), 0 4px 6px -2px hsl(220 15% 12% / 0.05);
-    --shadow-primary: 0 4px 14px 0 hsl(150 85% 35% / 0.25);
+    /* Shadows - Sombras escuras */
+    --shadow-soft: 0 2px 4px -1px hsl(0 0% 0% / 0.3);
+    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.4), 0 2px 4px -1px hsl(0 0% 0% / 0.25);
+    --shadow-large: 0 10px 15px -3px hsl(0 0% 0% / 0.4), 0 4px 6px -2px hsl(0 0% 0% / 0.25);
+    --shadow-primary: 0 4px 14px 0 hsl(155 65% 25% / 0.4);
   }
 
   .dark {
-    /* Dark mode - Modern and professional */
-    --background: 240 10% 8%;
+    /* Dark mode - Ainda mais escuro */
+    --background: 160 30% 5%;
     --foreground: 0 0% 95%;
 
-    --card: 240 10% 10%;
+    --card: 160 25% 8%;
     --card-foreground: 0 0% 95%;
 
-    --popover: 240 10% 10%;
+    --popover: 160 25% 7%;
     --popover-foreground: 0 0% 95%;
 
-    /* Primary - Bright Green for dark mode */
-    --primary: 155 70% 45%;
-    --primary-foreground: 240 10% 8%;
-    --primary-light: 155 65% 55%;
-    --primary-dark: 155 75% 35%;
+    /* Primary - Verde escuro */
+    --primary: 155 60% 28%;
+    --primary-foreground: 0 0% 98%;
+    --primary-light: 155 50% 38%;
+    --primary-dark: 155 65% 20%;
 
-    /* Secondary - Wine/Burgundy for dark mode */
-    --secondary: 342 70% 45%;
-    --secondary-foreground: 240 10% 8%;
-    --secondary-light: 342 65% 55%;
+    /* Secondary - Vinho escuro */
+    --secondary: 345 60% 28%;
+    --secondary-foreground: 0 0% 98%;
+    --secondary-light: 345 50% 38%;
 
-    /* Accent - Blue for dark mode */
-    --accent: 217 80% 60%;
-    --accent-foreground: 240 10% 8%;
-    --accent-light: 217 75% 70%;
+    /* Accent - Verde para contraste */
+    --accent: 155 45% 42%;
+    --accent-foreground: 0 0% 98%;
+    --accent-light: 155 40% 52%;
 
     /* Orange accent */
-    --orange: 25 90% 60%;
-    --orange-foreground: 240 10% 8%;
+    --orange: 25 80% 52%;
+    --orange-foreground: 0 0% 98%;
 
-    /* Muted - Dark gray */
-    --muted: 240 8% 15%;
-    --muted-foreground: 240 5% 65%;
+    /* Muted - Cinza muito escuro */
+    --muted: 160 18% 12%;
+    --muted-foreground: 160 8% 55%;
 
     /* Destructive */
-    --destructive: 0 75% 55%;
+    --destructive: 0 60% 42%;
     --destructive-foreground: 0 0% 95%;
 
     /* Border and inputs */
-    --border: 240 8% 20%;
-    --input: 240 8% 20%;
-    --ring: 155 70% 45%;
+    --border: 160 18% 18%;
+    --input: 160 18% 18%;
+    --ring: 155 60% 28%;
 
     /* Success */
-    --success: 142 70% 45%;
-    --success-foreground: 240 10% 8%;
+    --success: 155 60% 32%;
+    --success-foreground: 0 0% 98%;
 
     /* Warning */
-    --warning: 38 85% 55%;
-    --warning-foreground: 240 10% 8%;
+    --warning: 35 75% 52%;
+    --warning-foreground: 0 0% 8%;
 
     /* Info */
-    --info: 217 80% 60%;
-    --info-foreground: 240 10% 8%;
+    --info: 155 45% 42%;
+    --info-foreground: 0 0% 98%;
 
-    /* Sidebar - Dark theme */
-    --sidebar-background: 240 10% 8%;
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 155 70% 45%;
-    --sidebar-primary-foreground: 240 10% 8%;
-    --sidebar-accent: 240 8% 15%;
-    --sidebar-accent-foreground: 0 0% 90%;
-    --sidebar-border: 240 8% 20%;
-    --sidebar-ring: 155 70% 45%;
+    /* Sidebar - Muito escuro */
+    --sidebar-background: 160 35% 4%;
+    --sidebar-foreground: 0 0% 88%;
+    --sidebar-primary: 155 60% 32%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 160 22% 10%;
+    --sidebar-accent-foreground: 0 0% 88%;
+    --sidebar-border: 160 22% 15%;
+    --sidebar-ring: 155 60% 28%;
 
     /* Dark gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(155 70% 45%), hsl(155 65% 55%));
-    --gradient-secondary: linear-gradient(135deg, hsl(342 70% 45%), hsl(342 65% 55%));
-    --gradient-accent: linear-gradient(135deg, hsl(217 80% 60%), hsl(217 75% 70%));
-    --gradient-subtle: linear-gradient(180deg, hsl(240 10% 8%), hsl(240 8% 15%));
+    --gradient-primary: linear-gradient(135deg, hsl(155 60% 28%), hsl(155 50% 38%));
+    --gradient-secondary: linear-gradient(135deg, hsl(345 60% 28%), hsl(345 50% 38%));
+    --gradient-accent: linear-gradient(135deg, hsl(155 45% 42%), hsl(155 40% 52%));
+    --gradient-subtle: linear-gradient(180deg, hsl(160 30% 5%), hsl(160 25% 8%));
 
     /* Dark shadows */
-    --shadow-soft: 0 2px 4px -1px hsl(0 0% 0% / 0.3);
-    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -1px hsl(0 0% 0% / 0.2);
-    --shadow-large: 0 10px 15px -3px hsl(0 0% 0% / 0.3), 0 4px 6px -2px hsl(0 0% 0% / 0.2);
-    --shadow-primary: 0 4px 14px 0 hsl(155 70% 45% / 0.4);
+    --shadow-soft: 0 2px 4px -1px hsl(0 0% 0% / 0.5);
+    --shadow-medium: 0 4px 6px -1px hsl(0 0% 0% / 0.5), 0 2px 4px -1px hsl(0 0% 0% / 0.35);
+    --shadow-large: 0 10px 15px -3px hsl(0 0% 0% / 0.5), 0 4px 6px -2px hsl(0 0% 0% / 0.35);
+    --shadow-primary: 0 4px 14px 0 hsl(155 60% 28% / 0.5);
   }
 }
 
