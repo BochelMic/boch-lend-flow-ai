@@ -21,6 +21,20 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Criar usuário gestor padrão se não existir nenhum usuário
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    if (users.length === 0) {
+      const defaultGestor = {
+        id: '1',
+        name: 'Administrador',
+        email: 'admin@bochel.com',
+        password: 'admin123',
+        role: 'gestor',
+        permissions: ['all']
+      };
+      localStorage.setItem('users', JSON.stringify([defaultGestor]));
+    }
+
     // Verificar se há usuário logado no localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
