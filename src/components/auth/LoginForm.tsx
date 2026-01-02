@@ -6,9 +6,6 @@ import { Label } from '../ui/label';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import RegisterForm from './RegisterForm';
-import { clearAllTestData } from '../../utils/clearData';
-import { loadSampleData, clearSampleData } from '../../utils/sampleData';
-import { Trash2, Download, X } from 'lucide-react';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
@@ -35,44 +32,6 @@ const LoginForm = () => {
     }
   };
 
-  const handleClearAllData = () => {
-    if (window.confirm('⚠️ Tem certeza que deseja apagar TODOS os dados de teste? Esta ação não pode ser desfeita e você precisará criar novos usuários.')) {
-      clearAllTestData();
-      toast({
-        title: "Dados apagados",
-        description: "Todos os dados de teste foram removidos.",
-      });
-      window.location.reload();
-    }
-  };
-
-  const handleLoadSampleData = () => {
-    const result = loadSampleData();
-    if (result.success) {
-      toast({
-        title: "Sucesso",
-        description: result.message,
-      });
-      window.location.reload();
-    } else {
-      toast({
-        title: "Aviso",
-        description: result.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleClearSampleData = () => {
-    if (window.confirm('Deseja remover todos os dados de exemplo (clientes, empréstimos, pagamentos)?')) {
-      const result = clearSampleData();
-      toast({
-        title: "Sucesso",
-        description: result.message,
-      });
-      window.location.reload();
-    }
-  };
 
   if (showRegister) {
     return <RegisterForm onSwitchToLogin={() => setShowRegister(false)} />;
@@ -143,37 +102,6 @@ const LoginForm = () => {
             </Button>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-border space-y-2">
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleLoadSampleData}
-                className="flex-1 text-xs"
-              >
-                <Download className="h-3 w-3 mr-1" />
-                Carregar dados exemplo
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleClearSampleData}
-                className="flex-1 text-xs"
-              >
-                <X className="h-3 w-3 mr-1" />
-                Apagar dados exemplo
-              </Button>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClearAllData}
-              className="w-full text-xs text-muted-foreground hover:text-destructive"
-            >
-              <Trash2 className="h-3 w-3 mr-2" />
-              Apagar TUDO (reset completo)
-            </Button>
-          </div>
 
         </CardContent>
       </Card>
