@@ -185,56 +185,6 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Status de empréstimos e comunicações */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Empréstimos Ativos</p>
-                <p className="text-xl font-bold text-green-600">{loanStats.activeLoans}</p>
-              </div>
-              <CheckCircle className="h-6 w-6 text-green-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Pendentes</p>
-                <p className="text-xl font-bold text-yellow-600">{loanStats.pendingLoans}</p>
-              </div>
-              <Clock className="h-6 w-6 text-yellow-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Notificações Enviadas</p>
-                <p className="text-xl font-bold text-blue-600">{loanStats.notificationsSent}</p>
-              </div>
-              <Bell className="h-6 w-6 text-blue-600" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Mensagens Recebidas</p>
-                <p className="text-xl font-bold text-purple-600">{loanStats.messagesReceived}</p>
-              </div>
-              <MessageSquare className="h-6 w-6 text-purple-600" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Gráficos e análises */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
