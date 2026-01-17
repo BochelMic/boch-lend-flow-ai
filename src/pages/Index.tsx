@@ -26,6 +26,7 @@ import ClientAccountModule from '../components/client-account/ClientAccountModul
 import ClientHistoryModule from '../components/client-history/ClientHistoryModule';
 import ClientRequestsModule from '../components/client-requests/ClientRequestsModule';
 import ChatModule from '../components/chat/ChatModule';
+import UserManagementModule from '../components/users/UserManagementModule';
 import Layout from '../components/layout/Layout';
 
 const Index = () => {
@@ -64,6 +65,7 @@ const Index = () => {
         {/* Rotas para Gestor - Acesso total */}
         {hasPermission('all') && (
           <>
+            <Route path="/usuarios/*" element={<UserManagementModule />} />
             <Route path="/credit-requests/*" element={<CreditRequestManager />} />
             <Route path="/admin/*" element={<AdminModule />} />
             <Route path="/clientes/*" element={<ClientsModule />} />
@@ -79,7 +81,6 @@ const Index = () => {
             <Route path="/credit-form/*" element={<CreditFormModule />} />
           </>
         )}
-        
         {/* Rotas para Agente - Acesso limitado */}
         {hasPermission('clientes') && !hasPermission('all') && (
           <>

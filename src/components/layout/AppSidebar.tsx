@@ -11,6 +11,7 @@ import {
   UserCheck,
   FileText,
   MessageCircle,
+  UserPlus,
 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import {
@@ -38,6 +39,7 @@ export function AppSidebar() {
     if (user?.role === 'gestor') {
       return [
         { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'all' },
+        { name: 'Usuários', href: '/usuarios', icon: UserPlus, permission: 'all' },
         { name: 'Pedidos', href: '/credit-requests', icon: FormInput, permission: 'all' },
         { name: 'Clientes', href: '/clientes', icon: Users, permission: 'all' },
         { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'all' },
