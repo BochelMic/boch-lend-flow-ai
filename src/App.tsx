@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -12,20 +11,18 @@ import PublicCreditForm from "./pages/PublicCreditForm";
 const queryClient = new QueryClient();
 
 const App = () => (
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/formulario-credito" element={<PublicCreditForm />} />
-          <Route path="/*" element={<Index />} />
-          <Route path="/404" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-      <Toaster />
-      <Sonner />
-      <InstallPWA />
-    </QueryClientProvider>
-  </React.StrictMode>
+  <QueryClientProvider client={queryClient}>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/formulario-credito" element={<PublicCreditForm />} />
+        <Route path="/*" element={<Index />} />
+        <Route path="/404" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+    <Toaster />
+    <Sonner />
+    <InstallPWA />
+  </QueryClientProvider>
 );
 
 export default App;
