@@ -76,34 +76,33 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border p-4">
+      <SidebarHeader className="border-b border-sidebar-border p-2 md:p-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
-            <span className="text-sm font-bold text-white">B</span>
+          <div className="w-7 h-7 md:w-8 md:h-8 bg-gradient-primary rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-xs md:text-sm font-bold text-white">B</span>
           </div>
           {!isCollapsed && (
             <div className="flex flex-col">
-              <h1 className="text-sm font-bold text-sidebar-foreground">BOCHEL</h1>
-              <p className="text-xs text-sidebar-foreground/70">Microcrédito</p>
+              <h1 className="text-xs md:text-sm font-bold text-sidebar-foreground">BOCHEL</h1>
+              <p className="text-[10px] md:text-xs text-sidebar-foreground/70">Microcrédito</p>
             </div>
           )}
         </div>
         {user && !isCollapsed && (
-          <div className="mt-2 text-xs text-sidebar-foreground/60 truncate">
+          <div className="mt-1 text-[10px] md:text-xs text-sidebar-foreground/60 truncate">
             {user.name} - {user.role === 'gestor' ? 'Gestor' : user.role === 'agente' ? 'Agente' : 'Cliente'}
           </div>
         )}
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className={isCollapsed ? 'sr-only' : ''}>
+        <SidebarGroup className="p-1 md:p-2">
+          <SidebarGroupLabel className={isCollapsed ? 'sr-only' : 'text-[10px] md:text-xs'}>
             Menu
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation.map((item) => {
-                // Chat é permitido para todos os usuários autenticados
                 if (item.permission !== 'chat' && !hasPermission(item.permission)) return null;
                 
                 const isActive = currentPath.startsWith(item.href);
@@ -114,10 +113,11 @@ export function AppSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={isCollapsed ? item.name : undefined}
+                      className="h-8 md:h-9"
                     >
-                      <Link to={item.href} className="flex items-center gap-3">
-                        <item.icon className="h-4 w-4 flex-shrink-0" />
-                        <span className={isCollapsed ? 'sr-only' : ''}>{item.name}</span>
+                      <Link to={item.href} className="flex items-center gap-2 md:gap-3">
+                        <item.icon className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
+                        <span className={`${isCollapsed ? 'sr-only' : ''} text-xs md:text-sm`}>{item.name}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

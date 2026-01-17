@@ -14,7 +14,7 @@ const Layout = ({ children }: LayoutProps) => {
         <AppSidebar />
         <SidebarInset className="flex flex-col flex-1 min-w-0">
           <Header />
-          <main className="flex-1 p-3 md:p-6 overflow-auto">
+          <main className="flex-1 p-2 md:p-4 lg:p-6 overflow-auto">
             {children}
           </main>
         </SidebarInset>
