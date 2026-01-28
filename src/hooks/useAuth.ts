@@ -51,9 +51,9 @@ export const useAuth = () => {
       const userWithoutPassword = { ...user };
       delete userWithoutPassword.password;
       
-      setUser(userWithoutPassword);
-      setIsAuthenticated(true);
       localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+      // Forçar reload para garantir que o estado seja atualizado corretamente
+      window.location.reload();
       return { success: true, message: 'Login realizado com sucesso!' };
     }
     
