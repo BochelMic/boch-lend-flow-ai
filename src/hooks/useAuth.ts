@@ -23,15 +23,33 @@ export const useAuth = () => {
     // Criar usuário gestor padrão se não existir nenhum usuário
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     if (users.length === 0) {
-      const defaultGestor = {
-        id: '1',
-        name: 'Administrador',
-        email: 'admin@bochel.com',
-        password: 'admin123',
-        role: 'gestor',
-        permissions: ['all']
-      };
-      localStorage.setItem('users', JSON.stringify([defaultGestor]));
+      const defaultUsers = [
+        {
+          id: '1',
+          name: 'Administrador',
+          email: 'admin@bochel.com',
+          password: 'admin123',
+          role: 'gestor',
+          permissions: ['all']
+        },
+        {
+          id: '2',
+          name: 'Agente de Campo',
+          email: 'agente@bochel.com',
+          password: 'agente123',
+          role: 'agente',
+          permissions: ['clientes', 'emprestimos', 'cobrancas', 'pagamentos']
+        },
+        {
+          id: '3',
+          name: 'Cliente Exemplo',
+          email: 'cliente@bochel.com',
+          password: 'cliente123',
+          role: 'cliente',
+          permissions: ['conta', 'historico', 'pedidos']
+        }
+      ];
+      localStorage.setItem('users', JSON.stringify(defaultUsers));
     }
 
     // Verificar se há usuário logado no localStorage
