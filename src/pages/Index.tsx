@@ -27,7 +27,9 @@ import ClientHistoryModule from '../components/client-history/ClientHistoryModul
 import ClientRequestsModule from '../components/client-requests/ClientRequestsModule';
 import ChatModule from '../components/chat/ChatModule';
 import UserManagementModule from '../components/users/UserManagementModule';
+import SubsystemsControl from '../components/admin/SubsystemsControl';
 import Layout from '../components/layout/Layout';
+
 
 const Index = () => {
   const { isAuthenticated, user, hasPermission } = useAuth();
@@ -79,6 +81,7 @@ const Index = () => {
             <Route path="/settings/*" element={<SettingsModule />} />
             <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
             <Route path="/credit-form/*" element={<CreditFormModule />} />
+            <Route path="/subsistemas/*" element={<SubsystemsControl />} />
           </>
         )}
         {/* Rotas para Agente - Acesso limitado */}

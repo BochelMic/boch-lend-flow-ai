@@ -16,16 +16,37 @@
     <meta name="twitter:site" content="@lovable_dev" />
     <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
     
-    <!-- PWA Configuration -->
-    <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#22c55e" />
+    <!-- PWA Configuration – manifest dinâmico por perfil via JS -->
+    <link id="pwa-manifest" rel="manifest" href="/manifest.json" />
+    <meta id="pwa-theme-color" name="theme-color" content="#22c55e" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Boch Lend" />
+    <meta id="pwa-apple-title" name="apple-mobile-web-app-title" content="Bochel" />
     <link rel="apple-touch-icon" href="/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png" />
     <link rel="icon" href="/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png" type="image/png" />
+    <script>
+      // Detectar perfil armazenado e carregar manifest correcto antes do React
+      (function() {
+        try {
+          var stored = localStorage.getItem('user');
+          if (stored) {
+            var u = JSON.parse(stored);
+            var role = u.role;
+            var manifests = { gestor: '/manifest-gestor.json', agente: '/manifest-agente.json', cliente: '/manifest-cliente.json' };
+            var themes = { gestor: '#22c55e', agente: '#3b82f6', cliente: '#a855f7' };
+            var titles = { gestor: 'Bochel Gestor', agente: 'Bochel Agente', cliente: 'Bochel Cliente' };
+            if (manifests[role]) {
+              document.getElementById('pwa-manifest').setAttribute('href', manifests[role]);
+              document.getElementById('pwa-theme-color').setAttribute('content', themes[role]);
+              document.getElementById('pwa-apple-title').setAttribute('content', titles[role]);
+              document.title = titles[role];
+            }
+          }
+        } catch(e) {}
+      })();
+    </script>
   </head>
 
   <body>
