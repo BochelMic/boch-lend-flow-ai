@@ -13,7 +13,9 @@ import {
   MessageCircle,
   UserPlus,
   LogOut,
+  Shield,
 } from 'lucide-react';
+
 import { useAuth } from '../../hooks/useAuth';
 import {
   Sidebar,
@@ -51,6 +53,7 @@ export function AppSidebar() {
         { name: 'Agentes', href: '/agentes', icon: UserCheck, permission: 'all' },
         { name: 'Relatórios', href: '/reports', icon: BarChart3, permission: 'all' },
         chatItem,
+        { name: 'Subsistemas', href: '/subsistemas', icon: Shield, permission: 'all' },
         { name: 'Configurações', href: '/settings', icon: Settings, permission: 'all' },
       ];
     } else if (user?.role === 'agente') {

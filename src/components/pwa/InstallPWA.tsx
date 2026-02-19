@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Download, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/hooks/useAuth';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -18,36 +19,71 @@ declare global {
   }
 }
 
+const APP_CONFIG: Record<string, { name: string; short: string; theme: string; desc: string }> = {
+  gestor: {
+    name: 'Bochel Gestor',
+    short: 'Sistema Principal',
+    theme: '#22c55e',
+    desc: 'Acesso rápido ao sistema principal de gestão.',
+  },
+  agente: {
+    name: 'Bochel Agente',
+    short: 'App de Campo',
+    theme: '#3b82f6',
+    desc: 'App de campo optimizado para agentes.',
+  },
+  cliente: {
+    name: 'Bochel Cliente',
+    short: 'Minha Conta',
+    theme: '#a855f7',
+    desc: 'Acompanhe o seu crédito e pagamentos.',
+  },
+};
+
 export function InstallPWA() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  const appConfig = user?.role ? APP_CONFIG[user.role] : APP_CONFIG.gestor;
+
+  // Actualizar manifest conforme perfil do utilizador
+  useEffect(() => {
+    if (!user?.role) return;
+    const manifests: Record<string, string> = {
+      gestor: '/manifest-gestor.json',
+      agente: '/manifest-agente.json',
+      cliente: '/manifest-cliente.json',
+    };
+    const manifestEl = document.getElementById('pwa-manifest');
+    if (manifestEl && manifests[user.role]) {
+      manifestEl.setAttribute('href', manifests[user.role]);
+    }
+    const themeEl = document.getElementById('pwa-theme-color');
+    if (themeEl) themeEl.setAttribute('content', appConfig.theme);
+  }, [user?.role]);
 
   useEffect(() => {
-    // Check if app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
       return;
     }
 
-    // Listen for the beforeinstallprompt event
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Save the event so it can be triggered later
       setDeferredPrompt(e);
       setShowInstallButton(true);
     };
 
-    // Listen for app installed event
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setShowInstallButton(false);
       setDeferredPrompt(null);
       toast({
-        title: "App Instalado!",
-        description: "Boch Lend foi instalado com sucesso no seu dispositivo.",
+        title: `${appConfig.name} instalado!`,
+        description: 'App instalado com sucesso no seu dispositivo.',
       });
     };
 
@@ -58,25 +94,18 @@ export function InstallPWA() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, [toast]);
+  }, [toast, appConfig.name]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
-
-    // Show the install prompt
     deferredPrompt.prompt();
-
-    // Wait for the user to respond to the prompt
     const { outcome } = await deferredPrompt.userChoice;
-
     if (outcome === 'accepted') {
       toast({
-        title: "Instalação iniciada",
-        description: "O app está sendo instalado...",
+        title: 'Instalação iniciada',
+        description: `${appConfig.name} está a ser instalado...`,
       });
     }
-
-    // Clear the deferredPrompt for next time
     setDeferredPrompt(null);
     setShowInstallButton(false);
   };
@@ -86,7 +115,6 @@ export function InstallPWA() {
     localStorage.setItem('pwa-install-dismissed', 'true');
   };
 
-  // Don't show if already installed or user dismissed
   if (isInstalled || !showInstallButton || localStorage.getItem('pwa-install-dismissed')) {
     return null;
   }
@@ -95,42 +123,28 @@ export function InstallPWA() {
     <div className="fixed bottom-4 right-4 z-50 max-w-sm bg-card border border-border rounded-lg shadow-lg p-4">
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Download className="w-4 h-4 text-primary-foreground" />
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: appConfig.theme }}
+          >
+            <Download className="w-4 h-4 text-white" />
           </div>
           <div>
-            <h3 className="font-semibold text-sm">Instalar App</h3>
-            <p className="text-xs text-muted-foreground">Acesso mais rápido</p>
+            <h3 className="font-semibold text-sm">{appConfig.name}</h3>
+            <p className="text-xs text-muted-foreground">{appConfig.short}</p>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleDismiss}
-          className="h-6 w-6 p-0"
-        >
+        <Button variant="ghost" size="sm" onClick={handleDismiss} className="h-6 w-6 p-0">
           <X className="w-3 h-3" />
         </Button>
       </div>
-      
-      <p className="text-xs text-muted-foreground mb-3">
-        Instale o Boch Lend no seu dispositivo para acesso offline e experiência nativa.
-      </p>
-      
+      <p className="text-xs text-muted-foreground mb-3">{appConfig.desc}</p>
       <div className="flex gap-2">
-        <Button
-          onClick={handleInstallClick}
-          size="sm"
-          className="flex-1"
-        >
+        <Button onClick={handleInstallClick} size="sm" className="flex-1">
           <Download className="w-3 h-3 mr-1" />
-          Instalar
+          Instalar App
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleDismiss}
-        >
+        <Button variant="ghost" size="sm" onClick={handleDismiss}>
           Agora não
         </Button>
       </div>
