@@ -13,6 +13,33 @@ interface MetricCardProps {
   variant?: 'default' | 'success' | 'warning' | 'danger';
 }
 
+const variantStyles = {
+  default: {
+    icon: 'bg-primary/15 text-primary ring-1 ring-primary/20',
+    trend: 'text-primary',
+    border: 'border-primary/15',
+    glow: 'hover:shadow-primary',
+  },
+  success: {
+    icon: 'bg-success/15 text-success ring-1 ring-success/20',
+    trend: 'text-success',
+    border: 'border-success/15',
+    glow: 'hover:shadow-[0_4px_20px_0_hsl(152_60%_45%/0.25)]',
+  },
+  warning: {
+    icon: 'bg-warning/15 text-warning ring-1 ring-warning/20',
+    trend: 'text-warning',
+    border: 'border-warning/15',
+    glow: 'hover:shadow-[0_4px_20px_0_hsl(40_95%_55%/0.25)]',
+  },
+  danger: {
+    icon: 'bg-destructive/15 text-destructive ring-1 ring-destructive/20',
+    trend: 'text-destructive',
+    border: 'border-destructive/15',
+    glow: 'hover:shadow-[0_4px_20px_0_hsl(0_75%_55%/0.25)]',
+  },
+};
+
 const MetricCard = ({ 
   title, 
   value, 
@@ -22,32 +49,32 @@ const MetricCard = ({
   variant = 'default' 
 }: MetricCardProps) => {
   const isPositive = trend.startsWith('+');
+  const styles = variantStyles[variant];
   
   return (
-    <Card>
-      <CardContent className="p-3 md:p-6">
-        <div className="flex items-center justify-between gap-2">
+    <Card className={cn('transition-all duration-300 cursor-default', styles.border, styles.glow)}>
+      <CardContent className="p-4 md:p-5">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-xs md:text-sm font-medium text-muted-foreground truncate">{title}</p>
-            <p className="text-lg md:text-2xl font-bold truncate">{value}</p>
-            <div className="flex items-center mt-1 md:mt-2 flex-wrap gap-1">
+            <p className="text-xs font-medium text-muted-foreground truncate uppercase tracking-wide">{title}</p>
+            <p className="text-xl md:text-2xl font-bold truncate mt-1">{value}</p>
+            <div className="flex items-center mt-2 gap-1.5">
               <span className={cn(
-                "text-xs md:text-sm font-medium",
-                isPositive ? "text-success" : "text-destructive"
+                "text-xs font-semibold px-1.5 py-0.5 rounded-md",
+                isPositive 
+                  ? "bg-success/15 text-success" 
+                  : "bg-destructive/15 text-destructive"
               )}>
                 {trend}
               </span>
-              <span className="text-xs text-muted-foreground hidden sm:inline">{description}</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline truncate">{description}</span>
             </div>
           </div>
           <div className={cn(
-            "p-2 md:p-3 rounded-full flex-shrink-0",
-            variant === 'success' && "bg-success/20 text-success",
-            variant === 'warning' && "bg-warning/20 text-warning",
-            variant === 'danger' && "bg-destructive/20 text-destructive",
-            variant === 'default' && "bg-primary/20 text-primary"
+            "p-2.5 md:p-3 rounded-xl flex-shrink-0",
+            styles.icon
           )}>
-            <Icon className="h-4 w-4 md:h-6 md:w-6" />
+            <Icon className="h-4 w-4 md:h-5 md:w-5" />
           </div>
         </div>
       </CardContent>
