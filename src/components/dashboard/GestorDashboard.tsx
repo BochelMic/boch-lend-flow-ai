@@ -61,79 +61,88 @@ const GestorDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('mensal');
 
   return (
-    <div className="min-h-screen bg-gradient-subtle p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="bg-gradient-primary rounded-2xl p-6 text-white shadow-primary">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Dashboard do Gestor</h1>
-              <p className="text-white/80 text-lg">Visão executiva - BOCHEL Microcrédito</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-white/80">ROI Mensal</p>
-              <p className="text-2xl font-semibold">18.5%</p>
-              <p className="text-sm text-white/80">+2.1% vs mês anterior</p>
-            </div>
+    <div className="space-y-5 md:space-y-6">
+      {/* Header */}
+      <div className="rounded-2xl p-5 md:p-6 text-white shadow-large relative overflow-hidden" style={{ background: 'var(--gradient-primary)' }}>
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 20%, hsl(0 0% 100%), transparent)' }} />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">Sistema Principal</p>
+            <h1 className="text-2xl md:text-3xl font-black">Dashboard do Gestor</h1>
+            <p className="text-white/70 text-sm mt-1">Visão executiva — BOCHEL Microcrédito</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-white/60 uppercase tracking-wide mb-1">ROI Mensal</p>
+            <p className="text-3xl font-black">18.5%</p>
+            <p className="text-xs text-white/60 mt-1">+2.1% vs mês anterior</p>
           </div>
         </div>
+      </div>
 
-        {/* Métricas Principais */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-primary/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Carteira Total
-              </CardTitle>
-              <CreditCard className="h-5 w-5 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">MZN 8.4M</div>
-              <p className="text-xs text-muted-foreground">+12% vs mês anterior</p>
-            </CardContent>
-          </Card>
+      {/* Métricas Principais */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <Card className="border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Carteira Total
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-primary/15">
+              <CreditCard className="h-4 w-4 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-primary">MZN 8.4M</div>
+            <p className="text-xs text-muted-foreground mt-1">+12% vs mês anterior</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-success/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Receita Mensal
-              </CardTitle>
-              <DollarSign className="h-5 w-5 text-success" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">MZN 580K</div>
-              <p className="text-xs text-muted-foreground">Meta: MZN 650K</p>
-            </CardContent>
-          </Card>
+        <Card className="border-success/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Receita Mensal
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-success/15">
+              <DollarSign className="h-4 w-4 text-success" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-success">MZN 580K</div>
+            <p className="text-xs text-muted-foreground mt-1">Meta: MZN 650K</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-warning/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Taxa Inadimplência
-              </CardTitle>
-              <AlertTriangle className="h-5 w-5 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning">3.2%</div>
-              <p className="text-xs text-muted-foreground">-0.5% vs mês anterior</p>
-            </CardContent>
-          </Card>
+        <Card className="border-warning/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Inadimplência
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-warning/15">
+              <AlertTriangle className="h-4 w-4 text-warning" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-warning">3.2%</div>
+            <p className="text-xs text-muted-foreground mt-1">-0.5% vs mês anterior</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-accent/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Clientes Ativos
-              </CardTitle>
-              <Users className="h-5 w-5 text-accent" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-accent">1,247</div>
-              <p className="text-xs text-muted-foreground">+23 novos este mês</p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="border-accent/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Clientes Ativos
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-accent/15">
+              <Users className="h-4 w-4 text-accent" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-accent">1,247</div>
+            <p className="text-xs text-muted-foreground mt-1">+23 novos este mês</p>
+          </CardContent>
+        </Card>
+      </div>
 
-        <Tabs defaultValue="financeiro" className="space-y-6">
+        <Tabs defaultValue="financeiro" className="space-y-4 md:space-y-6">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
             <TabsTrigger value="agentes">Agentes</TabsTrigger>
@@ -458,10 +467,9 @@ const GestorDashboard = () => {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </div>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

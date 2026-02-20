@@ -37,87 +37,88 @@ const collectionTrend = [
 
 const AgentDashboard = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-900 to-gray-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="bg-gradient-accent rounded-2xl p-6 text-white shadow-large">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Dashboard do Agente</h1>
-              <p className="text-white/80 text-lg">Maria Santos - Zona Norte</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm text-white/80">Meta Mensal</p>
-              <p className="text-xl font-semibold">85% Concluída</p>
-              <Progress value={85} className="mt-2 w-32" />
-            </div>
+    <div className="space-y-5 md:space-y-6">
+      {/* Header */}
+      <div className="rounded-2xl p-5 md:p-6 text-white shadow-large relative overflow-hidden" style={{ background: 'var(--gradient-accent)' }}>
+        <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, hsl(0 0% 100%), transparent)' }} />
+        <div className="relative flex items-center justify-between">
+          <div>
+            <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">Subsistema</p>
+            <h1 className="text-2xl md:text-3xl font-black">Dashboard do Agente</h1>
+            <p className="text-white/70 text-sm mt-1">Maria Santos — Zona Norte</p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-white/70 mb-1">Meta Mensal</p>
+            <p className="text-2xl font-black">85%</p>
+            <Progress value={85} className="mt-2 w-28 h-1.5" />
           </div>
         </div>
+      </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-primary/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Clientes Ativos
-              </CardTitle>
-              <Users className="h-5 w-5 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-primary">127</div>
-              <p className="text-xs text-muted-foreground">
-                +12 este mês
-              </p>
-            </CardContent>
-          </Card>
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <Card className="border-primary/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Clientes Ativos
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-primary/15">
+              <Users className="h-4 w-4 text-primary" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-primary">127</div>
+            <p className="text-xs text-muted-foreground mt-1">+12 este mês</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-success/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Cobranças Hoje
-              </CardTitle>
-              <DollarSign className="h-5 w-5 text-success" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-success">MZN 47,000</div>
-              <p className="text-xs text-muted-foreground">
-                Meta: MZN 50,000
-              </p>
-            </CardContent>
-          </Card>
+        <Card className="border-success/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Cobranças Hoje
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-success/15">
+              <DollarSign className="h-4 w-4 text-success" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-success">47K</div>
+            <p className="text-xs text-muted-foreground mt-1">Meta: MZN 50,000</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-warning/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Empréstimos Pendentes
-              </CardTitle>
-              <AlertCircle className="h-5 w-5 text-warning" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-warning">8</div>
-              <p className="text-xs text-muted-foreground">
-                Requerem aprovação
-              </p>
-            </CardContent>
-          </Card>
+        <Card className="border-warning/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Pendentes
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-warning/15">
+              <AlertCircle className="h-4 w-4 text-warning" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-warning">8</div>
+            <p className="text-xs text-muted-foreground mt-1">Requerem aprovação</p>
+          </CardContent>
+        </Card>
 
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-orange/10">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Comissão Mensal
-              </CardTitle>
-              <Target className="h-5 w-5 text-orange" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange">MZN 15,800</div>
-              <p className="text-xs text-muted-foreground">
-                +18% vs mês anterior
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        <Card className="border-secondary/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 p-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Comissão
+            </CardTitle>
+            <div className="p-2 rounded-lg bg-secondary/15">
+              <Target className="h-4 w-4 text-secondary" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 pt-0">
+            <div className="text-2xl font-black text-secondary">15.8K</div>
+            <p className="text-xs text-muted-foreground mt-1">+18% vs anterior</p>
+          </CardContent>
+        </Card>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* Monthly Performance */}
           <Card className="border-0 shadow-medium">
             <CardHeader>
@@ -197,10 +198,10 @@ const AgentDashboard = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
+      </div>
 
-        {/* Tasks & Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Tasks & Quick Actions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           {/* Today's Tasks */}
           <Card className="border-0 shadow-medium">
             <CardHeader>
@@ -302,7 +303,6 @@ const AgentDashboard = () => {
             </CardContent>
           </Card>
         </div>
-      </div>
     </div>
   );
 };

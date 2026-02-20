@@ -81,50 +81,55 @@ export function AppSidebar() {
   const navigation = getNavigation();
   const isCollapsed = state === 'collapsed';
 
-  const roleColors: Record<string, string> = {
-    gestor: 'bg-primary/20 text-primary',
-    agente: 'bg-accent/20 text-accent',
-    cliente: 'bg-secondary/20 text-secondary-foreground',
+  const roleConfig: Record<string, { color: string; dot: string }> = {
+    gestor: { color: 'text-primary', dot: 'bg-primary' },
+    agente: { color: 'text-accent', dot: 'bg-accent' },
+    cliente: { color: 'text-secondary', dot: 'bg-secondary' },
   };
+
+  const rc = roleConfig[user?.role ?? ''] ?? { color: 'text-muted-foreground', dot: 'bg-muted-foreground' };
 
   return (
     <Sidebar collapsible="icon">
       {/* Header */}
-      <SidebarHeader className="border-b border-sidebar-border p-3">
+      <SidebarHeader className="border-b border-sidebar-border/60 p-3 bg-sidebar">
         <div className="flex items-center gap-2.5">
           <div
-            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 shadow-medium"
+            className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-primary"
             style={{ background: 'var(--gradient-primary)' }}
           >
-            <span className="text-sm font-black text-white">B</span>
+            <span className="text-sm font-black text-white tracking-tighter">B</span>
           </div>
           {!isCollapsed && (
             <div className="flex flex-col min-w-0">
               <h1 className="text-sm font-black text-sidebar-foreground tracking-tight leading-none">BOCHEL</h1>
-              <p className="text-[10px] text-sidebar-foreground/50 leading-none mt-0.5">Microcrédito</p>
+              <p className="text-[10px] text-sidebar-foreground/40 leading-none mt-0.5 font-medium">Microcrédito</p>
             </div>
           )}
         </div>
 
         {/* User chip */}
         {user && !isCollapsed && (
-          <div className={`mt-2 flex items-center gap-2 px-2 py-1.5 rounded-lg ${roleColors[user.role] || 'bg-muted'}`}>
-            <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-              <span className="text-[9px] font-bold uppercase">{user.name[0]}</span>
+          <div className="mt-2.5 flex items-center gap-2 px-2.5 py-2 rounded-xl bg-sidebar-accent border border-sidebar-border/40">
+            <div className="relative flex-shrink-0">
+              <div className="w-6 h-6 rounded-lg bg-gradient-primary flex items-center justify-center shadow-soft">
+                <span className="text-[10px] font-black text-white uppercase">{user.name[0]}</span>
+              </div>
+              <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-sidebar-background ${rc.dot}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold truncate leading-none">{user.name}</p>
-              <p className="text-[9px] opacity-70 leading-none mt-0.5 capitalize">{user.role}</p>
+              <p className="text-[11px] font-semibold truncate leading-none text-sidebar-foreground">{user.name}</p>
+              <p className={`text-[9px] leading-none mt-0.5 capitalize font-medium ${rc.color}`}>{user.role}</p>
             </div>
           </div>
         )}
       </SidebarHeader>
 
       {/* Content */}
-      <SidebarContent className="px-1 py-2">
+      <SidebarContent className="px-2 py-3 bg-sidebar">
         <SidebarGroup>
-          <SidebarGroupLabel className={`${isCollapsed ? 'sr-only' : 'text-[9px] uppercase tracking-widest font-semibold text-sidebar-foreground/40 px-2 mb-1'}`}>
-            Menu
+          <SidebarGroupLabel className={`${isCollapsed ? 'sr-only' : 'text-[9px] uppercase tracking-widest font-bold text-sidebar-foreground/30 px-2 mb-1'}`}>
+            Navegação
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
@@ -140,15 +145,20 @@ export function AppSidebar() {
                       asChild
                       isActive={isActive}
                       tooltip={isCollapsed ? item.name : undefined}
-                      className={`h-8 md:h-9 rounded-lg transition-all duration-150 ${
-                        isChat && !isActive
-                          ? 'text-primary hover:bg-primary/10'
-                          : ''
+                      className={`h-9 rounded-xl transition-all duration-200 ${
+                        isActive
+                          ? 'bg-primary/15 text-primary font-semibold shadow-soft'
+                          : isChat
+                          ? 'text-primary/80 hover:bg-primary/10 hover:text-primary'
+                          : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                       }`}
                     >
                       <Link to={item.href} className="flex items-center gap-2.5">
-                        <item.icon className={`h-4 w-4 flex-shrink-0 ${isChat && !isActive ? 'text-primary' : ''}`} />
-                        <span className={`${isCollapsed ? 'sr-only' : ''} text-xs md:text-sm`}>{item.name}</span>
+                        <item.icon className={`h-4 w-4 flex-shrink-0 ${isActive ? 'text-primary' : isChat ? 'text-primary/70' : ''}`} />
+                        <span className={`${isCollapsed ? 'sr-only' : ''} text-xs font-medium`}>{item.name}</span>
+                        {isActive && !isCollapsed && (
+                          <div className="ml-auto w-1.5 h-1.5 rounded-full bg-primary" />
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -160,16 +170,16 @@ export function AppSidebar() {
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-sidebar-border p-2">
+      <SidebarFooter className="border-t border-sidebar-border/60 p-2 bg-sidebar">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={logout}
               tooltip={isCollapsed ? 'Sair' : undefined}
-              className="h-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors rounded-lg"
+              className="h-9 text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-all rounded-xl"
             >
               <LogOut className="h-4 w-4 flex-shrink-0" />
-              <span className={`${isCollapsed ? 'sr-only' : ''} text-xs md:text-sm`}>Terminar sessão</span>
+              <span className={`${isCollapsed ? 'sr-only' : ''} text-xs font-medium`}>Terminar sessão</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
