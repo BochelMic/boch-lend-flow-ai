@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -53,6 +54,12 @@ interface SystemUser {
   permissions: string[];
 }
 
+const rolePermissions: Record<string, string[]> = {
+  gestor: ['all'],
+  agente: ['clientes', 'emprestimos', 'cobrancas', 'pagamentos'],
+  cliente: ['conta', 'historico', 'pedidos'],
+};
+
 const UserManagementModule = () => {
   const { user: currentUser, register } = useAuth();
   const { toast } = useToast();
@@ -71,19 +78,30 @@ const UserManagementModule = () => {
     loadUsers();
   }, []);
 
-  const loadUsers = () => {
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const usersWithoutPassword = storedUsers.map((u: any) => ({
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      role: u.role,
-      permissions: u.permissions || []
+  const loadUsers = async () => {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, name, email');
+    
+    if (!profiles) return;
+
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+
+    const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
+    
+    const usersWithRoles: SystemUser[] = profiles.map((p: any) => ({
+      id: p.user_id,
+      name: p.name,
+      email: p.email,
+      role: roleMap.get(p.user_id) || 'cliente',
+      permissions: rolePermissions[roleMap.get(p.user_id) || 'cliente'] || [],
     }));
-    setUsers(usersWithoutPassword);
+    setUsers(usersWithRoles);
   };
 
-  const handleCreateUser = () => {
+  const handleCreateUser = async () => {
     if (!newUser.name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
       toast({
         title: "Erro",
@@ -102,12 +120,18 @@ const UserManagementModule = () => {
       return;
     }
 
-    const result = register({
-      name: newUser.name.trim(),
-      email: newUser.email.trim(),
-      password: newUser.password,
-      role: newUser.role
+    const { data, error } = await supabase.functions.invoke('create-user', {
+      body: {
+        name: newUser.name.trim(),
+        email: newUser.email.trim(),
+        password: newUser.password,
+        role: newUser.role,
+      },
     });
+
+    const result = error || data?.error
+      ? { success: false, message: data?.error || error?.message || 'Erro ao criar usuário' }
+      : { success: true, message: 'Usuário criado com sucesso!' };
 
     if (result.success) {
       toast({
@@ -126,7 +150,7 @@ const UserManagementModule = () => {
     }
   };
 
-  const handleDeleteUser = (userId: string, userName: string) => {
+  const handleDeleteUser = async (userId: string, userName: string) => {
     if (userId === currentUser?.id) {
       toast({
         title: "Erro",
@@ -136,9 +160,9 @@ const UserManagementModule = () => {
       return;
     }
 
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = storedUsers.filter((u: any) => u.id !== userId);
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
+    // Delete profile and role (auth user remains but has no profile/role)
+    await supabase.from('user_roles').delete().eq('user_id', userId);
+    await supabase.from('profiles').delete().eq('user_id', userId);
     
     toast({
       title: "Usuário Excluído",

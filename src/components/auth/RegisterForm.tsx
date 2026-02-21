@@ -20,7 +20,7 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
   const [role, setRole] = useState<'gestor' | 'agente' | 'cliente'>('agente');
   const { register } = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (password !== confirmPassword) {
@@ -41,7 +41,7 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
       return;
     }
 
-    const result = register({ name, email, password, role });
+    const result = await register({ name, email, password, role });
     
     if (result.success) {
       toast({

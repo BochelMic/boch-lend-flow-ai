@@ -92,8 +92,8 @@ const AdminDashboard = () => {
     });
   };
 
-  const handleRegisterUser = (data: any) => {
-    const result = register(data);
+  const handleRegisterUser = async (data: any) => {
+    const result = await register(data);
     
     if (result.success) {
       toast({
