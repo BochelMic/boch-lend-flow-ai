@@ -5,17 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Send, MessageCircle, User, Search } from 'lucide-react';
 
 interface Message {
   id: string;
-  senderId: string;
-  senderName: string;
-  senderRole: string;
-  receiverId: string;
+  sender_id: string;
+  receiver_id: string;
   content: string;
-  timestamp: string;
+  created_at: string;
   read: boolean;
+  sender_name?: string;
+  sender_role?: string;
 }
 
 interface Contact {
@@ -36,90 +37,129 @@ const ChatModule = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    loadContacts();
+    if (user) loadContacts();
   }, [user]);
 
   useEffect(() => {
-    if (selectedContact) {
-      loadMessages(selectedContact.id);
-    }
+    if (selectedContact) loadMessages(selectedContact.id);
   }, [selectedContact]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const loadContacts = () => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const allMessages = JSON.parse(localStorage.getItem('chat_messages') || '[]');
-    
-    const contactsList: Contact[] = users
-      .filter((u: any) => u.id !== user?.id)
-      .map((u: any) => {
-        const userMessages = allMessages.filter(
-          (m: Message) => 
-            (m.senderId === u.id && m.receiverId === user?.id) ||
-            (m.senderId === user?.id && m.receiverId === u.id)
-        );
-        const lastMsg = userMessages[userMessages.length - 1];
-        const unread = userMessages.filter(
-          (m: Message) => m.receiverId === user?.id && !m.read
-        ).length;
-        
-        return {
-          id: u.id,
-          name: u.name,
-          role: u.role,
-          lastMessage: lastMsg?.content,
-          unreadCount: unread
-        };
-      });
-    
+  // Realtime subscription for new messages
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel('chat-messages')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const newMsg = payload.new as any;
+          if (selectedContact && newMsg.sender_id === selectedContact.id) {
+            setMessages((prev) => [...prev, {
+              ...newMsg,
+              sender_name: selectedContact.name,
+              sender_role: selectedContact.role,
+            }]);
+            // Mark as read
+            supabase.from('chat_messages').update({ read: true }).eq('id', newMsg.id);
+          }
+          loadContacts();
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user, selectedContact]);
+
+  const loadContacts = async () => {
+    if (!user) return;
+
+    // Get all profiles with roles (excluding self)
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('user_id, name')
+      .neq('user_id', user.id);
+
+    const { data: roles } = await supabase
+      .from('user_roles')
+      .select('user_id, role');
+
+    if (!profiles) return;
+
+    const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
+
+    // Get unread counts per sender
+    const { data: unreadMessages } = await supabase
+      .from('chat_messages')
+      .select('sender_id')
+      .eq('receiver_id', user.id)
+      .eq('read', false);
+
+    const unreadMap = new Map<string, number>();
+    (unreadMessages || []).forEach((m: any) => {
+      unreadMap.set(m.sender_id, (unreadMap.get(m.sender_id) || 0) + 1);
+    });
+
+    const contactsList: Contact[] = profiles.map((p: any) => ({
+      id: p.user_id,
+      name: p.name,
+      role: roleMap.get(p.user_id) || 'cliente',
+      unreadCount: unreadMap.get(p.user_id) || 0,
+    }));
+
     setContacts(contactsList);
   };
 
-  const loadMessages = (contactId: string) => {
-    const allMessages = JSON.parse(localStorage.getItem('chat_messages') || '[]');
-    const conversationMessages = allMessages.filter(
-      (m: Message) =>
-        (m.senderId === contactId && m.receiverId === user?.id) ||
-        (m.senderId === user?.id && m.receiverId === contactId)
-    );
-    
-    // Marcar como lidas
-    const updatedMessages = allMessages.map((m: Message) => {
-      if (m.senderId === contactId && m.receiverId === user?.id && !m.read) {
-        return { ...m, read: true };
-      }
-      return m;
-    });
-    localStorage.setItem('chat_messages', JSON.stringify(updatedMessages));
-    
-    setMessages(conversationMessages);
+  const loadMessages = async (contactId: string) => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .or(`and(sender_id.eq.${user.id},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${user.id})`)
+      .order('created_at', { ascending: true });
+
+    setMessages(data || []);
+
+    // Mark as read
+    await supabase
+      .from('chat_messages')
+      .update({ read: true })
+      .eq('sender_id', contactId)
+      .eq('receiver_id', user.id)
+      .eq('read', false);
+
     loadContacts();
   };
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!newMessage.trim() || !selectedContact || !user) return;
 
-    const message: Message = {
-      id: Date.now().toString(),
-      senderId: user.id,
-      senderName: user.name,
-      senderRole: user.role,
-      receiverId: selectedContact.id,
-      content: newMessage.trim(),
-      timestamp: new Date().toISOString(),
-      read: false
-    };
+    const { data, error } = await supabase
+      .from('chat_messages')
+      .insert({
+        sender_id: user.id,
+        receiver_id: selectedContact.id,
+        content: newMessage.trim(),
+      })
+      .select()
+      .single();
 
-    const allMessages = JSON.parse(localStorage.getItem('chat_messages') || '[]');
-    allMessages.push(message);
-    localStorage.setItem('chat_messages', JSON.stringify(allMessages));
-
-    setMessages([...messages, message]);
-    setNewMessage('');
-    loadContacts();
+    if (data && !error) {
+      setMessages((prev) => [...prev, data as Message]);
+      setNewMessage('');
+      loadContacts();
+    }
   };
 
   const getRoleBadge = (role: string) => {
@@ -205,11 +245,6 @@ const ChatModule = () => {
                           <div className="flex items-center gap-2">
                             {getRoleBadge(contact.role)}
                           </div>
-                          {contact.lastMessage && (
-                            <p className="text-xs text-muted-foreground truncate mt-1">
-                              {contact.lastMessage}
-                            </p>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -250,12 +285,12 @@ const ChatModule = () => {
                       <div
                         key={message.id}
                         className={`flex ${
-                          message.senderId === user?.id ? 'justify-end' : 'justify-start'
+                          message.sender_id === user?.id ? 'justify-end' : 'justify-start'
                         }`}
                       >
                         <div
                           className={`max-w-[85%] md:max-w-[80%] rounded-lg p-2 md:p-3 ${
-                            message.senderId === user?.id
+                            message.sender_id === user?.id
                               ? 'bg-primary text-primary-foreground'
                               : 'bg-muted'
                           }`}
@@ -263,12 +298,12 @@ const ChatModule = () => {
                           <p className="text-sm">{message.content}</p>
                           <p
                             className={`text-xs mt-1 ${
-                              message.senderId === user?.id
+                              message.sender_id === user?.id
                                 ? 'text-primary-foreground/70'
                                 : 'text-muted-foreground'
                             }`}
                           >
-                            {formatTime(message.timestamp)}
+                            {formatTime(message.created_at)}
                           </p>
                         </div>
                       </div>

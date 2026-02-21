@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
@@ -8,122 +9,112 @@ interface User {
   permissions: string[];
 }
 
-interface RegisterData {
-  name: string;
-  email: string;
-  password: string;
-  role: 'gestor' | 'agente' | 'cliente';
-}
+const rolePermissions: Record<string, string[]> = {
+  gestor: ['all'],
+  agente: ['clientes', 'emprestimos', 'cobrancas', 'pagamentos'],
+  cliente: ['conta', 'historico', 'pedidos'],
+};
 
 export const useAuth = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Criar usuário gestor padrão se não existir nenhum usuário
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.length === 0) {
-      const defaultUsers = [
-        {
-          id: '1',
-          name: 'Administrador',
-          email: 'admin@bochel.com',
-          password: 'admin123',
-          role: 'gestor',
-          permissions: ['all']
-        },
-        {
-          id: '2',
-          name: 'Agente de Campo',
-          email: 'agente@bochel.com',
-          password: 'agente123',
-          role: 'agente',
-          permissions: ['clientes', 'emprestimos', 'cobrancas', 'pagamentos']
-        },
-        {
-          id: '3',
-          name: 'Cliente Exemplo',
-          email: 'cliente@bochel.com',
-          password: 'cliente123',
-          role: 'cliente',
-          permissions: ['conta', 'historico', 'pedidos']
-        }
-      ];
-      localStorage.setItem('users', JSON.stringify(defaultUsers));
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        // Fetch profile and role
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, email')
+          .eq('user_id', session.user.id)
+          .single();
 
-    // Verificar se há usuário logado no localStorage
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-      setIsAuthenticated(true);
-    }
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+
+        const role = (roleData?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
+
+        setUser({
+          id: session.user.id,
+          name: profile?.name || session.user.email || '',
+          email: profile?.email || session.user.email || '',
+          role,
+          permissions: rolePermissions[role] || [],
+        });
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      setLoading(false);
+    });
+
+    // Check initial session
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, email')
+          .eq('user_id', session.user.id)
+          .single();
+
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', session.user.id)
+          .single();
+
+        const role = (roleData?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
+
+        setUser({
+          id: session.user.id,
+          name: profile?.name || session.user.email || '',
+          email: profile?.email || session.user.email || '',
+          role,
+          permissions: rolePermissions[role] || [],
+        });
+        setIsAuthenticated(true);
+      }
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = (email: string, password: string) => {
-    // Verificar se o usuário existe no localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find((u: any) => u.email === email && u.password === password);
-    
-    if (user) {
-      const userWithoutPassword = { ...user };
-      delete userWithoutPassword.password;
-      
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-      // Forçar reload para garantir que o estado seja atualizado corretamente
-      window.location.reload();
-      return { success: true, message: 'Login realizado com sucesso!' };
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      return { success: false, message: error.message === 'Invalid login credentials' ? 'Email ou senha incorretos.' : error.message };
     }
-    
-    return { success: false, message: 'Email ou senha incorretos.' };
+    return { success: true, message: 'Login realizado com sucesso!' };
   };
 
-  const register = (data: RegisterData) => {
-    // Verificar se já existe um usuário com o mesmo email
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const existingUser = users.find((u: any) => u.email === data.email);
-    
-    if (existingUser) {
-      return { success: false, message: 'Já existe um usuário com este email.' };
-    }
-
-    // Definir permissões baseadas no papel
-    let permissions: string[] = [];
-    switch (data.role) {
-      case 'gestor':
-        permissions = ['all'];
-        break;
-      case 'agente':
-        permissions = ['clientes', 'emprestimos', 'cobrancas', 'pagamentos'];
-        break;
-      case 'cliente':
-        permissions = ['conta', 'historico', 'pedidos'];
-        break;
-    }
-
-    // Criar novo usuário
-    const newUser = {
-      id: Date.now().toString(),
-      name: data.name,
+  const register = async (data: { name: string; email: string; password: string; role: 'gestor' | 'agente' | 'cliente' }) => {
+    const { error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
-      role: data.role,
-      permissions: permissions
-    };
+      options: {
+        data: { name: data.name, role: data.role },
+      },
+    });
 
-    // Salvar no localStorage
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-    
+    if (error) {
+      if (error.message.includes('already registered')) {
+        return { success: false, message: 'Já existe um usuário com este email.' };
+      }
+      return { success: false, message: error.message };
+    }
     return { success: true, message: 'Usuário cadastrado com sucesso!' };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('user');
-    // Redirecionar para a página de login
-    window.location.href = '/';
   };
 
   const hasPermission = (permission: string): boolean => {
@@ -134,9 +125,10 @@ export const useAuth = () => {
   return {
     isAuthenticated,
     user,
+    loading,
     login,
     register,
     logout,
-    hasPermission
+    hasPermission,
   };
 };

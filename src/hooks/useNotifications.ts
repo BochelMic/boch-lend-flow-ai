@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface Notification {
   id: string;
@@ -11,76 +12,87 @@ export interface Notification {
   read: boolean;
 }
 
-const NOTIF_KEY = 'app_notifications';
-
-// Deriva notificações a partir das mensagens de chat não lidas
-function deriveNotifications(userId: string): Notification[] {
-  const messages = JSON.parse(localStorage.getItem('chat_messages') || '[]');
-  const existing = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]') as Notification[];
-  const existingIds = new Set(existing.map((n: Notification) => n.id));
-
-  const newFromChat: Notification[] = messages
-    .filter((m: any) => m.receiverId === userId && !m.read)
-    .filter((m: any) => !existingIds.has(`chat_${m.id}`))
-    .map((m: any): Notification => ({
-      id: `chat_${m.id}`,
-      type: m.content.startsWith('📢') ? 'alert' : 'chat',
-      title: m.content.startsWith('📢') ? 'Aviso do Gestor' : `Mensagem de ${m.senderName}`,
-      body: m.content.replace('📢 [Aviso do Gestor] ', ''),
-      from: m.senderName,
-      fromRole: m.senderRole,
-      timestamp: m.timestamp,
-      read: false,
-    }));
-
-  if (newFromChat.length === 0) return existing;
-
-  const merged = [...existing, ...newFromChat];
-  localStorage.setItem(NOTIF_KEY, JSON.stringify(merged));
-  return merged;
-}
-
 export function useNotifications(userId?: string) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     if (!userId) return;
-    const derived = deriveNotifications(userId);
-    setNotifications(derived);
+
+    const { data } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (data) {
+      setNotifications(data.map((n: any) => ({
+        id: n.id,
+        type: n.type as 'chat' | 'system' | 'alert',
+        title: n.title,
+        body: n.body,
+        timestamp: n.created_at,
+        read: n.read,
+      })));
+    }
   }, [userId]);
 
   useEffect(() => {
     refresh();
-    // Polling a cada 3 segundos para capturar novas mensagens
-    const interval = setInterval(refresh, 3000);
-    return () => clearInterval(interval);
-  }, [refresh]);
+
+    // Subscribe to realtime notifications
+    const channel = supabase
+      .channel('user-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        () => refresh()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [refresh, userId]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const unreadChat = notifications.filter((n) => !n.read && n.type === 'chat').length;
   const unreadAlerts = notifications.filter((n) => !n.read && (n.type === 'alert' || n.type === 'system')).length;
 
-  const markAllRead = useCallback(() => {
-    const updated = notifications.map((n) => ({ ...n, read: true }));
-    localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
-    setNotifications(updated);
-  }, [notifications]);
+  const markAllRead = useCallback(async () => {
+    if (!userId) return;
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('user_id', userId)
+      .eq('read', false);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, [userId]);
 
-  const markOneRead = useCallback((id: string) => {
-    const updated = notifications.map((n) => n.id === id ? { ...n, read: true } : n);
-    localStorage.setItem(NOTIF_KEY, JSON.stringify(updated));
-    setNotifications(updated);
-  }, [notifications]);
-
-  const clearAll = useCallback(() => {
-    localStorage.setItem(NOTIF_KEY, JSON.stringify([]));
-    setNotifications([]);
+  const markOneRead = useCallback(async (id: string) => {
+    await supabase
+      .from('notifications')
+      .update({ read: true })
+      .eq('id', id);
+    setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, read: true } : n));
   }, []);
 
+  const clearAll = useCallback(async () => {
+    if (!userId) return;
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', userId);
+    setNotifications([]);
+  }, [userId]);
+
   return {
-    notifications: notifications.slice().sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    ),
+    notifications,
     unreadCount,
     unreadChat,
     unreadAlerts,

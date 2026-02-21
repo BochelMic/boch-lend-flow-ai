@@ -29,28 +29,33 @@ import ChatModule from '../components/chat/ChatModule';
 import UserManagementModule from '../components/users/UserManagementModule';
 import SubsystemsControl from '../components/admin/SubsystemsControl';
 import Layout from '../components/layout/Layout';
-
+import { Loader2 } from 'lucide-react';
 
 const Index = () => {
-  const { isAuthenticated, user, hasPermission } = useAuth();
+  const { isAuthenticated, user, hasPermission, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">A carregar...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <LoginForm />;
   }
 
-  // Redirecionar para dashboard específico baseado no papel do usuário
   const getDashboardPath = () => {
     if (!user) return '/dashboard';
-    
     switch (user.role) {
-      case 'gestor':
-        return '/dashboard';
-      case 'agente':
-        return '/dashboard-agente';
-      case 'cliente':
-        return '/dashboard-cliente';
-      default:
-        return '/dashboard';
+      case 'gestor': return '/dashboard';
+      case 'agente': return '/dashboard-agente';
+      case 'cliente': return '/dashboard-cliente';
+      default: return '/dashboard';
     }
   };
 
@@ -59,12 +64,10 @@ const Index = () => {
       <Routes>
         <Route path="/" element={<Navigate to={getDashboardPath()} replace />} />
         
-        {/* Dashboards específicos por papel */}
         {hasPermission('all') && <Route path="/dashboard" element={<Dashboard />} />}
         {hasPermission('clientes') && <Route path="/dashboard-agente" element={<AgentDashboard />} />}
         {hasPermission('conta') && <Route path="/dashboard-cliente" element={<ClientDashboard />} />}
         
-        {/* Rotas para Gestor - Acesso total */}
         {hasPermission('all') && (
           <>
             <Route path="/usuarios/*" element={<UserManagementModule />} />
@@ -84,7 +87,6 @@ const Index = () => {
             <Route path="/subsistemas/*" element={<SubsystemsControl />} />
           </>
         )}
-        {/* Rotas para Agente - Acesso limitado */}
         {hasPermission('clientes') && !hasPermission('all') && (
           <>
             <Route path="/credit-requests/*" element={<CreditRequestManager />} />
@@ -107,7 +109,6 @@ const Index = () => {
           </>
         )}
         
-        {/* Rotas para Cliente - Acesso restrito */}
         {hasPermission('conta') && !hasPermission('all') && (
           <>
             <Route path="/conta/*" element={<ClientAccountModule />} />
@@ -117,10 +118,7 @@ const Index = () => {
           </>
         )}
         
-        {/* Chat - Disponível para todos os usuários autenticados */}
         <Route path="/chat/*" element={<ChatModule />} />
-        
-        {/* Fallback */}
         <Route path="*" element={<Navigate to={getDashboardPath()} replace />} />
       </Routes>
     </Layout>
