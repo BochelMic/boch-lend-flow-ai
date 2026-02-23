@@ -93,6 +93,30 @@ export const useAuth = () => {
     return { success: true, message: 'Login realizado com sucesso!' };
   };
 
+  const loginWithRoleValidation = async (email: string, password: string, expectedRole: 'gestor' | 'agente' | 'cliente') => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+      return { success: false, message: 'Credenciais inválidas.' };
+    }
+
+    // Check role in user_roles table
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', data.user.id)
+      .single();
+
+    const userRole = roleData?.role;
+
+    if (userRole !== expectedRole) {
+      // Role mismatch — sign out immediately and return generic error
+      await supabase.auth.signOut();
+      return { success: false, message: 'Credenciais inválidas.' };
+    }
+
+    return { success: true, message: 'Login realizado com sucesso!' };
+  };
+
   const register = async (data: { name: string; email: string; password: string; role: 'gestor' | 'agente' | 'cliente' }) => {
     const { error } = await supabase.auth.signUp({
       email: data.email,
@@ -127,6 +151,7 @@ export const useAuth = () => {
     user,
     loading,
     login,
+    loginWithRoleValidation,
     register,
     logout,
     hasPermission,

@@ -38,32 +38,33 @@ export function AppSidebar() {
   const currentPath = location.pathname;
 
   const getNavigation = () => {
-    const chatItem = { name: 'Chat Interno', href: '/chat', icon: MessageCircle, permission: 'chat', highlight: true };
+    const prefix = user?.role === 'gestor' ? '/gestor' : user?.role === 'agente' ? '/agente' : '';
+    const chatItem = { name: 'Chat Interno', href: `${prefix}/chat`, icon: MessageCircle, permission: 'chat', highlight: true };
     
     if (user?.role === 'gestor') {
       return [
-        { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, permission: 'all' },
-        { name: 'Usuários', href: '/usuarios', icon: UserPlus, permission: 'all' },
-        { name: 'Pedidos', href: '/credit-requests', icon: FormInput, permission: 'all' },
-        { name: 'Clientes', href: '/clientes', icon: Users, permission: 'all' },
-        { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'all' },
-        { name: 'Simulador', href: '/credit-simulator', icon: Calculator, permission: 'all' },
-        { name: 'Crédito', href: '/credit-form', icon: FormInput, permission: 'all' },
-        { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'all' },
-        { name: 'Agentes', href: '/agentes', icon: UserCheck, permission: 'all' },
-        { name: 'Relatórios', href: '/reports', icon: BarChart3, permission: 'all' },
+        { name: 'Dashboard', href: '/gestor/dashboard', icon: LayoutDashboard, permission: 'all' },
+        { name: 'Usuários', href: '/gestor/usuarios', icon: UserPlus, permission: 'all' },
+        { name: 'Pedidos', href: '/gestor/credit-requests', icon: FormInput, permission: 'all' },
+        { name: 'Clientes', href: '/gestor/clientes', icon: Users, permission: 'all' },
+        { name: 'Empréstimos', href: '/gestor/emprestimos', icon: CreditCard, permission: 'all' },
+        { name: 'Simulador', href: '/gestor/credit-simulator', icon: Calculator, permission: 'all' },
+        { name: 'Crédito', href: '/gestor/credit-form', icon: FormInput, permission: 'all' },
+        { name: 'Cobranças', href: '/gestor/cobrancas', icon: Phone, permission: 'all' },
+        { name: 'Agentes', href: '/gestor/agentes', icon: UserCheck, permission: 'all' },
+        { name: 'Relatórios', href: '/gestor/reports', icon: BarChart3, permission: 'all' },
         chatItem,
-        { name: 'Subsistemas', href: '/subsistemas', icon: Shield, permission: 'all' },
-        { name: 'Configurações', href: '/settings', icon: Settings, permission: 'all' },
+        { name: 'Subsistemas', href: '/gestor/subsistemas', icon: Shield, permission: 'all' },
+        { name: 'Configurações', href: '/gestor/settings', icon: Settings, permission: 'all' },
       ];
     } else if (user?.role === 'agente') {
       return [
-        { name: 'Dashboard', href: '/dashboard-agente', icon: LayoutDashboard, permission: 'clientes' },
-        { name: 'Pedidos', href: '/credit-requests', icon: FormInput, permission: 'clientes' },
-        { name: 'Novo Pedido', href: '/credit-form', icon: FormInput, permission: 'emprestimos' },
-        { name: 'Clientes', href: '/clientes', icon: Users, permission: 'clientes' },
-        { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'emprestimos' },
-        { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'cobrancas' },
+        { name: 'Dashboard', href: '/agente/dashboard', icon: LayoutDashboard, permission: 'clientes' },
+        { name: 'Pedidos', href: '/agente/credit-requests', icon: FormInput, permission: 'clientes' },
+        { name: 'Novo Pedido', href: '/agente/credit-form', icon: FormInput, permission: 'emprestimos' },
+        { name: 'Clientes', href: '/agente/clientes', icon: Users, permission: 'clientes' },
+        { name: 'Empréstimos', href: '/agente/emprestimos', icon: CreditCard, permission: 'emprestimos' },
+        { name: 'Cobranças', href: '/agente/cobrancas', icon: Phone, permission: 'cobrancas' },
         chatItem,
       ];
     } else if (user?.role === 'cliente') {
