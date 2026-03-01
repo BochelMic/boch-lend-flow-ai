@@ -1,14 +1,15 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Progress } from '../ui/progress';
-import { 
-  CreditCard, 
-  DollarSign, 
-  Calendar, 
-  CheckCircle, 
-  Clock, 
+import {
+  CreditCard,
+  DollarSign,
+  Calendar,
+  CheckCircle,
+  Clock,
   AlertTriangle,
   TrendingUp,
   FileText,
@@ -21,27 +22,94 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useClientAccess } from '@/hooks/useClientAccess';
 import { useAuth } from '@/hooks/useAuth';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
-const paymentHistory = [
-  { month: 'Jan', paid: 5000, due: 5000 },
-  { month: 'Fev', paid: 5000, due: 5000 },
-  { month: 'Mar', paid: 4500, due: 5000 },
-  { month: 'Abr', paid: 5000, due: 5000 },
-  { month: 'Mai', paid: 5000, due: 5000 },
-  { month: 'Jun', paid: 0, due: 5000 },
-];
-
-const loanStatus = [
-  { name: 'Pago', value: 65, color: 'hsl(var(--success))' },
-  { name: 'Pendente', value: 25, color: 'hsl(var(--warning))' },
-  { name: 'Em Atraso', value: 10, color: 'hsl(var(--destructive))' },
-];
+interface LoanData {
+  amount: number;
+  totalAmount: number;
+  remainingAmount: number;
+  installments: number;
+  startDate: string | null;
+}
 
 const ClientDashboard = () => {
   const { user } = useAuth();
-  const { clientStatus, hasActiveLoan, currentLoan, loading, canViewHistory, canRequestNewLoan } = useClientAccess();
+  const { clientStatus, hasActiveLoan, currentLoan, loading: accessLoading, canViewHistory, canRequestNewLoan } = useClientAccess();
+  const [loanData, setLoanData] = useState<LoanData | null>(null);
+  const [paymentHistory, setPaymentHistory] = useState<any[]>([]);
+  const [paymentStats, setPaymentStats] = useState<any[]>([]);
+  const [totalPaid, setTotalPaid] = useState(0);
+  const [loading, setLoading] = useState(true);
 
-  if (loading) {
+  useEffect(() => {
+    if (!accessLoading && currentLoan) {
+      loadClientData();
+    } else if (!accessLoading) {
+      setLoading(false);
+    }
+  }, [accessLoading, currentLoan]);
+
+  const loadClientData = async () => {
+    if (!currentLoan) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Loan details
+      setLoanData({
+        amount: Number(currentLoan.amount),
+        totalAmount: Number(currentLoan.total_amount),
+        remainingAmount: Number(currentLoan.remaining_amount),
+        installments: currentLoan.installments || 12,
+        startDate: currentLoan.start_date || null,
+      });
+
+      // Pagamentos deste empréstimo
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount, payment_date')
+        .eq('loan_id', currentLoan.id)
+        .order('payment_date', { ascending: true });
+
+      const paid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      setTotalPaid(paid);
+
+      // Build monthly chart data
+      if (payments && payments.length > 0) {
+        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const monthlyMap: Record<string, number> = {};
+        payments.forEach(p => {
+          const d = new Date(p.payment_date);
+          const key = monthNames[d.getMonth()];
+          monthlyMap[key] = (monthlyMap[key] || 0) + Number(p.amount);
+        });
+        const history = Object.entries(monthlyMap).map(([month, paid]) => ({
+          month,
+          paid,
+          due: Math.round(Number(currentLoan.total_amount) / (currentLoan.installments || 12)),
+        }));
+        setPaymentHistory(history);
+      }
+
+      // Pie chart
+      const totalAmount = Number(currentLoan.total_amount);
+      const remaining = Number(currentLoan.remaining_amount);
+      const paidPercent = totalAmount > 0 ? Math.round(((totalAmount - remaining) / totalAmount) * 100) : 0;
+      const pendingPercent = 100 - paidPercent;
+
+      setPaymentStats([
+        { name: 'Pago', value: paidPercent, color: 'hsl(var(--success))' },
+        { name: 'Pendente', value: pendingPercent, color: 'hsl(var(--warning))' },
+      ]);
+    } catch (error) {
+      console.error('Error loading client data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (accessLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <RefreshCw className="h-8 w-8 animate-spin text-primary" />
@@ -54,20 +122,18 @@ const ClientDashboard = () => {
     return (
       <div className="min-h-screen bg-gradient-subtle p-4 md:p-6">
         <div className="max-w-4xl mx-auto space-y-6">
-          {/* Header */}
-          <div className="bg-gradient-primary rounded-2xl p-6 text-white shadow-primary">
+          <div className="rounded-2xl p-6 text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #d37c22 0%, #e8943a 50%, #c06a18 100%)' }}>
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <h1 className="text-2xl md:text-3xl font-bold">Olá, {user?.name || 'Cliente'}</h1>
                 <p className="text-white/80">Seu portal de microcrédito</p>
               </div>
-              <Badge className="bg-white/20 text-white">
+              <Badge className="bg-white/20 text-white border border-white/30 backdrop-blur-sm">
                 {clientStatus === 'limited' ? 'Acesso Limitado' : 'Aguardando Aprovação'}
               </Badge>
             </div>
           </div>
 
-          {/* Status Card */}
           <Card className="border-warning/50 bg-warning/5">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -77,7 +143,7 @@ const ClientDashboard = () => {
                 <div>
                   <CardTitle>Acesso Limitado</CardTitle>
                   <CardDescription>
-                    {clientStatus === 'limited' 
+                    {clientStatus === 'limited'
                       ? 'Você terminou de pagar seu empréstimo. Para ter acesso completo, solicite um novo crédito.'
                       : 'Aguarde a aprovação do seu pedido de crédito para ter acesso completo ao sistema.'
                     }
@@ -86,17 +152,9 @@ const ClientDashboard = () => {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {canViewHistory() && (
-                <Link to="/historico">
-                  <Button variant="outline" className="w-full justify-start">
-                    <FileText className="mr-2 h-4 w-4" />
-                    Ver Histórico de Pagamentos
-                  </Button>
-                </Link>
-              )}
               {canRequestNewLoan() && (
-                <Link to="/formulario-credito">
-                  <Button className="w-full justify-start bg-primary">
+                <Link to="/credit-form">
+                  <Button className="w-full justify-start text-white font-semibold" style={{ backgroundColor: '#d37c22' }}>
                     <CreditCard className="mr-2 h-4 w-4" />
                     Solicitar Novo Empréstimo
                   </Button>
@@ -110,116 +168,83 @@ const ClientDashboard = () => {
               </Link>
             </CardContent>
           </Card>
-
-          {/* Info Cards */}
-          {canViewHistory() && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-success" />
-                    Empréstimos Concluídos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">1</p>
-                  <p className="text-sm text-muted-foreground">Parabéns por completar seu empréstimo!</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-primary" />
-                    Score de Crédito
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-success">Excelente</p>
-                  <Progress value={90} className="mt-2" />
-                </CardContent>
-              </Card>
-            </div>
-          )}
         </div>
       </div>
     );
   }
 
+  const monthlyPayment = loanData ? Math.round(loanData.totalAmount / loanData.installments) : 0;
+  const paidPercentage = loanData && loanData.totalAmount > 0
+    ? Math.round(((loanData.totalAmount - loanData.remainingAmount) / loanData.totalAmount) * 100)
+    : 0;
+
   return (
     <div className="min-h-screen bg-gradient-subtle p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-gradient-primary rounded-2xl p-4 md:p-6 text-white shadow-primary">
+        <div className="rounded-2xl p-4 md:p-6 text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #d37c22 0%, #e8943a 50%, #c06a18 100%)' }}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">Olá, {user?.name || 'Cliente'}</h1>
               <p className="text-white/80 text-sm md:text-lg">Seu portal de microcrédito</p>
             </div>
             <div className="text-left md:text-right">
-              <Badge className="bg-success/80 text-white mb-1">Empréstimo Ativo</Badge>
-              <p className="text-sm text-white/80">Membro desde</p>
-              <p className="text-lg md:text-xl font-semibold">Janeiro 2023</p>
+              <Badge className="bg-white/20 text-white border border-white/30 mb-1">Empréstimo Ativo</Badge>
+              {loanData?.startDate && (
+                <>
+                  <p className="text-sm text-white/80">Início</p>
+                  <p className="text-lg md:text-xl font-semibold">{new Date(loanData.startDate).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
+                </>
+              )}
             </div>
           </div>
         </div>
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-muted/20">
+          <Card className="border border-[#d37c22]/20 shadow-md bg-white hover:shadow-lg transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Empréstimo Atual
-              </CardTitle>
-              <CreditCard className="h-5 w-5 text-primary" />
+              <CardTitle className="text-sm font-medium text-gray-500">Empréstimo Atual</CardTitle>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#d37c22' + '15' }}>
+                <CreditCard className="h-5 w-5" style={{ color: '#d37c22' }} />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-primary">MZN 45,000</div>
-              <p className="text-xs text-muted-foreground">
-                Restam 8 prestações
-              </p>
+              <div className="text-2xl font-bold" style={{ color: '#d37c22' }}>MZN {loanData?.totalAmount.toLocaleString() || '0'}</div>
+              <p className="text-xs text-gray-400 mt-1">Saldo: MZN {loanData?.remainingAmount.toLocaleString() || '0'}</p>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-success/10">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Próximo Pagamento
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Próximo Pagamento</CardTitle>
               <Calendar className="h-5 w-5 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-success">MZN 5,000</div>
-              <p className="text-xs text-muted-foreground">
-                Vence em 5 dias
-              </p>
+              <div className="text-2xl font-bold text-success">MZN {monthlyPayment.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">Prestação mensal</p>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-accent/10">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Pago
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total Pago</CardTitle>
               <CheckCircle className="h-5 w-5 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-accent">MZN 29,500</div>
-              <p className="text-xs text-muted-foreground">
-                65% do empréstimo
-              </p>
+              <div className="text-2xl font-bold text-accent">MZN {totalPaid.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">{paidPercentage}% do empréstimo</p>
             </CardContent>
           </Card>
 
           <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-orange/10">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Score de Crédito
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Progresso</CardTitle>
               <TrendingUp className="h-5 w-5 text-orange" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange">Excelente</div>
-              <Progress value={85} className="mt-2" />
+              <div className="text-2xl font-bold text-orange">{paidPercentage}%</div>
+              <Progress value={paidPercentage} className="mt-2" />
             </CardContent>
           </Card>
         </div>
@@ -232,42 +257,33 @@ const ClientDashboard = () => {
                 <DollarSign className="h-5 w-5 text-primary" />
                 Progresso do Empréstimo
               </CardTitle>
-              <CardDescription>
-                Acompanhe seus pagamentos ao longo do tempo
-              </CardDescription>
+              <CardDescription>Acompanhe seus pagamentos ao longo do tempo</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={paymentHistory}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                    <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
-                    <YAxis stroke="hsl(var(--muted-foreground))" />
-                    <Tooltip 
-                      formatter={(value: number) => [`MZN ${value.toLocaleString()}`, '']}
-                      contentStyle={{
-                        backgroundColor: 'hsl(var(--card))',
-                        border: '1px solid hsl(var(--border))',
-                        borderRadius: '8px'
-                      }}
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="paid" 
-                      stroke="hsl(var(--success))" 
-                      strokeWidth={3}
-                      name="Pago" 
-                    />
-                    <Line 
-                      type="monotone" 
-                      dataKey="due" 
-                      stroke="hsl(var(--warning))" 
-                      strokeWidth={2}
-                      strokeDasharray="5 5"
-                      name="Devido" 
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
+                {paymentHistory.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={paymentHistory}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
+                      <YAxis stroke="hsl(var(--muted-foreground))" />
+                      <Tooltip
+                        formatter={(value: number) => [`MZN ${value.toLocaleString()}`, '']}
+                        contentStyle={{
+                          backgroundColor: 'hsl(var(--card))',
+                          border: '1px solid hsl(var(--border))',
+                          borderRadius: '8px'
+                        }}
+                      />
+                      <Line type="monotone" dataKey="paid" stroke="hsl(var(--success))" strokeWidth={3} name="Pago" />
+                      <Line type="monotone" dataKey="due" stroke="hsl(var(--warning))" strokeWidth={2} strokeDasharray="5 5" name="Devido" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    Nenhum pagamento registrado ainda
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -279,112 +295,67 @@ const ClientDashboard = () => {
                 <CheckCircle className="h-5 w-5 text-success" />
                 Status dos Pagamentos
               </CardTitle>
-              <CardDescription>
-                Distribuição dos seus pagamentos
-              </CardDescription>
+              <CardDescription>Distribuição dos seus pagamentos</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={loanStatus}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={100}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {loanStatus.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
+                {paymentStats.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={paymentStats}
+                        cx="50%"
+                        cy="50%"
+                        labelLine={false}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        dataKey="value"
+                      >
+                        {paymentStats.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                    Sem dados
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Recent Activities & Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Activities */}
-          <Card className="border-0 shadow-medium">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5 text-accent" />
-                Atividades Recentes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-success/10">
-                <CheckCircle className="h-5 w-5 text-success" />
-                <div className="flex-1">
-                  <p className="font-medium">Pagamento realizado</p>
-                  <p className="text-sm text-muted-foreground">MZN 5,000 • 15 Mai 2024</p>
-                </div>
-                <Badge variant="secondary" className="bg-success/20 text-success">Pago</Badge>
-              </div>
-              
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-warning/10">
-                <AlertTriangle className="h-5 w-5 text-warning" />
-                <div className="flex-1">
-                  <p className="font-medium">Lembrete de pagamento</p>
-                  <p className="text-sm text-muted-foreground">Próximo pagamento em 5 dias</p>
-                </div>
-                <Badge variant="secondary" className="bg-warning/20 text-warning">Pendente</Badge>
-              </div>
-              
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/10">
-                <FileText className="h-5 w-5 text-accent" />
-                <div className="flex-1">
-                  <p className="font-medium">Contrato atualizado</p>
-                  <p className="text-sm text-muted-foreground">Novos termos disponíveis</p>
-                </div>
-                <Badge variant="secondary" className="bg-accent/20 text-accent">Novo</Badge>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card className="border-0 shadow-medium">
-            <CardHeader>
-              <CardTitle>Ações Rápidas</CardTitle>
-              <CardDescription>
-                Acesso rápido às principais funcionalidades
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Button className="w-full justify-start bg-gradient-primary hover:opacity-90 shadow-primary">
+        {/* Quick Actions */}
+        <Card className="border-0 shadow-medium">
+          <CardHeader>
+            <CardTitle>Ações Rápidas</CardTitle>
+            <CardDescription>Acesso rápido às principais funcionalidades</CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <Link to="/credit-form">
+              <Button className="w-full justify-start shadow-md hover:shadow-lg text-white font-semibold" style={{ backgroundColor: '#d37c22' }}>
                 <DollarSign className="mr-2 h-4 w-4" />
-                Realizar Pagamento
+                Solicitar Crédito
               </Button>
-              
+            </Link>
+            <Link to="/historico">
               <Button variant="outline" className="w-full justify-start border-accent text-accent hover:bg-accent/10">
                 <FileText className="mr-2 h-4 w-4" />
-                Ver Contratos
+                Ver Histórico
               </Button>
-              
+            </Link>
+            <Link to="/chat">
               <Button variant="outline" className="w-full justify-start border-secondary text-secondary hover:bg-secondary/10">
-                <Calendar className="mr-2 h-4 w-4" />
-                Histórico de Pagamentos
-              </Button>
-              
-              <Button variant="outline" className="w-full justify-start border-orange text-orange hover:bg-orange/10">
                 <MessageCircle className="mr-2 h-4 w-4" />
-                Solicitar Novo Empréstimo
-              </Button>
-              
-              <Button variant="outline" className="w-full justify-start">
-                <Phone className="mr-2 h-4 w-4" />
                 Contactar Suporte
               </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </Link>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

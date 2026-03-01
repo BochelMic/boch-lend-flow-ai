@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SubUser {
   id: string;
@@ -69,15 +70,46 @@ const SubsystemsControl = () => {
     loadModuleSettings();
   }, []);
 
-  const loadUsers = () => {
-    const all = JSON.parse(localStorage.getItem('users') || '[]');
-    setAgents(all.filter((u: SubUser) => u.role === 'agente'));
-    setClients(all.filter((u: SubUser) => u.role === 'cliente'));
+  const loadUsers = async () => {
+    try {
+      const { data: roles } = await supabase.from('user_roles').select('user_id, role');
+      if (!roles) return;
+
+      const userIds = roles.map(r => r.user_id);
+      const { data: profiles } = await supabase.from('profiles').select('user_id, name, email').in('user_id', userIds);
+
+      const agentsList: SubUser[] = [];
+      const clientsList: SubUser[] = [];
+
+      (profiles || []).forEach(p => {
+        const role = roles.find(r => r.user_id === p.user_id)?.role;
+        const u: SubUser = { id: p.user_id, name: p.name, email: p.email, role: (role || 'cliente') as any, permissions: [] };
+        if (role === 'agente') agentsList.push(u);
+        else if (role === 'cliente') clientsList.push(u);
+      });
+
+      setAgents(agentsList);
+      setClients(clientsList);
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
   };
 
-  const loadMessages = () => {
-    const all = JSON.parse(localStorage.getItem('chat_messages') || '[]');
-    setMessages(all.slice(-20));
+  const loadMessages = async () => {
+    try {
+      const { data } = await supabase.from('chat_messages').select('*').order('created_at', { ascending: false }).limit(20);
+      setMessages((data || []).map((m: any) => ({
+        id: m.id,
+        from: m.sender_id || '',
+        fromRole: '',
+        to: m.receiver_id || '',
+        content: m.content || '',
+        timestamp: m.created_at,
+        read: m.read || false,
+      })));
+    } catch (error) {
+      console.error('Error loading messages:', error);
+    }
   };
 
   const loadModuleSettings = () => {
@@ -88,13 +120,11 @@ const SubsystemsControl = () => {
   };
 
   const toggleUserBlock = (userId: string, role: string) => {
-    const all = JSON.parse(localStorage.getItem('users') || '[]');
-    const updated = all.map((u: SubUser) =>
-      u.id === userId ? { ...u, blocked: !u.blocked } : u
-    );
-    localStorage.setItem('users', JSON.stringify(updated));
-    loadUsers();
-    const target = all.find((u: SubUser) => u.id === userId);
+    // Block/unblock via UI toggle (visual only for now)
+    const setter = role === 'agente' ? setAgents : setClients;
+    const list = role === 'agente' ? agents : clients;
+    const target = list.find(u => u.id === userId);
+    setter(list.map(u => u.id === userId ? { ...u, blocked: !u.blocked } : u));
     toast({
       title: target?.blocked ? 'Utilizador desbloqueado' : 'Utilizador bloqueado',
       description: `${target?.name} foi ${target?.blocked ? 'desbloqueado' : 'bloqueado'} com sucesso.`,
@@ -113,30 +143,30 @@ const SubsystemsControl = () => {
     toast({ title: 'Configuração salva', description: 'Módulos do Cliente actualizados.' });
   };
 
-  const sendBroadcast = (targetRole: string, message: string) => {
+  const sendBroadcast = async (targetRole: string, message: string) => {
     if (!user || !message.trim()) return;
-    const all = JSON.parse(localStorage.getItem('users') || '[]');
-    const targets = all.filter((u: SubUser) => u.role === targetRole);
-    const allMessages = JSON.parse(localStorage.getItem('chat_messages') || '[]');
+    const targets = targetRole === 'agente' ? agents : clients;
 
-    targets.forEach((t: SubUser) => {
-      allMessages.push({
-        id: Date.now().toString() + t.id,
-        senderId: user.id,
-        senderName: user.name,
-        senderRole: user.role,
-        receiverId: t.id,
+    try {
+      const inserts = targets.map(t => ({
+        sender_id: user.id,
+        receiver_id: t.id,
         content: `📢 [Aviso do Gestor] ${message}`,
-        timestamp: new Date().toISOString(),
         read: false,
-      });
-    });
+      }));
 
-    localStorage.setItem('chat_messages', JSON.stringify(allMessages));
-    toast({
-      title: 'Aviso enviado',
-      description: `Mensagem enviada para todos os ${targetRole === 'agente' ? 'agentes' : 'clientes'}.`,
-    });
+      if (inserts.length > 0) {
+        await supabase.from('chat_messages').insert(inserts);
+      }
+
+      toast({
+        title: 'Aviso enviado',
+        description: `Mensagem enviada para todos os ${targetRole === 'agente' ? 'agentes' : 'clientes'}.`,
+      });
+      loadMessages();
+    } catch (error) {
+      console.error('Error sending broadcast:', error);
+    }
   };
 
   const [broadcastAgent, setBroadcastAgent] = useState('');

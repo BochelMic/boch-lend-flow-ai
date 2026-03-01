@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Loan {
   id: string;
-  clientId: string;
-  status: 'pending' | 'approved' | 'active' | 'completed' | 'rejected';
+  client_id: string;
+  status: string;
   amount: number;
-  remainingAmount: number;
+  remaining_amount: number;
+  total_amount: number;
 }
 
 export const useClientAccess = () => {
@@ -24,51 +26,75 @@ export const useClientAccess = () => {
     }
   }, [user]);
 
-  const checkClientStatus = () => {
+  const checkClientStatus = async () => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    const loans = JSON.parse(localStorage.getItem('loans') || '[]');
-    const clientLoans = loans.filter((loan: Loan) => loan.clientId === user.id);
-    
-    // Verificar se tem empréstimo ativo ou aprovado
-    const activeLoan = clientLoans.find(
-      (loan: Loan) => loan.status === 'active' || loan.status === 'approved'
-    );
-    
-    // Verificar se tem empréstimo pendente
-    const pendingLoan = clientLoans.find(
-      (loan: Loan) => loan.status === 'pending'
-    );
-    
-    // Verificar histórico de empréstimos completados
-    const hasCompletedLoans = clientLoans.some(
-      (loan: Loan) => loan.status === 'completed'
-    );
+    try {
+      // Encontrar o client record associado a este user_id
+      const { data: clientRecord } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
 
-    if (activeLoan) {
-      setHasActiveLoan(true);
-      setCurrentLoan(activeLoan);
-      setClientStatus('active');
-    } else if (pendingLoan) {
-      setHasActiveLoan(false);
-      setCurrentLoan(pendingLoan);
-      setClientStatus('limited');
-    } else if (hasCompletedLoans) {
-      // Cliente terminou de pagar - acesso limitado
-      setHasActiveLoan(false);
-      setCurrentLoan(null);
-      setClientStatus('limited');
-    } else {
-      // Novo cliente ou sem empréstimos
-      setHasActiveLoan(false);
-      setCurrentLoan(null);
+      if (!clientRecord) {
+        // Cliente sem registro, acesso bloqueado
+        setHasActiveLoan(false);
+        setCurrentLoan(null);
+        setClientStatus('blocked');
+        setLoading(false);
+        return;
+      }
+
+      // Buscar empréstimos do cliente
+      const { data: loans } = await supabase
+        .from('loans')
+        .select('*')
+        .eq('client_id', clientRecord.id);
+
+      const clientLoans = loans || [];
+
+      // Verificar se tem empréstimo ativo ou aprovado
+      const activeLoan = clientLoans.find(
+        (loan) => loan.status === 'active' || loan.status === 'approved'
+      );
+
+      // Verificar se tem empréstimo pendente
+      const pendingLoan = clientLoans.find(
+        (loan) => loan.status === 'pending'
+      );
+
+      // Verificar histórico de empréstimos completados
+      const hasCompletedLoans = clientLoans.some(
+        (loan) => loan.status === 'completed'
+      );
+
+      if (activeLoan) {
+        setHasActiveLoan(true);
+        setCurrentLoan(activeLoan);
+        setClientStatus('active');
+      } else if (pendingLoan) {
+        setHasActiveLoan(false);
+        setCurrentLoan(pendingLoan);
+        setClientStatus('limited');
+      } else if (hasCompletedLoans) {
+        setHasActiveLoan(false);
+        setCurrentLoan(null);
+        setClientStatus('limited');
+      } else {
+        setHasActiveLoan(false);
+        setCurrentLoan(null);
+        setClientStatus('blocked');
+      }
+    } catch (error) {
+      console.error('Error checking client status:', error);
       setClientStatus('blocked');
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   const canAccessFullFeatures = () => {
@@ -80,7 +106,6 @@ export const useClientAccess = () => {
   };
 
   const canRequestNewLoan = () => {
-    // Só pode pedir novo empréstimo se não tiver empréstimo ativo
     return clientStatus === 'limited' || clientStatus === 'blocked';
   };
 

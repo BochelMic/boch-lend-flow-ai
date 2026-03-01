@@ -27,13 +27,9 @@ const AgentLoginForm = () => {
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'linear-gradient(135deg, hsl(222 35% 6%), hsl(217 40% 10%))' }}>
       <div className="w-full max-w-sm space-y-6">
         <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, hsl(217 91% 60%), hsl(210 85% 50%))' }}>
-            <Shield className="h-5 w-5 text-white" />
-          </div>
+          <img src="/logo-bochel.png" alt="Bochel Microcrédito" className="h-10 bg-white p-1 rounded-md object-contain" />
           <div>
             <h1 className="text-lg font-bold text-foreground tracking-tight">Portal do Agente</h1>
-            <p className="text-xs text-muted-foreground">Bochel Microcrédito</p>
           </div>
         </div>
 

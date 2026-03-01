@@ -1,15 +1,56 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
+import { supabase } from '@/integrations/supabase/client';
 
-const data = [
-  { name: 'Sistema Limpo', value: 100, color: '#10b981' },
-  { name: 'Sem Dados', value: 0, color: '#3b82f6' },
-  { name: 'Aguardando', value: 0, color: '#f59e0b' },
-  { name: 'Clientes', value: 0, color: '#ef4444' },
-];
+interface RiskData {
+  name: string;
+  value: number;
+  color: string;
+}
 
 const RiskAnalysis = () => {
+  const [data, setData] = useState<RiskData[]>([]);
+
+  useEffect(() => {
+    loadRiskData();
+  }, []);
+
+  const loadRiskData = async () => {
+    try {
+      const { data: loans } = await supabase
+        .from('loans')
+        .select('status');
+
+      if (!loans || loans.length === 0) {
+        setData([
+          { name: 'Sem Dados', value: 100, color: '#d1d5db' },
+        ]);
+        return;
+      }
+
+      const active = loans.filter(l => l.status === 'active').length;
+      const pending = loans.filter(l => l.status === 'pending').length;
+      const completed = loans.filter(l => l.status === 'completed').length;
+      const overdue = loans.filter(l => l.status === 'overdue').length;
+
+      const result: RiskData[] = [];
+      if (active > 0) result.push({ name: 'Ativos', value: active, color: '#10b981' });
+      if (pending > 0) result.push({ name: 'Pendentes', value: pending, color: '#f59e0b' });
+      if (completed > 0) result.push({ name: 'Completados', value: completed, color: '#3b82f6' });
+      if (overdue > 0) result.push({ name: 'Em Atraso', value: overdue, color: '#ef4444' });
+
+      if (result.length === 0) {
+        result.push({ name: 'Sem Dados', value: 100, color: '#d1d5db' });
+      }
+
+      setData(result);
+    } catch (error) {
+      console.error('Error loading risk data:', error);
+      setData([{ name: 'Erro', value: 100, color: '#d1d5db' }]);
+    }
+  };
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <PieChart>

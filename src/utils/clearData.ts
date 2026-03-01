@@ -1,44 +1,29 @@
+// Data cleanup utilities
+// Data is now managed in Supabase, these functions clear localStorage preferences only.
+
 export const clearAllData = () => {
-  // Limpar todos os dados do sistema, exceto usuários cadastrados
-  const keysToKeep = ['users']; // Manter apenas usuários para permitir login
-  
+  // Only clear non-essential localStorage keys (not auth or PWA preferences)
+  const keysToKeep = ['sb-', 'pwa-install-dismissed', 'profile-photo'];
+
   const allKeys = Object.keys(localStorage);
-  
+
   allKeys.forEach(key => {
-    if (!keysToKeep.includes(key)) {
+    const shouldKeep = keysToKeep.some(prefix => key.startsWith(prefix));
+    if (!shouldKeep) {
       localStorage.removeItem(key);
     }
   });
-  
-  // Limpar também dados de exemplo se existirem
-  const dataKeys = [
-    'clients',
-    'payments', 
-    'loans',
-    'credit_requests',
-    'contracts',
-    'collections',
-    'expenses',
-    'reports'
-  ];
-  
-  dataKeys.forEach(key => {
-    localStorage.removeItem(key);
-  });
-  
-  console.log('Todos os dados foram limpos. Sistema pronto para dados reais.');
+
+  console.log('Dados locais limpos. Dados do Supabase permanecem intactos.');
 };
 
 export const clearAllTestData = () => {
-  // Limpar ABSOLUTAMENTE TUDO, incluindo usuários
-  localStorage.clear();
-  console.log('Todos os dados de teste foram apagados completamente.');
+  // Clear local preferences only
+  clearAllData();
+  console.log('Dados de preferências locais limpos.');
 };
 
 export const resetToRealData = () => {
-  // Limpar dados de demonstração
   clearAllData();
-  
-  // Recarregar página para aplicar mudanças
   window.location.reload();
 };

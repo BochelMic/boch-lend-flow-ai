@@ -32,12 +32,7 @@ const LoginForm = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-accent/3 blur-3xl" />
 
         <div className="relative z-10 max-w-sm text-center">
-          <div className="mx-auto w-20 h-20 rounded-2xl flex items-center justify-center mb-8 shadow-large"
-            style={{ background: 'var(--gradient-primary)' }}>
-            <span className="text-4xl font-black text-white tracking-tight">B</span>
-          </div>
-
-          <h1 className="text-4xl font-black text-foreground tracking-tight mb-2">BOCHEL</h1>
+          <img src="/logo-bochel.png?v=3" alt="BOCHEL" className="h-24 object-contain mx-auto mb-4" />
           <p className="text-lg font-semibold text-primary mb-1">Microcrédito</p>
           <p className="text-sm text-muted-foreground mb-10 leading-relaxed">
             Plataforma integrada de gestão financeira para concessão e acompanhamento de microcrédito.
@@ -63,13 +58,9 @@ const LoginForm = () => {
         <div className="w-full max-w-md space-y-6">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-medium"
-              style={{ background: 'var(--gradient-primary)' }}>
-              <span className="text-lg font-black text-white">B</span>
-            </div>
+            <img src="/logo-bochel.png?v=3" alt="BOCHEL" className="h-10 object-contain" />
             <div>
-              <h1 className="text-lg font-black text-foreground tracking-tight">BOCHEL</h1>
-              <p className="text-xs text-muted-foreground">Microcrédito</p>
+              <p className="text-xs text-muted-foreground mt-1">Microcrédito</p>
             </div>
           </div>
 

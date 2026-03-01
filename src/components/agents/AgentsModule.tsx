@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { UserCheck, Plus, Target, DollarSign, TrendingUp, MapPin, Lock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +37,7 @@ const AgentsModule = () => {
   const { toast } = useToast();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [newAgent, setNewAgent] = useState({
     name: '',
     email: '',
@@ -44,52 +46,80 @@ const AgentsModule = () => {
     zone: ''
   });
 
-  // Verificar se é o gestor principal (primeiro gestor cadastrado)
-  const isPrimaryManager = () => {
-    if (user?.role !== 'gestor') return false;
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const gestores = users.filter((u: any) => u.role === 'gestor');
-    return gestores.length > 0 && gestores[0].id === user.id;
-  };
-
   useEffect(() => {
     loadAgents();
   }, []);
 
-  const loadAgents = () => {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const agentUsers = users.filter((u: any) => u.role === 'agente');
-    const agentData = JSON.parse(localStorage.getItem('agents_data') || '[]');
-    
-    const agentsList = agentUsers.map((u: any) => {
-      const data = agentData.find((a: any) => a.userId === u.id) || {};
-      return {
-        id: u.id,
-        name: u.name,
-        email: u.email,
-        phone: data.phone || '',
-        zone: data.zone || 'Não atribuída',
-        clients: data.clients || 0,
-        activeLoans: data.activeLoans || 0,
-        collections: data.collections || 0,
-        commission: data.commission || 0,
-        performance: data.performance || 0
-      };
-    });
-    
-    setAgents(agentsList);
+  const loadAgents = async () => {
+    try {
+      // Buscar todos os perfis com role 'agente'
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .eq('role', 'agente');
+
+      if (!roles || roles.length === 0) {
+        setAgents([]);
+        setLoading(false);
+        return;
+      }
+
+      const agentUserIds = roles.map(r => r.user_id);
+
+      // Buscar perfis dos agentes
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('user_id, name, email')
+        .in('user_id', agentUserIds);
+
+      // Para cada agente, contar clientes e empréstimos
+      const agentsList: Agent[] = [];
+      for (const profile of (profiles || [])) {
+        const { count: clientCount } = await supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('agent_id', profile.user_id);
+
+        const { data: agentLoans } = await supabase
+          .from('loans')
+          .select('id, status, remaining_amount')
+          .eq('agent_id', profile.user_id);
+
+        const activeLoans = agentLoans?.filter(l => l.status === 'active').length || 0;
+        const loanIds = agentLoans?.map(l => l.id) || [];
+
+        let totalCollections = 0;
+        if (loanIds.length > 0) {
+          const { data: payments } = await supabase
+            .from('payments')
+            .select('amount')
+            .in('loan_id', loanIds);
+          totalCollections = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+        }
+
+        agentsList.push({
+          id: profile.user_id,
+          name: profile.name,
+          email: profile.email,
+          phone: '',
+          zone: '',
+          clients: clientCount || 0,
+          activeLoans,
+          collections: totalCollections,
+          commission: Math.round(totalCollections * 0.05),
+          performance: activeLoans > 0 ? Math.min(100, Math.round((totalCollections / (activeLoans * 10000)) * 100)) : 0,
+        });
+      }
+
+      setAgents(agentsList);
+    } catch (error) {
+      console.error('Error loading agents:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleCreateAgent = () => {
-    if (!isPrimaryManager()) {
-      toast({
-        title: "Acesso Negado",
-        description: "Apenas o gestor principal pode cadastrar novos agentes.",
-        variant: "destructive"
-      });
-      return;
-    }
-
+  const handleCreateAgent = async () => {
     if (!newAgent.name || !newAgent.email || !newAgent.password) {
       toast({
         title: "Erro",
@@ -99,81 +129,53 @@ const AgentsModule = () => {
       return;
     }
 
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const existingUser = users.find((u: any) => u.email === newAgent.email);
-    
-    if (existingUser) {
+    try {
+      // Register through Supabase auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newAgent.email,
+        password: newAgent.password,
+        options: {
+          data: {
+            name: newAgent.name,
+            role: 'agente'
+          }
+        }
+      });
+
+      if (authError) throw authError;
+
+      if (authData.user) {
+        // Create profile
+        await supabase.from('profiles').insert({
+          user_id: authData.user.id,
+          name: newAgent.name,
+          email: newAgent.email,
+        });
+
+        // Create role
+        await supabase.from('user_roles').insert({
+          user_id: authData.user.id,
+          role: 'agente',
+        });
+      }
+
+      toast({
+        title: "Sucesso",
+        description: "Agente cadastrado com sucesso!",
+      });
+
+      setNewAgent({ name: '', email: '', password: '', phone: '', zone: '' });
+      setIsDialogOpen(false);
+      loadAgents();
+    } catch (error: any) {
+      console.error('Error creating agent:', error);
       toast({
         title: "Erro",
-        description: "Já existe um usuário com este email.",
+        description: error.message || "Erro ao cadastrar agente.",
         variant: "destructive"
       });
-      return;
     }
-
-    const newUser = {
-      id: Date.now().toString(),
-      name: newAgent.name,
-      email: newAgent.email,
-      password: newAgent.password,
-      role: 'agente',
-      permissions: ['clientes', 'emprestimos', 'cobrancas', 'pagamentos']
-    };
-
-    users.push(newUser);
-    localStorage.setItem('users', JSON.stringify(users));
-
-    // Salvar dados extras do agente
-    const agentData = JSON.parse(localStorage.getItem('agents_data') || '[]');
-    agentData.push({
-      userId: newUser.id,
-      phone: newAgent.phone,
-      zone: newAgent.zone,
-      clients: 0,
-      activeLoans: 0,
-      collections: 0,
-      commission: 0,
-      performance: 0
-    });
-    localStorage.setItem('agents_data', JSON.stringify(agentData));
-
-    toast({
-      title: "Sucesso",
-      description: "Agente cadastrado com sucesso!",
-    });
-
-    setNewAgent({ name: '', email: '', password: '', phone: '', zone: '' });
-    setIsDialogOpen(false);
-    loadAgents();
   };
-
-  // Mock data se não houver agentes
-  const displayAgents = agents.length > 0 ? agents : [
-    {
-      id: 1,
-      name: 'Carlos Silva',
-      email: 'carlos@bochel.com',
-      phone: '+258 84 111 2222',
-      zone: 'Maputo Centro',
-      clients: 25,
-      activeLoans: 18,
-      collections: 85000,
-      commission: 4250,
-      performance: 92
-    },
-    {
-      id: 2,
-      name: 'Ana Santos',
-      email: 'ana@bochel.com',
-      phone: '+258 84 333 4444',
-      zone: 'Matola',
-      clients: 30,
-      activeLoans: 22,
-      collections: 120000,
-      commission: 6000,
-      performance: 88
-    }
-  ];
 
   const getPerformanceColor = (performance: number) => {
     if (performance >= 90) return 'text-green-600';
@@ -181,8 +183,13 @@ const AgentsModule = () => {
     return 'text-red-600';
   };
 
+  const totalAgents = agents.length;
+  const totalCollections = agents.reduce((sum, a) => sum + a.collections, 0);
+  const totalCommissions = agents.reduce((sum, a) => sum + a.commission, 0);
+  const avgPerformance = totalAgents > 0 ? Math.round(agents.reduce((sum, a) => sum + a.performance, 0) / totalAgents) : 0;
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Gestão de Agentes</h1>
@@ -190,77 +197,54 @@ const AgentsModule = () => {
             Gerencie agentes de campo e acompanhe desempenho
           </p>
         </div>
-        
-        {isPrimaryManager() ? (
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Novo Agente
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle>Cadastrar Novo Agente</DialogTitle>
-                <DialogDescription>
-                  Preencha os dados para criar uma conta de agente
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label>Nome Completo *</Label>
-                  <Input
-                    value={newAgent.name}
-                    onChange={(e) => setNewAgent({...newAgent, name: e.target.value})}
-                    placeholder="Nome do agente"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email *</Label>
-                  <Input
-                    type="email"
-                    value={newAgent.email}
-                    onChange={(e) => setNewAgent({...newAgent, email: e.target.value})}
-                    placeholder="email@exemplo.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Senha *</Label>
-                  <Input
-                    type="password"
-                    value={newAgent.password}
-                    onChange={(e) => setNewAgent({...newAgent, password: e.target.value})}
-                    placeholder="Senha de acesso"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Telefone</Label>
-                  <Input
-                    value={newAgent.phone}
-                    onChange={(e) => setNewAgent({...newAgent, phone: e.target.value})}
-                    placeholder="+258 84 xxx xxxx"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Zona de Atuação</Label>
-                  <Input
-                    value={newAgent.zone}
-                    onChange={(e) => setNewAgent({...newAgent, zone: e.target.value})}
-                    placeholder="Ex: Maputo Centro"
-                  />
-                </div>
-                <Button onClick={handleCreateAgent} className="w-full">
-                  Cadastrar Agente
-                </Button>
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Agente
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Cadastrar Novo Agente</DialogTitle>
+              <DialogDescription>
+                Preencha os dados para criar uma conta de agente
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Nome Completo *</Label>
+                <Input
+                  value={newAgent.name}
+                  onChange={(e) => setNewAgent({ ...newAgent, name: e.target.value })}
+                  placeholder="Nome do agente"
+                />
               </div>
-            </DialogContent>
-          </Dialog>
-        ) : (
-          <Button disabled variant="outline">
-            <Lock className="mr-2 h-4 w-4" />
-            Apenas Gestor Principal
-          </Button>
-        )}
+              <div className="space-y-2">
+                <Label>Email *</Label>
+                <Input
+                  type="email"
+                  value={newAgent.email}
+                  onChange={(e) => setNewAgent({ ...newAgent, email: e.target.value })}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Senha *</Label>
+                <Input
+                  type="password"
+                  value={newAgent.password}
+                  onChange={(e) => setNewAgent({ ...newAgent, password: e.target.value })}
+                  placeholder="Senha de acesso"
+                />
+              </div>
+              <Button onClick={handleCreateAgent} className="w-full">
+                Cadastrar Agente
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -270,7 +254,7 @@ const AgentsModule = () => {
               <UserCheck className="h-5 w-5 text-blue-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Total de Agentes</p>
-                <p className="text-lg font-semibold">12</p>
+                <p className="text-lg font-semibold">{totalAgents}</p>
               </div>
             </div>
           </CardContent>
@@ -280,8 +264,8 @@ const AgentsModule = () => {
             <div className="flex items-center gap-2">
               <Target className="h-5 w-5 text-green-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Meta Mensal</p>
-                <p className="text-lg font-semibold">87%</p>
+                <p className="text-sm text-muted-foreground">Performance Média</p>
+                <p className="text-lg font-semibold">{avgPerformance}%</p>
               </div>
             </div>
           </CardContent>
@@ -291,8 +275,8 @@ const AgentsModule = () => {
             <div className="flex items-center gap-2">
               <DollarSign className="h-5 w-5 text-purple-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Comissões Pagas</p>
-                <p className="text-lg font-semibold">45.230 MZN</p>
+                <p className="text-sm text-muted-foreground">Total Cobrado</p>
+                <p className="text-lg font-semibold">{totalCollections.toLocaleString()} MZN</p>
               </div>
             </div>
           </CardContent>
@@ -302,258 +286,65 @@ const AgentsModule = () => {
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-orange-500" />
               <div>
-                <p className="text-sm text-muted-foreground">Performance Média</p>
-                <p className="text-lg font-semibold">89%</p>
+                <p className="text-sm text-muted-foreground">Comissões</p>
+                <p className="text-lg font-semibold">{totalCommissions.toLocaleString()} MZN</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="list" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="list">Lista de Agentes</TabsTrigger>
-          <TabsTrigger value="performance">Desempenho</TabsTrigger>
-          <TabsTrigger value="commissions">Comissões</TabsTrigger>
-          <TabsTrigger value="zones">Zonas</TabsTrigger>
-        </TabsList>
+      <Card>
+        <CardHeader>
+          <CardTitle>Agentes Cadastrados</CardTitle>
+          <CardDescription>Lista completa dos agentes de campo</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {loading ? (
+              <p className="text-center text-muted-foreground py-8">Carregando...</p>
+            ) : agents.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <UserCheck className="mx-auto h-12 w-12 opacity-50 mb-2" />
+                <p>Nenhum agente cadastrado</p>
+              </div>
+            ) : (
+              agents.map((agent) => (
+                <div key={agent.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold">{agent.name}</h3>
+                      <p className="text-sm text-muted-foreground">{agent.email}</p>
+                    </div>
+                    <p className={`text-sm font-medium ${getPerformanceColor(agent.performance)}`}>
+                      Performance: {agent.performance}%
+                    </p>
+                  </div>
 
-        <TabsContent value="list" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Agentes Cadastrados</CardTitle>
-              <CardDescription>
-                Lista completa dos agentes de campo
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {displayAgents.map((agent) => (
-                  <div key={agent.id} className="border rounded-lg p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="font-semibold">{agent.name}</h3>
-                        <p className="text-sm text-muted-foreground">{agent.email}</p>
-                        <p className="text-sm text-muted-foreground">{agent.phone}</p>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant="outline" className="mb-2">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {agent.zone}
-                        </Badge>
-                        <p className={`text-sm font-medium ${getPerformanceColor(agent.performance)}`}>
-                          Performance: {agent.performance}%
-                        </p>
-                      </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground">Clientes</p>
+                      <p className="font-medium">{agent.clients}</p>
                     </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Clientes</p>
-                        <p className="font-medium">{agent.clients}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Empréstimos Ativos</p>
-                        <p className="font-medium">{agent.activeLoans}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Cobranças (MZN)</p>
-                        <p className="font-medium">{agent.collections.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Comissão (MZN)</p>
-                        <p className="font-medium text-green-600">{agent.commission.toLocaleString()}</p>
-                      </div>
+                    <div>
+                      <p className="text-muted-foreground">Empréstimos Ativos</p>
+                      <p className="font-medium">{agent.activeLoans}</p>
                     </div>
-                    
-                    <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm">
-                        Ver Perfil
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Relatório
-                      </Button>
-                      <Button variant="outline" size="sm">
-                        Definir Meta
-                      </Button>
+                    <div>
+                      <p className="text-muted-foreground">Cobranças (MZN)</p>
+                      <p className="font-medium">{agent.collections.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Comissão (MZN)</p>
+                      <p className="font-medium text-green-600">{agent.commission.toLocaleString()}</p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="performance">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Performers</CardTitle>
-                <CardDescription>Agentes com melhor desempenho este mês</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {displayAgents.sort((a, b) => b.performance - a.performance).map((agent, index) => (
-                    <div key={agent.id} className="flex items-center justify-between p-3 border rounded">
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-lg">{index + 1}</span>
-                        <div>
-                          <p className="font-medium">{agent.name}</p>
-                          <p className="text-sm text-muted-foreground">{agent.zone}</p>
-                        </div>
-                      </div>
-                      <Badge className={
-                        agent.performance >= 90 ? 'bg-green-100 text-green-800' : 
-                        agent.performance >= 75 ? 'bg-yellow-100 text-yellow-800' : 
-                        'bg-red-100 text-red-800'
-                      }>
-                        {agent.performance}%
-                      </Badge>
-                    </div>
-                  ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Metas vs Realizado</CardTitle>
-                <CardDescription>Comparação de metas e resultados</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {displayAgents.map((agent) => (
-                    <div key={agent.id} className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm font-medium">{agent.name}</span>
-                        <span className="text-sm">{agent.performance}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-blue-600 h-2 rounded-full" 
-                          style={{ width: `${agent.performance}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+              ))
+            )}
           </div>
-        </TabsContent>
-
-        <TabsContent value="commissions">
-          <Card>
-            <CardHeader>
-              <CardTitle>Cálculo de Comissões</CardTitle>
-              <CardDescription>
-                Gerencie o pagamento de comissões dos agentes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Período</Label>
-                    <select className="w-full p-2 border rounded">
-                      <option>Janeiro 2024</option>
-                      <option>Dezembro 2023</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Agente</Label>
-                    <select className="w-full p-2 border rounded">
-                      <option>Todos os Agentes</option>
-                      <option>Carlos Silva</option>
-                      <option>Ana Santos</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Status</Label>
-                    <select className="w-full p-2 border rounded">
-                      <option>Pendente</option>
-                      <option>Pago</option>
-                      <option>Processando</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="border-t pt-4">
-                  <div className="space-y-3">
-                    {displayAgents.map((agent) => (
-                      <div key={agent.id} className="flex items-center justify-between p-3 border rounded">
-                        <div>
-                          <p className="font-medium">{agent.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {agent.activeLoans} empréstimos • {agent.collections.toLocaleString()} MZN cobrado
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-green-600">{agent.commission.toLocaleString()} MZN</p>
-                          <Badge>Pendente</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total de Comissões</p>
-                    <p className="text-lg font-semibold">10.250 MZN</p>
-                  </div>
-                  <Button>Processar Pagamentos</Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="zones">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestão de Zonas</CardTitle>
-              <CardDescription>
-                Configure zonas de atendimento e atribua agentes
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Button className="mb-4">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Nova Zona
-                </Button>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[
-                    { name: 'Maputo Centro', agents: 4, clients: 120 },
-                    { name: 'Matola', agents: 3, clients: 95 },
-                    { name: 'Boane', agents: 2, clients: 60 },
-                    { name: 'Marracuene', agents: 3, clients: 85 }
-                  ].map((zone) => (
-                    <div key={zone.name} className="border rounded-lg p-4">
-                      <h3 className="font-semibold">{zone.name}</h3>
-                      <div className="mt-2 space-y-1">
-                        <p className="text-sm text-muted-foreground">
-                          {zone.agents} agentes • {zone.clients} clientes
-                        </p>
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <Button variant="outline" size="sm">
-                          Ver Detalhes
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          Atribuir Agente
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
     </div>
   );
 };

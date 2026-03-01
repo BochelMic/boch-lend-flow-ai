@@ -1,31 +1,49 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { Send, MessageCircle, User, Search } from 'lucide-react';
+import {
+  Send, MessageCircle, Search, ChevronLeft, Check, CheckCheck,
+  Smile, Paperclip, X, FileText, Download
+} from 'lucide-react';
 
 interface Message {
   id: string;
   sender_id: string;
   receiver_id: string;
-  content: string;
+  content: string | null;
   created_at: string;
   read: boolean;
-  sender_name?: string;
-  sender_role?: string;
+  file_url?: string | null;
+  file_type?: string | null;
+  file_name?: string | null;
 }
 
 interface Contact {
   id: string;
   name: string;
   role: string;
+  avatar_url?: string | null;
   lastMessage?: string;
+  lastTime?: string;
   unreadCount: number;
+  online?: boolean;
 }
+
+const EMOJI_LIST = [
+  '😀', '😂', '😍', '🥰', '😊', '😎', '🤔', '😅', '😭', '😤',
+  '👍', '👎', '❤️', '🔥', '💯', '🎉', '👏', '🙏', '💪', '🤝',
+  '✅', '❌', '⚠️', '💰', '📄', '📎', '📞', '💬', '🏠', '🚀',
+];
+
+const getConversationColor = (myRole: string, theirRole: string): string => {
+  const pair = [myRole, theirRole].sort().join('-');
+  if (pair === 'agente-gestor') return '#d37c22';
+  if (pair === 'cliente-gestor') return '#1a3a5c';
+  if (pair === 'agente-cliente') return '#1a1a1a';
+  return '#6b7280';
+};
 
 const ChatModule = () => {
   const { user } = useAuth();
@@ -34,309 +52,449 @@ const ChatModule = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sending, setSending] = useState(false);
+  const [showEmoji, setShowEmoji] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<{ url: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiRef = useRef<HTMLDivElement>(null);
+  const selectedContactRef = useRef<Contact | null>(null);
+
+  // Keep ref in sync for use inside subscription callbacks
+  useEffect(() => { selectedContactRef.current = selectedContact; }, [selectedContact]);
+
+  useEffect(() => { if (user) loadContacts(); }, [user]);
 
   useEffect(() => {
-    if (user) loadContacts();
-  }, [user]);
-
-  useEffect(() => {
-    if (selectedContact) loadMessages(selectedContact.id);
+    if (selectedContact) {
+      loadMessages(selectedContact.id);
+      inputRef.current?.focus();
+      setShowEmoji(false);
+    }
   }, [selectedContact]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Realtime subscription for new messages
+  // Close emoji on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (emojiRef.current && !emojiRef.current.contains(e.target as Node)) setShowEmoji(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  // ===== REAL-TIME: Subscribe to ALL changes on chat_messages =====
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel('chat-messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `receiver_id=eq.${user.id}`,
-        },
+      .channel('chat-live')
+      // New messages TO me (from others)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `receiver_id=eq.${user.id}` },
         (payload) => {
-          const newMsg = payload.new as any;
-          if (selectedContact && newMsg.sender_id === selectedContact.id) {
-            setMessages((prev) => [...prev, {
-              ...newMsg,
-              sender_name: selectedContact.name,
-              sender_role: selectedContact.role,
-            }]);
-            // Mark as read
-            supabase.from('chat_messages').update({ read: true }).eq('id', newMsg.id);
+          const msg = payload.new as Message;
+          const current = selectedContactRef.current;
+          if (current && msg.sender_id === current.id) {
+            setMessages(prev => {
+              if (prev.some(m => m.id === msg.id)) return prev;
+              return [...prev, msg];
+            });
+            // Auto mark as read
+            supabase.from('chat_messages').update({ read: true }).eq('id', msg.id);
           }
           loadContacts();
+        }
+      )
+      // New messages FROM me (so my sent messages appear instantly if insert was slow)
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `sender_id=eq.${user.id}` },
+        (payload) => {
+          const msg = payload.new as Message;
+          setMessages(prev => {
+            if (prev.some(m => m.id === msg.id)) return prev;
+            return [...prev, msg];
+          });
+        }
+      )
+      // Read receipt updates (when other person reads my message)
+      .on('postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_messages', filter: `sender_id=eq.${user.id}` },
+        (payload) => {
+          const updated = payload.new as Message;
+          setMessages(prev => prev.map(m => m.id === updated.id ? { ...m, read: updated.read } : m));
         }
       )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [user, selectedContact]);
+  }, [user]);
 
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     if (!user) return;
 
-    // Get all profiles with roles (excluding self)
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('user_id, name')
-      .neq('user_id', user.id);
-
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('user_id, role');
-
+    const [{ data: profiles }, { data: roles }] = await Promise.all([
+      supabase.from('profiles').select('user_id, name, avatar_url').neq('user_id', user.id),
+      supabase.from('user_roles').select('user_id, role'),
+    ]);
     if (!profiles) return;
 
-    const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
+    const roleMap = new Map((roles || []).map(r => [r.user_id, r.role]));
+    const allowed = user.role === 'gestor' ? ['agente', 'cliente'] : user.role === 'agente' ? ['gestor', 'cliente'] : ['gestor', 'agente'];
 
-    // Get unread counts per sender
-    const { data: unreadMessages } = await supabase
-      .from('chat_messages')
-      .select('sender_id')
-      .eq('receiver_id', user.id)
-      .eq('read', false);
+    const [{ data: unread }, { data: allMsgs }] = await Promise.all([
+      supabase.from('chat_messages').select('sender_id').eq('receiver_id', user.id).eq('read', false),
+      supabase.from('chat_messages').select('sender_id, receiver_id, content, file_name, created_at').or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`).order('created_at', { ascending: false }).limit(200),
+    ]);
 
     const unreadMap = new Map<string, number>();
-    (unreadMessages || []).forEach((m: any) => {
-      unreadMap.set(m.sender_id, (unreadMap.get(m.sender_id) || 0) + 1);
+    (unread || []).forEach(m => { unreadMap.set(m.sender_id, (unreadMap.get(m.sender_id) || 0) + 1); });
+
+    const lastMsgMap = new Map<string, { content: string; time: string }>();
+    (allMsgs || []).forEach(m => {
+      const otherId = m.sender_id === user.id ? m.receiver_id : m.sender_id;
+      if (!lastMsgMap.has(otherId)) {
+        lastMsgMap.set(otherId, { content: m.file_name ? `📎 ${m.file_name}` : (m.content || ''), time: m.created_at });
+      }
     });
 
-    const contactsList: Contact[] = profiles.map((p: any) => ({
-      id: p.user_id,
-      name: p.name,
-      role: roleMap.get(p.user_id) || 'cliente',
-      unreadCount: unreadMap.get(p.user_id) || 0,
-    }));
-
-    setContacts(contactsList);
-  };
+    const list: Contact[] = profiles
+      .filter(p => allowed.includes(roleMap.get(p.user_id) || 'cliente'))
+      .map(p => ({
+        id: p.user_id, name: p.name, role: roleMap.get(p.user_id) || 'cliente',
+        avatar_url: (p as any).avatar_url || null,
+        lastMessage: lastMsgMap.get(p.user_id)?.content,
+        lastTime: lastMsgMap.get(p.user_id)?.time,
+        unreadCount: unreadMap.get(p.user_id) || 0,
+      }))
+      .sort((a, b) => {
+        if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+        if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+        if (a.lastTime && b.lastTime) return new Date(b.lastTime).getTime() - new Date(a.lastTime).getTime();
+        return 0;
+      });
+    setContacts(list);
+  }, [user]);
 
   const loadMessages = async (contactId: string) => {
     if (!user) return;
-
-    const { data } = await supabase
-      .from('chat_messages')
-      .select('*')
+    const { data } = await supabase.from('chat_messages').select('*')
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${contactId}),and(sender_id.eq.${contactId},receiver_id.eq.${user.id})`)
       .order('created_at', { ascending: true });
-
     setMessages(data || []);
-
-    // Mark as read
-    await supabase
-      .from('chat_messages')
-      .update({ read: true })
-      .eq('sender_id', contactId)
-      .eq('receiver_id', user.id)
-      .eq('read', false);
-
+    await supabase.from('chat_messages').update({ read: true }).eq('sender_id', contactId).eq('receiver_id', user.id).eq('read', false);
     loadContacts();
   };
 
-  const sendMessage = async () => {
-    if (!newMessage.trim() || !selectedContact || !user) return;
+  const sendMessage = async (fileData?: { url: string; type: string; name: string }) => {
+    if ((!newMessage.trim() && !fileData) || !selectedContact || !user || sending) return;
+    setSending(true);
+    const text = newMessage.trim();
+    setNewMessage(''); // Clear immediately for snappy UX
 
-    const { data, error } = await supabase
-      .from('chat_messages')
-      .insert({
-        sender_id: user.id,
-        receiver_id: selectedContact.id,
-        content: newMessage.trim(),
-      })
-      .select()
-      .single();
+    const payload: any = { sender_id: user.id, receiver_id: selectedContact.id };
+    if (fileData) {
+      payload.file_url = fileData.url;
+      payload.file_type = fileData.type;
+      payload.file_name = fileData.name;
+      payload.content = text || null;
+    } else {
+      payload.content = text;
+    }
 
+    const { data, error } = await supabase.from('chat_messages').insert(payload).select().single();
     if (data && !error) {
-      setMessages((prev) => [...prev, data as Message]);
-      setNewMessage('');
+      // Add to messages immediately (real-time will deduplicate)
+      setMessages(prev => {
+        if (prev.some(m => m.id === data.id)) return prev;
+        return [...prev, data as Message];
+      });
       loadContacts();
+    } else if (error) {
+      setNewMessage(text); // Restore message on error
+    }
+    setSending(false);
+    inputRef.current?.focus();
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ficheiro muito grande. Máximo 5MB.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('chat-files').upload(path, file);
+      if (error) { alert('Erro ao enviar ficheiro.'); return; }
+      const { data: urlData } = supabase.storage.from('chat-files').getPublicUrl(path);
+      await sendMessage({ url: urlData.publicUrl, type: file.type, name: file.name });
+    } catch (err) {
+      alert('Erro ao enviar ficheiro.');
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const colors: Record<string, string> = {
-      gestor: 'bg-primary text-primary-foreground',
-      agente: 'bg-accent text-accent-foreground',
-      cliente: 'bg-secondary text-secondary-foreground'
-    };
-    const labels: Record<string, string> = {
-      gestor: 'Gestor',
-      agente: 'Agente',
-      cliente: 'Cliente'
-    };
+  const addEmoji = (emoji: string) => { setNewMessage(prev => prev + emoji); inputRef.current?.focus(); };
+  const formatTime = (ts: string) => new Date(ts).toLocaleTimeString('pt-MZ', { hour: '2-digit', minute: '2-digit' });
+  const formatDate = (ts: string) => {
+    const d = new Date(ts); const today = new Date();
+    if (d.toDateString() === today.toDateString()) return 'Hoje';
+    const y = new Date(today); y.setDate(y.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'Ontem';
+    return d.toLocaleDateString('pt-MZ', { day: '2-digit', month: '2-digit' });
+  };
+  const isImage = (type?: string | null) => type?.startsWith('image/');
+  const filteredContacts = contacts.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const convColor = selectedContact ? getConversationColor(user?.role || 'cliente', selectedContact.role) : '#1a3a5c';
+  const getRoleLabel = (role: string) => ({ gestor: 'Admin', agente: 'Agente', cliente: 'Cliente' }[role] || role);
+
+  // Avatar component
+  const Avatar = ({ contact, size = 44 }: { contact: Contact | null; size?: number }) => {
+    if (!contact) return null;
+    const color = getConversationColor(user?.role || 'cliente', contact.role);
+    if (contact.avatar_url) {
+      return (
+        <img src={contact.avatar_url} alt={contact.name}
+          className="rounded-full object-cover flex-shrink-0 shadow-sm"
+          style={{ width: size, height: size }}
+        />
+      );
+    }
     return (
-      <Badge className={colors[role] || 'bg-muted'}>
-        {labels[role] || role}
-      </Badge>
+      <div className="rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-sm"
+        style={{ width: size, height: size, backgroundColor: color, fontSize: size * 0.38 }}
+      >
+        {contact.name[0]?.toUpperCase()}
+      </div>
     );
   };
 
-  const filteredContacts = contacts.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const formatTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  const renderFileContent = (msg: Message) => {
+    if (!msg.file_url) return null;
+    if (isImage(msg.file_type)) {
+      return (
+        <div className="mt-1 rounded-lg overflow-hidden cursor-pointer" onClick={() => setPreviewFile({ url: msg.file_url! })}>
+          <img src={msg.file_url} alt={msg.file_name || ''} className="max-w-[240px] max-h-[200px] object-cover rounded-lg" loading="lazy" />
+        </div>
+      );
+    }
+    return (
+      <a href={msg.file_url} target="_blank" rel="noopener noreferrer"
+        className="mt-1 flex items-center gap-2 bg-black/5 rounded-lg px-3 py-2 text-sm hover:bg-black/10 transition-colors">
+        <FileText className="h-4 w-4 flex-shrink-0" />
+        <span className="truncate text-gray-700">{msg.file_name || 'Documento'}</span>
+        <Download className="h-3.5 w-3.5 flex-shrink-0 ml-auto text-gray-500" />
+      </a>
+    );
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <MessageCircle className="h-5 w-5 md:h-6 md:w-6 text-primary" />
-        <h1 className="text-xl md:text-3xl font-bold">Chat Interno</h1>
+    <div className="h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] flex flex-col">
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-4 px-1">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#1a3a5c' }}>
+          <MessageCircle className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Chat</h1>
+          <p className="text-xs text-gray-500">{contacts.length} contacto(s)</p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[calc(100vh-180px)] md:h-[calc(100vh-200px)]">
-        {/* Lista de Contatos */}
-        <Card className={`lg:col-span-1 flex flex-col ${selectedContact ? 'hidden lg:flex' : 'flex'}`}>
-          <CardHeader className="p-3 md:p-4 pb-2">
-            <CardTitle className="text-base md:text-lg">Contatos</CardTitle>
-            <div className="relative mt-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-              />
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-0 min-h-0 rounded-2xl overflow-hidden shadow-lg border border-gray-200">
+        {/* Dark Sidebar */}
+        <div className={`flex flex-col overflow-hidden ${selectedContact ? 'hidden lg:flex' : 'flex'}`} style={{ backgroundColor: '#1e293b' }}>
+          <div className="p-3 border-b border-white/10">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageCircle className="h-4 w-4 text-white/70" />
+              <span className="text-white/90 font-semibold text-sm">Conversas</span>
             </div>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-hidden p-2">
-            <ScrollArea className="h-full">
-              <div className="space-y-2">
-                {filteredContacts.length === 0 ? (
-                  <p className="text-center text-muted-foreground p-4 text-sm">
-                    Nenhum contato encontrado
-                  </p>
-                ) : (
-                  filteredContacts.map((contact) => (
-                    <div
-                      key={contact.id}
-                      onClick={() => setSelectedContact(contact)}
-                      className={`p-2 md:p-3 rounded-lg cursor-pointer transition-colors ${
-                        selectedContact?.id === contact.id
-                          ? 'bg-primary/10 border border-primary'
-                          : 'hover:bg-muted'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                          <User className="h-4 w-4 md:h-5 md:w-5 text-primary" />
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+              <input placeholder="Procurar..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 bg-white/10 border-0 rounded-xl text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20" />
+            </div>
+          </div>
+          <ScrollArea className="flex-1">
+            <div className="p-2">
+              {filteredContacts.length === 0 ? (
+                <div className="text-center py-12 text-white/30">
+                  <MessageCircle className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">Nenhum contacto</p>
+                </div>
+              ) : (
+                filteredContacts.map(contact => {
+                  const isSelected = selectedContact?.id === contact.id;
+                  return (
+                    <div key={contact.id} onClick={() => setSelectedContact(contact)}
+                      className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 mb-1 ${isSelected ? 'bg-white/15' : 'hover:bg-white/8'}`}>
+                      <Avatar contact={contact} size={44} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm text-white truncate">{contact.name}</span>
+                          {contact.lastTime && <span className="text-[10px] text-white/40 flex-shrink-0 ml-2">{formatDate(contact.lastTime)}</span>}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium truncate text-sm md:text-base">{contact.name}</span>
-                            {contact.unreadCount > 0 && (
-                              <Badge variant="destructive" className="text-xs">
-                                {contact.unreadCount}
-                              </Badge>
-                            )}
+                        <div className="flex items-center justify-between mt-0.5">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
+                              style={{ backgroundColor: getConversationColor(user?.role || 'cliente', contact.role) }}>
+                              {getRoleLabel(contact.role)}
+                            </span>
+                            {contact.lastMessage && <span className="text-xs text-white/30 truncate max-w-[100px]">{contact.lastMessage}</span>}
                           </div>
-                          <div className="flex items-center gap-2">
-                            {getRoleBadge(contact.role)}
-                          </div>
+                          {contact.unreadCount > 0 && (
+                            <span className="w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                              {contact.unreadCount}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+                  );
+                })
+              )}
+            </div>
+          </ScrollArea>
+        </div>
 
-        {/* Área de Chat */}
-        <Card className={`lg:col-span-2 flex flex-col ${selectedContact ? 'flex' : 'hidden lg:flex'}`}>
+        {/* Chat Area */}
+        <div className={`flex flex-col bg-[#efeae2] overflow-hidden ${selectedContact ? 'flex' : 'hidden lg:flex'}`}>
           {selectedContact ? (
             <>
-              <CardHeader className="border-b p-3 md:p-4">
-                <div className="flex items-center gap-2 md:gap-3">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="lg:hidden"
-                    onClick={() => setSelectedContact(null)}
-                  >
-                    ←
-                  </Button>
-                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                    <User className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-base md:text-lg">{selectedContact.name}</CardTitle>
-                    {getRoleBadge(selectedContact.role)}
+              {/* Chat Header */}
+              <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shadow-sm">
+                <Button variant="ghost" size="icon" className="lg:hidden h-8 w-8" onClick={() => setSelectedContact(null)}>
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Avatar contact={selectedContact} size={40} />
+                <div className="flex-1 min-w-0">
+                  <h2 className="font-bold text-gray-900 truncate text-sm">{selectedContact.name}</h2>
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
+                    style={{ backgroundColor: convColor }}>{getRoleLabel(selectedContact.role)}</span>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <ScrollArea className="flex-1 min-h-0">
+                <div className="p-4 space-y-1 min-h-full"
+                  style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23d5cfc5\' fill-opacity=\'0.18\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }}>
+                  {messages.length === 0 && (
+                    <div className="text-center py-16 text-gray-400">
+                      <MessageCircle className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                      <p className="text-sm">Envie a primeira mensagem</p>
+                    </div>
+                  )}
+                  {messages.map((msg, i) => {
+                    const isMine = msg.sender_id === user?.id;
+                    const showDate = i === 0 || formatDate(messages[i - 1].created_at) !== formatDate(msg.created_at);
+                    return (
+                      <React.Fragment key={msg.id}>
+                        {showDate && (
+                          <div className="flex justify-center my-3">
+                            <span className="text-[11px] bg-white/80 text-gray-600 px-4 py-1 rounded-full font-medium shadow-sm">{formatDate(msg.created_at)}</span>
+                          </div>
+                        )}
+                        <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} mb-1`}>
+                          {/* Show small avatar for received messages */}
+                          {!isMine && (
+                            <div className="flex-shrink-0 mr-1.5 self-end mb-1">
+                              <Avatar contact={selectedContact} size={24} />
+                            </div>
+                          )}
+                          <div className="max-w-[75%] md:max-w-[60%] rounded-xl px-3.5 py-2 shadow-sm"
+                            style={{
+                              backgroundColor: isMine ? '#d9fdd3' : '#ffffff',
+                              borderTopLeftRadius: isMine ? '12px' : '4px',
+                              borderTopRightRadius: isMine ? '4px' : '12px',
+                            }}>
+                            {renderFileContent(msg)}
+                            {msg.content && <p className="text-[13.5px] leading-relaxed text-gray-900 whitespace-pre-wrap">{msg.content}</p>}
+                            <div className="flex items-center justify-end gap-1 mt-0.5 -mb-0.5">
+                              <span className="text-[10px] text-gray-500">{formatTime(msg.created_at)}</span>
+                              {isMine && (
+                                msg.read
+                                  ? <CheckCheck className="h-3.5 w-3.5 text-blue-500" />
+                                  : <Check className="h-3.5 w-3.5 text-gray-400" />
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
+
+              {/* Emoji Picker */}
+              {showEmoji && (
+                <div ref={emojiRef} className="bg-white border-t border-gray-200 p-3">
+                  <div className="grid grid-cols-10 gap-1">
+                    {EMOJI_LIST.map(emoji => (
+                      <button key={emoji} onClick={() => addEmoji(emoji)}
+                        className="h-9 w-9 flex items-center justify-center text-xl hover:bg-gray-100 rounded-lg transition-colors">{emoji}</button>
+                    ))}
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-hidden p-0">
-                <ScrollArea className="h-[calc(100vh-350px)] md:h-[calc(100vh-380px)] p-3 md:p-4">
-                  <div className="space-y-3 md:space-y-4">
-                    {messages.map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${
-                          message.sender_id === user?.id ? 'justify-end' : 'justify-start'
-                        }`}
-                      >
-                        <div
-                          className={`max-w-[85%] md:max-w-[80%] rounded-lg p-2 md:p-3 ${
-                            message.sender_id === user?.id
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
-                          }`}
-                        >
-                          <p className="text-sm">{message.content}</p>
-                          <p
-                            className={`text-xs mt-1 ${
-                              message.sender_id === user?.id
-                                ? 'text-primary-foreground/70'
-                                : 'text-muted-foreground'
-                            }`}
-                          >
-                            {formatTime(message.created_at)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </ScrollArea>
-              </CardContent>
-              <div className="border-t p-3 md:p-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Digite sua mensagem..."
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    className="flex-1"
-                  />
-                  <Button onClick={sendMessage} size="icon">
+              )}
+
+              {/* Input */}
+              <div className="bg-white border-t border-gray-200 px-3 py-2.5">
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => setShowEmoji(!showEmoji)}
+                    className={`h-9 w-9 flex items-center justify-center rounded-full transition-colors ${showEmoji ? 'bg-gray-200' : 'text-gray-500 hover:bg-gray-100'}`}>
+                    <Smile className="h-5 w-5" />
+                  </button>
+                  <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                    className="h-9 w-9 flex items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 transition-colors">
+                    <Paperclip className="h-5 w-5" />
+                  </button>
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,.pdf,.doc,.docx" onChange={handleFileUpload} className="hidden" />
+                  <input ref={inputRef} placeholder={uploading ? 'A enviar...' : 'Escreva uma mensagem...'}
+                    value={newMessage} onChange={e => setNewMessage(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage()} disabled={uploading}
+                    className="flex-1 bg-gray-100 border-0 rounded-full px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200" />
+                  <button onClick={() => sendMessage()} disabled={(!newMessage.trim() && !uploading) || sending}
+                    className="h-10 w-10 rounded-full flex items-center justify-center text-white shadow-md transition-all hover:shadow-lg disabled:opacity-40"
+                    style={{ backgroundColor: convColor }}>
                     <Send className="h-4 w-4" />
-                  </Button>
+                  </button>
                 </div>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <div className="text-center p-4">
-                <MessageCircle className="h-10 w-10 md:h-12 md:w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm md:text-base">Selecione um contato para iniciar uma conversa</p>
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center p-6">
+                <div className="w-24 h-24 rounded-full bg-white/60 flex items-center justify-center mx-auto mb-5 shadow-inner">
+                  <MessageCircle className="h-12 w-12 text-gray-400" />
+                </div>
+                <h3 className="font-bold text-gray-700 text-lg mb-1">Chat Interno</h3>
+                <p className="text-sm text-gray-500">Selecione um contacto para conversar</p>
               </div>
             </div>
           )}
-        </Card>
+        </div>
       </div>
+
+      {/* Image Preview */}
+      {previewFile && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setPreviewFile(null)}>
+          <button className="absolute top-4 right-4 text-white hover:text-gray-300" onClick={() => setPreviewFile(null)}><X className="h-8 w-8" /></button>
+          <img src={previewFile.url} alt="" className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
+        </div>
+      )}
     </div>
   );
 };

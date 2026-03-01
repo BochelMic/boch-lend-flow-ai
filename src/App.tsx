@@ -9,23 +9,26 @@ import AgentApp from "./pages/AgentApp";
 import GestorApp from "./pages/GestorApp";
 import NotFound from "./pages/NotFound";
 import PublicCreditForm from "./pages/PublicCreditForm";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/formulario-credito" element={<PublicCreditForm />} />
-        <Route path="/gestor/*" element={<GestorApp />} />
-        <Route path="/agente/*" element={<AgentApp />} />
-        <Route path="/404" element={<NotFound />} />
-        <Route path="/*" element={<ClientApp />} />
-      </Routes>
-    </BrowserRouter>
-    <Toaster />
-    <Sonner />
-    <InstallPWA />
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/formulario-credito" element={<PublicCreditForm />} />
+          <Route path="/gestor/*" element={<GestorApp />} />
+          <Route path="/agente/*" element={<AgentApp />} />
+          <Route path="/404" element={<NotFound />} />
+          <Route path="/*" element={<ClientApp />} />
+        </Routes>
+      </BrowserRouter>
+      <Toaster />
+      <Sonner />
+      <InstallPWA />
+    </AuthProvider>
   </QueryClientProvider>
 );
 

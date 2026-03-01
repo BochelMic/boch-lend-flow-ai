@@ -6,16 +6,16 @@ import { Textarea } from '../ui/textarea';
 import { Label } from '../ui/label';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
-import { 
-  DollarSign, 
-  User, 
-  Phone, 
-  MapPin, 
+import { supabase } from '@/integrations/supabase/client';
+import {
+  DollarSign,
+  User,
+  Phone,
+  MapPin,
   Calendar,
   FileText,
   Send
 } from 'lucide-react';
-import { CreditRequest } from './CreditRequestManager';
 
 const CreditRequestForm = () => {
   const [formData, setFormData] = useState({
@@ -43,29 +43,24 @@ const CreditRequestForm = () => {
           description: 'Por favor, preencha todos os campos obrigatórios.',
           variant: 'destructive'
         });
+        setIsSubmitting(false);
         return;
       }
 
-      // Create new request
-      const newRequest: CreditRequest = {
-        id: Date.now().toString(),
-        clientName: formData.clientName,
-        clientEmail: formData.clientEmail,
-        clientPhone: formData.clientPhone,
-        clientAddress: formData.clientAddress,
+      const { error } = await supabase.from('credit_requests').insert({
+        client_name: formData.clientName,
+        client_email: formData.clientEmail,
+        client_phone: formData.clientPhone || null,
+        client_address: formData.clientAddress || null,
         amount: parseFloat(formData.amount),
         purpose: formData.purpose,
         term: parseInt(formData.term),
         status: 'pending',
-        submittedAt: new Date(),
-        agentId: user?.id,
-        agentName: user?.name
-      };
+        user_id: user?.id || null,
+        agent_id: user?.role === 'agente' ? user?.id : null,
+      });
 
-      // Save to localStorage
-      const existingRequests = JSON.parse(localStorage.getItem('creditRequests') || '[]');
-      existingRequests.push(newRequest);
-      localStorage.setItem('creditRequests', JSON.stringify(existingRequests));
+      if (error) throw error;
 
       // Reset form
       setFormData({
@@ -83,10 +78,10 @@ const CreditRequestForm = () => {
         description: 'O pedido de crédito foi enviado com sucesso para análise.',
       });
 
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: 'Erro',
-        description: 'Ocorreu um erro ao enviar o pedido. Tente novamente.',
+        description: error.message || 'Ocorreu um erro ao enviar o pedido. Tente novamente.',
         variant: 'destructive'
       });
     } finally {
@@ -190,7 +185,7 @@ const CreditRequestForm = () => {
               {/* Loan Info */}
               <div className="border-t pt-6">
                 <h3 className="text-lg font-semibold mb-4">Dados do Empréstimo</h3>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="amount" className="flex items-center gap-2">
@@ -276,7 +271,7 @@ const CreditRequestForm = () => {
               <div>
                 <h4 className="font-semibold text-info">Informações Importantes</h4>
                 <ul className="text-sm text-info/80 mt-2 space-y-1">
-                  <li>• Taxa de juros: 25% ao mês</li>
+                  <li>• Taxa de juros: 30% ao mês</li>
                   <li>• Análise do pedido: 1-3 dias úteis</li>
                   <li>• Documentação necessária será solicitada após aprovação</li>
                   <li>• Valor mínimo: MZN 1.000</li>

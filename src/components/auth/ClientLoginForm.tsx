@@ -31,13 +31,8 @@ const ClientLoginForm = () => {
         <div className="absolute bottom-[-60px] right-[-60px] w-80 h-80 rounded-full bg-accent/8 blur-3xl" />
 
         <div className="relative z-10 max-w-sm text-center">
-          <div className="mx-auto w-20 h-20 rounded-2xl flex items-center justify-center mb-8"
-            style={{ background: 'linear-gradient(135deg, hsl(270 60% 55%), hsl(280 70% 60%))' }}>
-            <span className="text-4xl font-black text-white tracking-tight">B</span>
-          </div>
-
-          <h1 className="text-4xl font-black text-foreground tracking-tight mb-2">BOCHEL</h1>
-          <p className="text-lg font-semibold mb-1" style={{ color: 'hsl(270 60% 65%)' }}>Minha Conta</p>
+          <img src="/logo-bochel.png" alt="BOCHEL" className="h-24 object-contain mx-auto mb-4" />
+          <p className="text-lg font-semibold mb-1" style={{ color: '#0b3a20' }}>Minha Conta</p>
           <p className="text-sm text-muted-foreground mb-10 leading-relaxed">
             Acompanhe o seu crédito, pagamentos e histórico de forma simples e segura.
           </p>
@@ -62,13 +57,9 @@ const ClientLoginForm = () => {
         <div className="w-full max-w-md space-y-6">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: 'linear-gradient(135deg, hsl(270 60% 55%), hsl(280 70% 60%))' }}>
-              <span className="text-lg font-black text-white">B</span>
-            </div>
+            <img src="/logo-bochel.png" alt="BOCHEL" className="h-10 object-contain" />
             <div>
-              <h1 className="text-lg font-black text-foreground tracking-tight">BOCHEL</h1>
-              <p className="text-xs text-muted-foreground">Minha Conta</p>
+              <p className="text-xs text-muted-foreground mt-1">Minha Conta</p>
             </div>
           </div>
 

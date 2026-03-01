@@ -1,190 +1,232 @@
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { User, CreditCard, Phone, Mail, MapPin, Edit } from 'lucide-react';
+import { User, CreditCard, Phone, Mail, MapPin, RefreshCw, MessageCircle } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ClientData {
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  id_number: string | null;
+  status: string;
+}
 
 const ClientAccountModule = () => {
-  // Mock data do cliente logado
-  const clientData = {
-    name: 'João Silva',
-    email: 'joao@email.com',
-    phone: '+258 84 123 4567',
-    document: '123456789',
-    address: 'Av. Julius Nyerere, 123, Maputo',
-    creditScore: 'Bom',
-    totalLoans: 2,
-    activeLoans: 1,
-    totalBorrowed: 75000,
-    totalPaid: 40000,
-    currentDebt: 35000
+  const { user } = useAuth();
+  const [clientData, setClientData] = useState<ClientData | null>(null);
+  const [stats, setStats] = useState({ totalLoans: 0, activeLoans: 0, totalBorrowed: 0, totalPaid: 0, currentDebt: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) loadData();
+  }, [user]);
+
+  const loadData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // Client profile
+      const { data: client } = await supabase.from('clients').select('*').eq('user_id', user.id).single();
+
+      if (client) {
+        setClientData({
+          name: client.name, email: client.email, phone: client.phone,
+          address: client.address, id_number: client.id_number, status: client.status,
+        });
+      } else {
+        // Fallback to profiles
+        const { data: profile } = await supabase.from('profiles').select('name, email').eq('user_id', user.id).single();
+        setClientData({
+          name: profile?.name || user.name, email: profile?.email || user.email,
+          phone: null, address: null, id_number: null, status: 'active',
+        });
+      }
+
+      // Loan stats
+      const { data: loans } = await supabase.from('loans').select('amount, total_amount, remaining_amount, status')
+        .or(`client_id.eq.${user.id},client_id.in.(select id from clients where user_id = '${user.id}')`);
+
+      const clientLoans = loans || [];
+
+      // Also try fetching loans where client name matches
+      const { data: clientRecord } = await supabase.from('clients').select('id').eq('user_id', user.id).single();
+      let allLoans = clientLoans;
+
+      if (clientRecord) {
+        const { data: loansByClientId } = await supabase.from('loans').select('amount, total_amount, remaining_amount, status').eq('client_id', clientRecord.id);
+        if (loansByClientId && loansByClientId.length > 0) {
+          allLoans = loansByClientId;
+        }
+      }
+
+      const totalBorrowed = allLoans.reduce((s, l) => s + (l.amount || 0), 0);
+      const totalDebt = allLoans.filter(l => l.status === 'active' || l.status === 'overdue').reduce((s, l) => s + (l.remaining_amount || 0), 0);
+      const totalPaid = totalBorrowed - totalDebt;
+
+      setStats({
+        totalLoans: allLoans.length,
+        activeLoans: allLoans.filter(l => l.status === 'active' || l.status === 'overdue').length,
+        totalBorrowed,
+        totalPaid: Math.max(totalPaid, 0),
+        currentDebt: totalDebt,
+      });
+    } catch (e) {
+      console.error('Error loading client data:', e);
+    } finally {
+      setLoading(false);
+    }
   };
 
+  const fmt = (v: number) => v.toLocaleString('pt-MZ', { minimumFractionDigits: 0 });
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 flex items-center justify-center min-h-[40vh]">
+        <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Minha Conta</h1>
-          <p className="text-muted-foreground">
-            Gerencie suas informações pessoais e dados de crédito
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Minha Conta</h1>
+          <p className="text-muted-foreground text-sm">Informações pessoais e dados de crédito</p>
         </div>
-        <Button>
-          <Edit className="mr-2 h-4 w-4" />
-          Editar Perfil
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card>
+          {/* Personal Info */}
+          <Card className="border-0 shadow-md">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="h-5 w-5 text-[#1b5e20]" />
                 Informações Pessoais
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Nome Completo</label>
-                  <p className="font-medium">{clientData.name}</p>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nome</label>
+                  <p className="font-medium mt-0.5">{clientData?.name || '—'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Documento (BI)</label>
-                  <p className="font-medium">{clientData.document}</p>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Documento (BI)</label>
+                  <p className="font-medium mt-0.5">{clientData?.id_number || 'Não informado'}</p>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Email</label>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <p className="font-medium">{clientData.email}</p>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Email</label>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="font-medium">{clientData?.email || 'Não informado'}</p>
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-muted-foreground">Telefone</label>
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <p className="font-medium">{clientData.phone}</p>
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Telefone</label>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="font-medium">{clientData?.phone || 'Não informado'}</p>
                   </div>
                 </div>
-                <div className="col-span-2">
-                  <label className="text-sm font-medium text-muted-foreground">Endereço</label>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <p className="font-medium">{clientData.address}</p>
+                <div className="sm:col-span-2">
+                  <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Endereço</label>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="font-medium">{clientData?.address || 'Não informado'}</p>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card>
+          {/* Credit Info */}
+          <Card className="border-0 shadow-md">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <CreditCard className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <CreditCard className="h-5 w-5 text-[#1b5e20]" />
                 Informações de Crédito
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Score de Crédito</label>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-green-100 text-green-800">
-                        {clientData.creditScore}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Total de Empréstimos</label>
-                    <p className="text-lg font-semibold">{clientData.totalLoans}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Empréstimos Ativos</label>
-                    <p className="text-lg font-semibold">{clientData.activeLoans}</p>
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Total Empréstimos</p>
+                  <p className="text-2xl font-bold text-gray-900">{stats.totalLoans}</p>
                 </div>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Total Emprestado</label>
-                    <p className="text-lg font-semibold">{clientData.totalBorrowed.toLocaleString()} MZN</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Total Pago</label>
-                    <p className="text-lg font-semibold text-green-600">{clientData.totalPaid.toLocaleString()} MZN</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Dívida Atual</label>
-                    <p className="text-lg font-semibold text-orange-600">{clientData.currentDebt.toLocaleString()} MZN</p>
-                  </div>
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Ativos</p>
+                  <p className="text-2xl font-bold text-[#1b5e20]">{stats.activeLoans}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Emprestado</p>
+                  <p className="text-lg font-bold text-gray-700">{fmt(stats.totalBorrowed)} MZN</p>
+                </div>
+                <div className="bg-green-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-green-700">Pago</p>
+                  <p className="text-lg font-bold text-green-700">{fmt(stats.totalPaid)} MZN</p>
+                </div>
+                <div className={`rounded-xl p-4 text-center ${stats.currentDebt > 0 ? 'bg-orange-50' : 'bg-green-50'}`}>
+                  <p className={`text-xs ${stats.currentDebt > 0 ? 'text-orange-700' : 'text-green-700'}`}>Dívida Atual</p>
+                  <p className={`text-lg font-bold ${stats.currentDebt > 0 ? 'text-orange-700' : 'text-green-700'}`}>{fmt(stats.currentDebt)} MZN</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Status</p>
+                  <Badge className={clientData?.status === 'active' ? 'bg-green-100 text-green-800 mt-1' : 'bg-red-100 text-red-800 mt-1'}>
+                    {clientData?.status === 'active' ? 'Ativo' : 'Inativo'}
+                  </Badge>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Sidebar */}
         <div className="space-y-6">
-          <Card>
+          <Card className="border-0 shadow-md">
             <CardHeader>
-              <CardTitle>Ações Rápidas</CardTitle>
+              <CardTitle className="text-base">Ações Rápidas</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full" variant="default">
-                Solicitar Novo Crédito
-              </Button>
-              <Button className="w-full" variant="outline">
-                Ver Histórico de Pagamentos
-              </Button>
-              <Button className="w-full" variant="outline">
-                Meus Contratos
-              </Button>
-              <Button className="w-full" variant="outline">
-                Imprimir Extratos
-              </Button>
+            <CardContent className="space-y-2">
+              {stats.currentDebt === 0 ? (
+                <Link to="/credit-form">
+                  <Button className="w-full text-white font-semibold" style={{ backgroundColor: '#d37c22' }}>
+                    Solicitar Novo Crédito
+                  </Button>
+                </Link>
+              ) : (
+                <Button className="w-full" disabled variant="outline">
+                  Quite a dívida para novo crédito
+                </Button>
+              )}
+              <Link to="/historico">
+                <Button className="w-full mt-2" variant="outline">Ver Histórico</Button>
+              </Link>
+              <Link to="/pedidos">
+                <Button className="w-full mt-2" variant="outline">Meus Pedidos</Button>
+              </Link>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-0 shadow-md">
             <CardHeader>
-              <CardTitle>Status da Conta</CardTitle>
+              <CardTitle className="text-base">Suporte</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Status:</span>
-                <Badge className="bg-green-100 text-green-800">Ativo</Badge>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Próximo Pagamento:</span>
-                <span className="text-sm font-medium">15/01/2024</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm">Valor:</span>
-                <span className="text-sm font-medium">4.850 MZN</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Suporte</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Precisa de ajuda? Entre em contacto connosco.
-              </p>
-              <div className="space-y-2">
+            <CardContent className="space-y-2">
+              <p className="text-sm text-muted-foreground">Precisa de ajuda?</p>
+              <Link to="/chat">
                 <Button variant="outline" size="sm" className="w-full">
-                  <Phone className="mr-2 h-4 w-4" />
-                  Ligar para Suporte
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Contactar Suporte
                 </Button>
-                <Button variant="outline" size="sm" className="w-full">
-                  <Mail className="mr-2 h-4 w-4" />
-                  Enviar Mensagem
-                </Button>
-              </div>
+              </Link>
             </CardContent>
           </Card>
         </div>

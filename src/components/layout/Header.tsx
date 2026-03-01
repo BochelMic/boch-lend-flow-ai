@@ -47,15 +47,15 @@ const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-10 border-b border-border/50 bg-background/80 backdrop-blur-xl shadow-soft">
-      <div className="flex items-center justify-between px-3 py-2.5 md:px-5 md:py-3 gap-2">
+    <header className="sticky top-0 z-10 border-b border-gray-200/60 bg-white/95 backdrop-blur-xl">
+      <div className="flex items-center justify-between px-4 py-3 md:px-6 md:py-3.5 gap-2">
         {/* Left */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <SidebarTrigger className="flex-shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-lg transition-colors" />
+          <SidebarTrigger className="flex-shrink-0 h-9 w-9 text-gray-400 hover:text-[#0b3a20] hover:bg-gray-100 rounded-xl transition-colors" />
           <div className="hidden sm:block min-w-0">
-            <p className="text-[10px] text-muted-foreground/60 leading-none uppercase tracking-widest font-medium">Bochel Microcrédito</p>
-            <h2 className="text-sm md:text-base font-bold text-foreground truncate leading-tight mt-0.5">
-              Sistema de Gestão
+            <p className="text-[11px] text-gray-400 font-medium">Bem-vindo(a),</p>
+            <h2 className="text-sm font-bold text-gray-800 truncate leading-tight">
+              {user?.name || 'Utilizador'}
             </h2>
           </div>
         </div>

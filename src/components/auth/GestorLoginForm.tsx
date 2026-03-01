@@ -34,7 +34,7 @@ const GestorLoginForm = () => {
           <span className="text-xs font-mono text-muted-foreground/60 tracking-wider uppercase">Acesso Interno</span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-3" autoComplete="off">
           <div className="space-y-1">
             <Label htmlFor="email" className="text-xs font-medium text-muted-foreground">ID</Label>
             <div className="relative">
@@ -42,6 +42,7 @@ const GestorLoginForm = () => {
               <Input id="email" type="email" placeholder="id@sistema"
                 value={email} onChange={(e) => setEmail(e.target.value)}
                 required disabled={isLoading}
+                autoComplete="username"
                 className="h-10 pl-9 text-sm bg-input border-border/40 font-mono" />
             </div>
           </div>
@@ -53,6 +54,7 @@ const GestorLoginForm = () => {
               <Input id="password" type="password" placeholder="••••••••"
                 value={password} onChange={(e) => setPassword(e.target.value)}
                 required disabled={isLoading}
+                autoComplete="current-password"
                 className="h-10 pl-9 text-sm bg-input border-border/40 font-mono" />
             </div>
           </div>

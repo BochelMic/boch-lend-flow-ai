@@ -1,10 +1,10 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { 
-  Users, 
-  DollarSign, 
-  TrendingUp, 
+import {
+  Users,
+  DollarSign,
+  TrendingUp,
   AlertTriangle,
   CreditCard,
   Calendar,
@@ -20,19 +20,102 @@ import {
 import MetricCard from './MetricCard';
 import CashFlowChart from './CashFlowChart';
 import RiskAnalysis from './RiskAnalysis';
+import { supabase } from '@/integrations/supabase/client';
 
 const Dashboard = () => {
-  // Dashboard em branco - sistema limpo para dados reais
-  const loanStats = {
-    totalLoans: 0,
+  const [stats, setStats] = useState({
+    totalClients: 0,
+    totalLoanAmount: 0,
     totalInterest: 0,
     lateInterest: 0,
     totalValue: 0,
     activeLoans: 0,
     pendingLoans: 0,
+    completedLoans: 0,
     notificationsSent: 0,
     messagesReceived: 0,
-    creditRequests: 0
+    creditRequests: 0,
+    defaultRate: 0,
+    roi: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      // Clientes ativos
+      const { count: totalClients } = await supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      // Empréstimos
+      const { data: loans } = await supabase
+        .from('loans')
+        .select('amount, total_amount, remaining_amount, interest_rate, status');
+
+      const activeLoans = loans?.filter(l => l.status === 'active').length || 0;
+      const pendingLoans = loans?.filter(l => l.status === 'pending').length || 0;
+      const completedLoans = loans?.filter(l => l.status === 'completed').length || 0;
+      const totalLoanAmount = loans?.reduce((sum, l) => sum + Number(l.amount), 0) || 0;
+      const totalValue = loans?.reduce((sum, l) => sum + Number(l.total_amount), 0) || 0;
+      const totalInterest = totalValue - totalLoanAmount;
+      const overdueLoans = loans?.filter(l => l.status === 'overdue').length || 0;
+      const defaultRate = loans && loans.length > 0 ? ((overdueLoans / loans.length) * 100) : 0;
+
+      // Pagamentos
+      const { data: payments } = await supabase
+        .from('payments')
+        .select('amount');
+      const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+
+      // Pedidos de crédito pendentes
+      const { count: creditRequests } = await supabase
+        .from('credit_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+
+      // Notificações
+      const { count: notificationsSent } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true });
+
+      // Mensagens
+      const { count: messagesReceived } = await supabase
+        .from('chat_messages')
+        .select('*', { count: 'exact', head: true });
+
+      const roi = totalLoanAmount > 0 ? ((totalPaid / totalLoanAmount) * 100) : 0;
+
+      setStats({
+        totalClients: totalClients || 0,
+        totalLoanAmount,
+        totalInterest,
+        lateInterest: 0,
+        totalValue,
+        activeLoans,
+        pendingLoans,
+        completedLoans,
+        notificationsSent: notificationsSent || 0,
+        messagesReceived: messagesReceived || 0,
+        creditRequests: creditRequests || 0,
+        defaultRate: Math.round(defaultRate * 10) / 10,
+        roi: Math.round(roi * 10) / 10,
+      });
+    } catch (error) {
+      console.error('Error loading dashboard stats:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) return `MZN ${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `MZN ${(value / 1000).toFixed(1)}K`;
+    return `MZN ${value.toLocaleString()}`;
   };
 
   return (
@@ -41,32 +124,32 @@ const Dashboard = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <MetricCard
           title="Clientes Ativos"
-          value="0"
+          value={String(stats.totalClients)}
           icon={Users}
-          trend="+0%"
-          description="Sistema em branco"
+          trend={`${stats.activeLoans} com empréstimo`}
+          description="Cadastrados no sistema"
         />
         <MetricCard
           title="Carteira de Crédito"
-          value="MZN 0.0M"
+          value={formatCurrency(stats.totalLoanAmount)}
           icon={CreditCard}
-          trend="+0%"
-          description="Aguardando dados reais"
+          trend={`${stats.activeLoans} ativos`}
+          description="Total emprestado"
         />
         <MetricCard
           title="Taxa de Inadimplência"
-          value="0%"
+          value={`${stats.defaultRate}%`}
           icon={AlertTriangle}
-          trend="+0%"
-          description="Sistema limpo"
+          trend=""
+          description={`${stats.pendingLoans} pendentes`}
           variant="warning"
         />
         <MetricCard
-          title="ROI Mensal"
-          value="0%"
+          title="ROI"
+          value={`${stats.roi}%`}
           icon={TrendingUp}
-          trend="+0%"
-          description="Pronto para operar"
+          trend=""
+          description="Retorno sobre investimento"
           variant="success"
         />
       </div>
@@ -78,7 +161,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Empréstimo Total</p>
-                <p className="text-sm md:text-lg font-bold truncate">MZN {loanStats.totalLoans.toLocaleString()}</p>
+                <p className="text-sm md:text-lg font-bold truncate">MZN {stats.totalLoanAmount.toLocaleString()}</p>
               </div>
               <DollarSign className="h-5 w-5 md:h-6 md:w-6 text-info flex-shrink-0" />
             </div>
@@ -90,7 +173,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Juros Totais</p>
-                <p className="text-sm md:text-lg font-bold text-success truncate">MZN {loanStats.totalInterest.toLocaleString()}</p>
+                <p className="text-sm md:text-lg font-bold text-success truncate">MZN {stats.totalInterest.toLocaleString()}</p>
               </div>
               <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-success flex-shrink-0" />
             </div>
@@ -102,7 +185,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Juros de Mora</p>
-                <p className="text-sm md:text-lg font-bold text-destructive truncate">MZN {loanStats.lateInterest.toLocaleString()}</p>
+                <p className="text-sm md:text-lg font-bold text-destructive truncate">MZN {stats.lateInterest.toLocaleString()}</p>
               </div>
               <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-destructive flex-shrink-0" />
             </div>
@@ -114,7 +197,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Valor Total</p>
-                <p className="text-sm md:text-lg font-bold text-secondary truncate">MZN {loanStats.totalValue.toLocaleString()}</p>
+                <p className="text-sm md:text-lg font-bold text-secondary truncate">MZN {stats.totalValue.toLocaleString()}</p>
               </div>
               <Target className="h-5 w-5 md:h-6 md:w-6 text-secondary flex-shrink-0" />
             </div>
@@ -126,7 +209,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Solicitações</p>
-                <p className="text-sm md:text-lg font-bold text-orange truncate">{loanStats.creditRequests}</p>
+                <p className="text-sm md:text-lg font-bold text-orange truncate">{stats.creditRequests}</p>
               </div>
               <FileText className="h-5 w-5 md:h-6 md:w-6 text-orange flex-shrink-0" />
             </div>
@@ -141,7 +224,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Empréstimos Ativos</p>
-                <p className="text-lg md:text-xl font-bold text-success">{loanStats.activeLoans}</p>
+                <p className="text-lg md:text-xl font-bold text-success">{stats.activeLoans}</p>
               </div>
               <CheckCircle className="h-5 w-5 md:h-6 md:w-6 text-success flex-shrink-0" />
             </div>
@@ -153,7 +236,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Pendentes</p>
-                <p className="text-lg md:text-xl font-bold text-warning">{loanStats.pendingLoans}</p>
+                <p className="text-lg md:text-xl font-bold text-warning">{stats.pendingLoans}</p>
               </div>
               <Clock className="h-5 w-5 md:h-6 md:w-6 text-warning flex-shrink-0" />
             </div>
@@ -165,7 +248,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Notificações</p>
-                <p className="text-lg md:text-xl font-bold text-info">{loanStats.notificationsSent}</p>
+                <p className="text-lg md:text-xl font-bold text-info">{stats.notificationsSent}</p>
               </div>
               <Bell className="h-5 w-5 md:h-6 md:w-6 text-info flex-shrink-0" />
             </div>
@@ -177,7 +260,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Mensagens</p>
-                <p className="text-lg md:text-xl font-bold text-secondary">{loanStats.messagesReceived}</p>
+                <p className="text-lg md:text-xl font-bold text-secondary">{stats.messagesReceived}</p>
               </div>
               <MessageSquare className="h-5 w-5 md:h-6 md:w-6 text-secondary flex-shrink-0" />
             </div>
@@ -195,7 +278,7 @@ const Dashboard = () => {
               Fluxo de Caixa
             </CardTitle>
             <CardDescription className="text-xs md:text-sm">
-              Projeção dos próximos 6 meses
+              Movimentações dos últimos 6 meses
             </CardDescription>
           </CardHeader>
           <CardContent className="p-3 md:p-6 pt-0">
@@ -210,7 +293,7 @@ const Dashboard = () => {
               Análise de Risco
             </CardTitle>
             <CardDescription className="text-xs md:text-sm">
-              Distribuição de clientes por categoria
+              Distribuição de empréstimos por status
             </CardDescription>
           </CardHeader>
           <CardContent className="p-3 md:p-6 pt-0">
@@ -219,18 +302,25 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Sistema em branco - pronto para dados reais */}
+      {/* Status cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         <Card>
           <CardHeader className="p-4 md:p-6">
-            <CardTitle className="text-base md:text-lg">Sistema Limpo</CardTitle>
+            <CardTitle className="text-base md:text-lg">Cobranças</CardTitle>
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0">
             <div className="space-y-3">
-              <div className="text-center py-6 md:py-8">
-                <p className="text-muted-foreground text-sm">Nenhum alerta de cobrança</p>
-                <p className="text-xs text-muted-foreground/70">Sistema pronto para operar</p>
-              </div>
+              {stats.pendingLoans > 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-warning font-semibold text-lg">{stats.pendingLoans}</p>
+                  <p className="text-muted-foreground text-sm">empréstimos pendentes</p>
+                </div>
+              ) : (
+                <div className="text-center py-6 md:py-8">
+                  <p className="text-muted-foreground text-sm">Nenhum alerta de cobrança</p>
+                  <p className="text-xs text-muted-foreground/70">Sistema operacional</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -241,10 +331,17 @@ const Dashboard = () => {
           </CardHeader>
           <CardContent className="p-4 md:p-6 pt-0">
             <div className="space-y-3">
-              <div className="text-center py-6 md:py-8">
-                <p className="text-muted-foreground text-sm">Nenhum pedido pendente</p>
-                <p className="text-xs text-muted-foreground/70">Aguardando novos clientes</p>
-              </div>
+              {stats.creditRequests > 0 ? (
+                <div className="text-center py-4">
+                  <p className="text-orange font-semibold text-lg">{stats.creditRequests}</p>
+                  <p className="text-muted-foreground text-sm">pedidos pendentes de análise</p>
+                </div>
+              ) : (
+                <div className="text-center py-6 md:py-8">
+                  <p className="text-muted-foreground text-sm">Nenhum pedido pendente</p>
+                  <p className="text-xs text-muted-foreground/70">Aguardando novos pedidos</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -261,11 +358,11 @@ const Dashboard = () => {
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span>Base de Dados</span>
-                <span className="bg-success/20 text-success px-2 py-1 rounded text-xs">Limpa</span>
+                <span className="bg-success/20 text-success px-2 py-1 rounded text-xs">Conectada</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span>Configurações</span>
-                <span className="bg-info/20 text-info px-2 py-1 rounded text-xs">Prontas</span>
+                <span>Clientes</span>
+                <span className="bg-info/20 text-info px-2 py-1 rounded text-xs">{stats.totalClients}</span>
               </div>
             </div>
           </CardContent>

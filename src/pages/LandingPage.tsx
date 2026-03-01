@@ -1,0 +1,515 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Calculator,
+  ShieldCheck,
+  Zap,
+  Clock,
+  ChevronRight,
+  Menu,
+  X,
+  CheckCircle2,
+  ChevronDown,
+  Star,
+  ArrowRight
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const LandingPage = () => {
+  const navigate = useNavigate();
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
+
+  // Simulator State
+  const [amount, setAmount] = useState(5000);
+  const interestRate = 0.30; // 30% for 1 month
+
+  // Calculate total to pay after 1 month
+  const calculateTotal = () => {
+    const interest = amount * interestRate;
+    return (amount + interest);
+  };
+
+  const calculateInterest = () => {
+    return (amount * interestRate);
+  };
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const primaryColor = '#0b3a20'; // BOCHEL Dark Green
+  const secondaryColor = '#d37c22'; // BOCHEL Orange/Gold
+  const accentColor = '#bd4c37'; // BOCHEL Red/Orange
+
+  const faqs = [
+    {
+      question: "Quais são os requisitos para solicitar um crédito?",
+      answer: "Para solicitar um crédito na Bochel, precisa de ser maior de idade, ter um documento de identificação válido (BI ou Passaporte), um comprovativo de rendimentos recente e um comprovativo de residência."
+    },
+    {
+      question: "Quanto tempo demora até receber o dinheiro?",
+      answer: "Após a aprovação do seu crédito e assinatura do contrato digital, a transferência é realizada no próprio dia útil ou no máximo em 24 horas."
+    },
+    {
+      question: "Posso amortizar o meu crédito antes do tempo?",
+      answer: "Sim! Na Bochel incentivamos a saúde financeira. Pode amortizar total ou parcialmente o seu crédito a qualquer momento, ajustando os juros em conformidade com as nossas políticas transparentes."
+    },
+    {
+      question: "É seguro enviar a minha documentação online?",
+      answer: "Absolutamente. Utilizamos protocolos de encriptação militar (SSL/TLS) para garantir que todos os seus dados e documentos são transmitidos e armazenados com 100% de segurança e confidencialidade."
+    }
+  ];
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans selection:bg-[#0b3a20] selection:text-white pb-0">
+
+      {/* Navigation Bar */}
+      <nav className={`fixed w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white shadow-md py-3' : 'bg-transparent py-5'}`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center">
+            {/* Logo */}
+            <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
+              {scrolled ? (
+                <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-10 md:h-12 object-contain" />
+              ) : (
+                <div className="bg-white/90 backdrop-blur-sm p-1.5 rounded-lg border border-white/20">
+                  <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-8 md:h-10 object-contain" />
+                </div>
+              )}
+            </div>
+
+            {/* Desktop Menu */}
+            <div className="hidden md:flex items-center space-x-8">
+              <a href="#vantagens" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>Vantagens</a>
+              <a href="#como-funciona" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>Como Funciona</a>
+              <a href="#simulador" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>Simulador</a>
+              <a href="#faq" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>FAQ</a>
+
+              <div className="flex items-center space-x-4 pl-4 border-l border-gray-300">
+                <Button
+                  variant="ghost"
+                  className={`font-bold ${scrolled ? 'text-gray-800 hover:bg-gray-100' : 'text-white hover:bg-white/20'}`}
+                  onClick={() => navigate('/login')}
+                >
+                  Entrar
+                </Button>
+                <Button
+                  className="font-bold text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all"
+                  style={{ backgroundColor: secondaryColor }}
+                  onClick={() => navigate('/register')}
+                >
+                  Criar Conta
+                </Button>
+              </div>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden flex items-center">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className={`p-2 rounded-md ${scrolled ? 'text-gray-800' : 'text-white'}`}
+              >
+                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Mobile Menu Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white absolute top-full left-0 w-full shadow-xl border-t border-gray-100 py-4 flex flex-col px-6 space-y-4">
+            <a href="#vantagens" onClick={() => setMobileMenuOpen(false)} className="text-gray-800 font-bold text-lg py-2 border-b border-gray-100">Vantagens</a>
+            <a href="#como-funciona" onClick={() => setMobileMenuOpen(false)} className="text-gray-800 font-bold text-lg py-2 border-b border-gray-100">Como Funciona</a>
+            <a href="#simulador" onClick={() => setMobileMenuOpen(false)} className="text-gray-800 font-bold text-lg py-2 border-b border-gray-100">Simulador de Crédito</a>
+            <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="text-gray-800 font-bold text-lg py-2 border-b border-gray-100">FAQ</a>
+            <div className="pt-4 flex flex-col space-y-3">
+              <Button variant="outline" className="w-full justify-center font-bold text-lg h-12 border-gray-300" onClick={() => { setMobileMenuOpen(false); navigate('/login'); }}>Entrar / Login</Button>
+              <Button className="w-full justify-center font-bold text-lg h-12 !text-white" style={{ backgroundColor: secondaryColor }} onClick={() => { setMobileMenuOpen(false); navigate('/register'); }}>Criar Conta e Solicitar</Button>
+            </div>
+          </div>
+        )}
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden min-h-[90vh] flex items-center">
+        {/* Background Image & Overlay */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=2069&auto=format&fit=crop"
+            alt="Profissionais de Negócios"
+            className="w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0b3a20]/95 via-[#0b3a20]/80 to-[#0b3a20]/40 mix-blend-multiply"></div>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="max-w-2xl">
+            <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6">
+              <span className="flex h-2 w-2 rounded-full" style={{ backgroundColor: secondaryColor }}></span>
+              <span className="text-xs font-bold tracking-wider text-white uppercase">Mais que um empréstimo</span>
+            </div>
+
+            <h1 className="text-4xl md:text-5xl lg:text-7xl font-bold text-white leading-tight mb-6">
+              A Força do Seu <br />
+              <span style={{ color: secondaryColor }}>Projeto.</span>
+            </h1>
+
+            <p className="text-lg md:text-xl text-gray-200 mb-10 max-w-lg leading-relaxed font-light">
+              Soluções financeiras à sua medida. Mais simples, 100% digital, rápido e sem complicações desnecessárias.
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              <Button
+                onClick={() => document.getElementById('simulador')?.scrollIntoView({ behavior: 'smooth' })}
+                className="h-14 px-8 text-lg font-bold text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all rounded-xl"
+                style={{ backgroundColor: secondaryColor }}
+              >
+                Simular Crédito Agora
+                <ChevronRight className="ml-2 w-5 h-5" />
+              </Button>
+              <Button
+                variant="outline"
+                className="h-14 px-8 text-lg font-bold bg-white/10 backdrop-blur-md text-white border-white/30 hover:bg-white/20 transition-all rounded-xl"
+                onClick={() => document.getElementById('vantagens')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Conhecer Vantagens
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Vantagens Section */}
+      <section id="vantagens" className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: secondaryColor }}>Porquê Escolher-nos</h2>
+            <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">A experiência financeira que o seu negócio merece</h3>
+            <p className="text-lg text-gray-600">A Bochel remove a burocracia tradicional para lhe entregar o crédito que precisa num tempo recorde.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-10">
+            {/* Feature 1 */}
+            <div className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group">
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}>
+                <Zap size={28} strokeWidth={2} />
+              </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-3 block">Aprovação Rápida</h4>
+              <p className="text-gray-600 leading-relaxed font-medium">O nosso sistema inteligente analisa o seu pedido em instantes, garantindo uma resposta célere à sua solicitação.</p>
+            </div>
+
+            {/* Feature 2 */}
+            <div className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group">
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${secondaryColor}15`, color: secondaryColor }}>
+                <Clock size={28} strokeWidth={2} />
+              </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-3 block">100% Digital</h4>
+              <p className="text-gray-600 leading-relaxed font-medium">Faça tudo através do seu telemóvel ou computador. Sem filas, sem papeladas infindáveis e sem sair de casa.</p>
+            </div>
+
+            {/* Feature 3 */}
+            <div className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group">
+              <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${accentColor}15`, color: accentColor }}>
+                <ShieldCheck size={28} strokeWidth={2} />
+              </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-3 block">Total Confiança</h4>
+              <p className="text-gray-600 leading-relaxed font-medium">A proteção e privacidade dos seus dados é a nossa prioridade. Operamos com máxima transparência fiscal, sem custos ocultos.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Como Funciona Section */}
+      <section id="como-funciona" className="py-24 bg-gray-50 border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: primaryColor }}>Simples e Direto</h2>
+            <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Como funciona o nosso crédito?</h3>
+            <p className="text-lg text-gray-600">Em apenas três passos simples o dinheiro que precisa estará na sua conta.</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 relative">
+            {/* Lines connecting steps */}
+            <div className="hidden md:block absolute top-[60px] left-[16%] right-[16%] h-0.5 border-t-2 border-dashed border-gray-300 z-0"></div>
+
+            {/* Step 1 */}
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg mb-6" style={{ backgroundColor: primaryColor }}>
+                1
+              </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-2">Simule o Crédito</h4>
+              <p className="text-gray-600 font-medium px-4">Utilize o nosso simulador para escolher o montante e os prazos que melhor se adaptam a si.</p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg mb-6" style={{ backgroundColor: secondaryColor }}>
+                2
+              </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-2">Crie a sua Conta</h4>
+              <p className="text-gray-600 font-medium px-4">Registe-se em segundos, preencha o formulário e faça upload dos seus documentos.</p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="relative z-10 flex flex-col items-center text-center">
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg mb-6" style={{ backgroundColor: accentColor }}>
+                3
+              </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-2">Receba o Dinheiro</h4>
+              <p className="text-gray-600 font-medium px-4">Após aprovação e assinatura digital, enviamos o dinheiro para a sua conta bancária imediatamente.</p>
+            </div>
+          </div>
+          <div className="mt-16 text-center">
+            <Button
+              onClick={() => document.getElementById('simulador')?.scrollIntoView({ behavior: 'smooth' })}
+              className="h-12 px-8 text-base font-bold text-white shadow-md hover:-translate-y-0.5 transition-all rounded-lg"
+              style={{ backgroundColor: primaryColor }}
+            >
+              Começar Agora <ArrowRight className="ml-2 w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Simulador Section */}
+      <section id="simulador" className="py-24 bg-white relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-gray-100 rounded-full blur-3xl opacity-50"></div>
+        <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-[500px] h-[500px] rounded-full blur-3xl opacity-20" style={{ backgroundColor: `${secondaryColor}40` }}></div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+            <div className="order-2 lg:order-1">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">Simule o seu crédito instantaneamente.</h2>
+              <p className="text-lg text-gray-600 mb-8 font-medium">
+                Descubra as condições ideais para o seu projeto. Ajuste o montante e o prazo de pagamento à sua medida e veja na hora quanto vai pagar por mês.
+              </p>
+              <ul className="space-y-4 mb-10">
+                <li className="flex items-center text-gray-700">
+                  <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
+                  <span className="font-bold text-lg">Taxa fixa de 30% ao mês</span>
+                </li>
+                <li className="flex items-center text-gray-700">
+                  <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
+                  <span className="font-bold text-lg">Prazo de pagamento: 1 mês</span>
+                </li>
+                <li className="flex items-center text-gray-700">
+                  <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
+                  <span className="font-bold text-lg">Transferência imediata após aprovação</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Calculadora Box */}
+            <div className="order-1 lg:order-2">
+              <div className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100 relative">
+                <div className="absolute top-0 left-0 w-full h-2 rounded-t-3xl" style={{ backgroundColor: primaryColor }}></div>
+                <div className="flex items-center mb-8 pb-6 border-b border-gray-100 mt-2">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4" style={{ backgroundColor: `${secondaryColor}15`, color: secondaryColor }}>
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Calculadora de Crédito</h3>
+                    <p className="text-sm font-semibold text-gray-500">Avaliação instantânea</p>
+                  </div>
+                </div>
+
+                {/* Montante */}
+                <div className="mb-8">
+                  <div className="flex justify-between mb-2">
+                    <label className="font-bold text-gray-700">Qual o valor que necessita?</label>
+                    <span className="font-black text-xl text-gray-900">{amount.toLocaleString()} MZN</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="500"
+                    max="100000"
+                    step="500"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-gray-200"
+                    style={{ accentColor: primaryColor }}
+                  />
+                  <div className="flex justify-between text-xs font-bold text-gray-400 mt-2">
+                    <span>500 MZN</span>
+                    <span>100,000 MZN</span>
+                  </div>
+                </div>
+
+                {/* Prazo fixo */}
+                <div className="mb-10">
+                  <div className="flex justify-between mb-2">
+                    <label className="font-bold text-gray-700">Prazo de pagamento</label>
+                    <span className="font-black text-xl text-gray-900">1 Mês</span>
+                  </div>
+                  <div className="bg-gray-100 rounded-lg px-4 py-3 text-center">
+                    <p className="text-sm font-semibold text-gray-500">Prazo fixo • Taxa de 30%</p>
+                  </div>
+                </div>
+
+                {/* Results & CTA */}
+                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 mb-8">
+                  <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
+                    <span className="text-sm text-gray-500 font-bold">Juros (30%)</span>
+                    <span className="text-lg font-bold text-gray-700">{calculateInterest().toLocaleString()} MZN</span>
+                  </div>
+                  <p className="text-sm text-gray-500 font-bold mb-1">Total a Pagar (após 1 mês)</p>
+                  <p className="text-4xl font-black mb-2" style={{ color: primaryColor }}>
+                    {calculateTotal().toLocaleString()} <span className="text-lg font-bold text-gray-500">MZN</span>
+                  </p>
+                  <p className="text-xs font-semibold text-gray-400">* O valor final pode variar após análise de crédito.</p>
+                </div>
+
+                <Button
+                  className="w-full h-14 text-lg font-bold shadow-lg hover:-translate-y-1 transition-all rounded-xl text-white"
+                  style={{ backgroundColor: secondaryColor }}
+                  onClick={() => navigate('/register')}
+                >
+                  Solicitar Crédito Agora
+                </Button>
+                <p className="text-center text-xs font-medium text-gray-400 mt-4">Poderá preencher o formulário completo e enviar a sua documentação após criar a sua conta base.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testemunhos (Testimonials) Section */}
+      <section className="py-24 bg-gray-50 border-t border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: secondaryColor }}>Feedback</h2>
+            <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">O que dizem os nossos clientes</h3>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {/* Testimonial 1 */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex text-yellow-400 mb-4">
+                <Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} />
+              </div>
+              <p className="text-gray-600 font-medium italic mb-6">"Solicitei um crédito para expandir o meu negócio e o processo foi extremamente rápido. Em 24h já tinha o dinheiro."</p>
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600 mr-3">JM</div>
+                <div>
+                  <h5 className="font-bold text-gray-900 text-sm">João Muchanga</h5>
+                  <p className="text-xs text-gray-500 font-semibold">Empreendedor</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 2 */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex text-yellow-400 mb-4">
+                <Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} />
+              </div>
+              <p className="text-gray-600 font-medium italic mb-6">"Fiquei surpresa com o atendimento 100% digital. Todo o processo fluiu de forma transparente, sem letras pequenas."</p>
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600 mr-3">LM</div>
+                <div>
+                  <h5 className="font-bold text-gray-900 text-sm">Lúcia Macamo</h5>
+                  <p className="text-xs text-gray-500 font-semibold">Comerciante</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Testimonial 3 */}
+            <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex text-yellow-400 mb-4">
+                <Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} /><Star fill="currentColor" size={20} />
+              </div>
+              <p className="text-gray-600 font-medium italic mb-6">"As condições de pagamento adaptam-se perfeitalmente à minha realidade financeira. Recomendo os serviços da Bochel."</p>
+              <div className="flex items-center">
+                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600 mr-3">PM</div>
+                <div>
+                  <h5 className="font-bold text-gray-900 text-sm">Pedro Matsinhe</h5>
+                  <p className="text-xs text-gray-500 font-semibold">Professor</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section id="faq" className="py-24 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: primaryColor }}>Dúvidas frequentes</h2>
+            <h3 className="text-3xl md:text-4xl font-bold text-gray-900">Perguntas Frequentes (FAQ)</h3>
+          </div>
+
+          <div className="space-y-4">
+            {faqs.map((faq, index) => (
+              <div key={index} className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors">
+                <button
+                  className="w-full text-left px-6 py-5 flex justify-between items-center bg-gray-50 focus:outline-none"
+                  onClick={() => toggleFaq(index)}
+                >
+                  <span className="font-bold text-gray-900 text-lg">{faq.question}</span>
+                  <ChevronDown className={`w-5 h-5 text-gray-500 transition-transform ${openFaq === index ? 'rotate-180' : ''}`} />
+                </button>
+                {openFaq === index && (
+                  <div className="px-6 py-5 bg-white border-t border-gray-100">
+                    <p className="text-gray-600 font-medium leading-relaxed">{faq.answer}</p>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-[#082a17] text-white py-16 border-t border-[#0b3a20]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-4 gap-8 mb-10 pb-10 border-b border-[#0f4a29]">
+            <div className="col-span-2">
+              <div className="flex items-center mb-6">
+                <div className="bg-white/90 p-1.5 rounded-lg mr-4">
+                  <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-10 object-contain" />
+                </div>
+              </div>
+              <p className="text-gray-300 text-sm font-medium leading-relaxed max-w-sm">"Mais que um empréstimo. É a força do seu projeto." A Bochel Microcrédito, EI é a sua parceira financeira confiável, oferecendo soluções de crédito rápidas, seguras e 100% digitais.</p>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-lg mb-5" style={{ color: secondaryColor }}>Acesso Rápido</h4>
+              <ul className="space-y-3 text-sm font-medium text-gray-300">
+                <li><a href="#vantagens" className="hover:text-white transition-colors">Vantagens</a></li>
+                <li><a href="#como-funciona" className="hover:text-white transition-colors">Como Funciona</a></li>
+                <li><a href="#simulador" className="hover:text-white transition-colors">Simulador</a></li>
+                <li><button onClick={() => navigate('/login')} className="hover:text-white transition-colors">Login / Entrar</button></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-lg mb-5" style={{ color: secondaryColor }}>Contactos</h4>
+              <ul className="space-y-3 text-sm font-medium text-gray-300">
+                <li>Avenida Principal, Maputo, MOZ</li>
+                <li>suporte@bochel.com</li>
+                <li>+258 84 000 0000</li>
+              </ul>
+            </div>
+          </div>
+          <div className="text-center font-medium text-sm text-gray-400">
+            &copy; {new Date().getFullYear()} Bochel Microcrédito, EI. Todos os direitos reservados.
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default LandingPage;

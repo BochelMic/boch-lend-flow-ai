@@ -1,808 +1,640 @@
-import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { Upload, CheckCircle, Send, User, MapPin, Briefcase, CreditCard } from 'lucide-react';
-
-const creditFormSchema = z.object({
-  // Dados Pessoais
-  fullName: z.string().min(2, 'Nome completo é obrigatório'),
-  birthDate: z.string().min(1, 'Data de nascimento é obrigatória'),
-  documentType: z.string().min(1, 'Tipo de documento é obrigatório'),
-  documentNumber: z.string().min(5, 'Número do documento é obrigatório'),
-  documentIssueDate: z.string().min(1, 'Data de emissão é obrigatória'),
-  documentExpiryDate: z.string().min(1, 'Data de validade é obrigatória'),
-  nuit: z.string().optional(),
-  gender: z.string().min(1, 'Sexo é obrigatório'),
-  phone: z.string().min(9, 'Telefone/WhatsApp é obrigatório'),
-  email: z.string().email('Email inválido').optional().or(z.literal('')),
-
-  // Endereço
-  neighborhood: z.string().min(2, 'Bairro é obrigatório'),
-  district: z.string().min(2, 'Distrito é obrigatório'),
-  province: z.string().min(2, 'Província é obrigatória'),
-  residenceType: z.string().min(1, 'Tipo de residência é obrigatório'),
-
-  // Dados Profissionais
-  occupation: z.string().min(1, 'Ocupação principal é obrigatória'),
-  companyName: z.string().min(2, 'Nome da empresa/atividade é obrigatório'),
-  workDuration: z.string().min(1, 'Tempo de trabalho é obrigatório'),
-  monthlyIncome: z.string().min(1, 'Rendimento mensal é obrigatório'),
-
-  // Informações do Crédito
-  requestedAmount: z.string().min(1, 'Valor solicitado é obrigatório'),
-  creditPurpose: z.string().min(5, 'Finalidade do crédito é obrigatória'),
-  receiveDate: z.string().min(1, 'Data para receber é obrigatória'),
-  paymentTermType: z.string().min(1, 'Tipo de prazo é obrigatório'),
-  paymentTerm: z.string().min(1, 'Prazo para pagamento é obrigatório'),
-  guaranteeType: z.string().min(1, 'Tipo de garantia é obrigatório'),
-  guaranteeMode: z.string().min(1, 'Modo de garantia é obrigatório'),
-  observations: z.string().optional(),
-  
-  truthDeclaration: z.boolean().refine(val => val === true, {
-    message: 'Deve concordar com a declaração de veracidade'
-  }),
-});
-
-type CreditFormData = z.infer<typeof creditFormSchema>;
+import {
+  CheckCircle, Send, User, MapPin, Briefcase, CreditCard,
+  ChevronRight, ChevronLeft, Upload, X, Loader2, AlertTriangle, Clock, Ban
+} from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CreditApplicationFormProps {
   isPublicAccess?: boolean;
 }
 
+const FULL_STEPS = [
+  { id: 1, title: 'Dados Pessoais', icon: User, color: '#1b5e20' },
+  { id: 2, title: 'Endereço', icon: MapPin, color: '#2e7d32' },
+  { id: 3, title: 'Profissional', icon: Briefcase, color: '#388e3c' },
+  { id: 4, title: 'Crédito', icon: CreditCard, color: '#43a047' },
+];
+
 const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationFormProps) => {
+  const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [checkingStatus, setCheckingStatus] = useState(true);
+  const [docFront, setDocFront] = useState<File | null>(null);
+  const [docBack, setDocBack] = useState<File | null>(null);
+  const { user } = useAuth();
 
-  const form = useForm<CreditFormData>({
-    resolver: zodResolver(creditFormSchema),
-    defaultValues: {
-      fullName: '',
-      birthDate: '',
-      documentType: '',
-      documentNumber: '',
-      documentIssueDate: '',
-      documentExpiryDate: '',
-      nuit: '',
-      gender: '',
-      phone: '',
-      email: '',
-      neighborhood: '',
-      district: '',
-      province: '',
-      residenceType: '',
-      occupation: '',
-      companyName: '',
-      workDuration: '',
-      monthlyIncome: '',
-      requestedAmount: '',
-      creditPurpose: '',
-      receiveDate: '',
-      paymentTermType: '',
-      paymentTerm: '',
-      guaranteeType: '',
-      guaranteeMode: '',
-      observations: '',
-      truthDeclaration: false,
-    },
+  // Business rules state
+  const [isBlocked, setIsBlocked] = useState(false);
+  const [blockReason, setBlockReason] = useState('');
+  const [hasExistingData, setHasExistingData] = useState(false);
+  const [isSimplifiedForm, setIsSimplifiedForm] = useState(false);
+
+  // Form data
+  const [form, setForm] = useState({
+    fullName: '', birthDate: '', documentType: '', documentNumber: '',
+    documentIssueDate: '', documentExpiryDate: '', nuit: '', gender: '',
+    phone: '', email: '',
+    neighborhood: '', district: '', province: '', residenceType: '',
+    occupation: '', companyName: '', workDuration: '', monthlyIncome: '',
+    requestedAmount: '', creditPurpose: '', receiveDate: '',
+    guaranteeType: '', guaranteeMode: '',
+    observations: '', truthDeclaration: false,
   });
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    setUploadedFiles(prev => [...prev, ...files]);
-    toast({
-      title: "Documento carregado",
-      description: `${files.length} documento(s) adicionado(s)`,
-    });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Check existing credit requests on mount
+  useEffect(() => {
+    if (!user?.id || isPublicAccess) {
+      setCheckingStatus(false);
+      return;
+    }
+    checkUserStatus();
+  }, [user?.id]);
+
+  const checkUserStatus = async () => {
+    try {
+      // 1. Check for active requests (pending or approved)
+      const { data: activeRequests } = await supabase
+        .from('credit_requests')
+        .select('id, status, amount, created_at')
+        .eq('user_id', user!.id)
+        .in('status', ['pending', 'approved'])
+        .limit(1);
+
+      if (activeRequests && activeRequests.length > 0) {
+        const active = activeRequests[0];
+        setIsBlocked(true);
+        if (active.status === 'pending') {
+          setBlockReason('Já tem um pedido de crédito pendente em análise. Aguarde a decisão antes de fazer um novo pedido.');
+        } else {
+          setBlockReason('Já tem um crédito aprovado activo. Deve quitar a dívida antes de solicitar um novo crédito.');
+        }
+        setCheckingStatus(false);
+        return;
+      }
+
+      // 2. Check if user has previous request data (for simplified form)
+      const { data: previousRequests } = await supabase
+        .from('credit_requests')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (previousRequests && previousRequests.length > 0) {
+        const prev = previousRequests[0];
+        // Pre-fill form with previous data
+        setHasExistingData(true);
+        setIsSimplifiedForm(true);
+        setForm(f => ({
+          ...f,
+          fullName: prev.client_name || '',
+          birthDate: prev.birth_date || '',
+          documentType: prev.document_type || '',
+          documentNumber: prev.document_number || '',
+          documentIssueDate: prev.document_issue_date || '',
+          documentExpiryDate: prev.document_expiry_date || '',
+          nuit: prev.nuit || '',
+          gender: prev.gender || '',
+          phone: prev.client_phone || '',
+          email: prev.client_email || '',
+          neighborhood: prev.neighborhood || '',
+          district: prev.district || '',
+          province: prev.province || '',
+          residenceType: prev.residence_type || '',
+          occupation: prev.occupation || '',
+          companyName: prev.company_name || '',
+          workDuration: prev.work_duration || '',
+          monthlyIncome: prev.monthly_income || '',
+        }));
+      }
+    } catch (error) {
+      console.error('Error checking status:', error);
+    } finally {
+      setCheckingStatus(false);
+    }
   };
 
-  const removeFile = (index: number) => {
-    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+  const updateField = (field: string, value: string | boolean) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) setErrors(prev => { const n = { ...prev }; delete n[field]; return n; });
   };
 
-  const generateRequestNumber = () => {
-    const date = new Date();
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `CR${year}${month}${day}${random}`;
+  // Validation — simplified form only validates credit fields
+  const validateSimplified = (): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (!form.requestedAmount.trim()) newErrors.requestedAmount = 'Valor é obrigatório';
+    if (!form.creditPurpose) newErrors.creditPurpose = 'Selecione a finalidade';
+    if (!form.receiveDate) newErrors.receiveDate = 'Data é obrigatória';
+    if (!form.guaranteeType) newErrors.guaranteeType = 'Selecione a garantia';
+    if (!form.guaranteeMode) newErrors.guaranteeMode = 'Selecione o modo';
+    if (!form.truthDeclaration) newErrors.truthDeclaration = 'Deve concordar';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const onSubmit = async (data: CreditFormData) => {
+  const validateStep = (step: number): boolean => {
+    const newErrors: Record<string, string> = {};
+    if (step === 1) {
+      if (!form.fullName.trim()) newErrors.fullName = 'Nome é obrigatório';
+      if (!form.birthDate) newErrors.birthDate = 'Data de nascimento é obrigatória';
+      if (!form.documentType) newErrors.documentType = 'Selecione o tipo de documento';
+      if (!form.documentNumber.trim()) newErrors.documentNumber = 'Número é obrigatório';
+      if (!form.gender) newErrors.gender = 'Selecione o sexo';
+      if (!form.phone.trim()) newErrors.phone = 'Telefone é obrigatório';
+    } else if (step === 2) {
+      if (!form.neighborhood.trim()) newErrors.neighborhood = 'Bairro é obrigatório';
+      if (!form.district.trim()) newErrors.district = 'Distrito é obrigatório';
+      if (!form.province.trim()) newErrors.province = 'Província é obrigatória';
+      if (!form.residenceType) newErrors.residenceType = 'Selecione o tipo';
+    } else if (step === 3) {
+      if (!form.occupation) newErrors.occupation = 'Selecione a ocupação';
+      if (!form.companyName.trim()) newErrors.companyName = 'Nome da empresa é obrigatório';
+      if (!form.workDuration.trim()) newErrors.workDuration = 'Tempo de trabalho é obrigatório';
+      if (!form.monthlyIncome.trim()) newErrors.monthlyIncome = 'Rendimento é obrigatório';
+    } else if (step === 4) {
+      if (!form.requestedAmount.trim()) newErrors.requestedAmount = 'Valor é obrigatório';
+      if (!form.creditPurpose) newErrors.creditPurpose = 'Selecione a finalidade';
+      if (!form.receiveDate) newErrors.receiveDate = 'Data é obrigatória';
+      if (!form.guaranteeType) newErrors.guaranteeType = 'Selecione a garantia';
+      if (!form.guaranteeMode) newErrors.guaranteeMode = 'Selecione o modo';
+      if (!form.truthDeclaration) newErrors.truthDeclaration = 'Deve concordar';
+    }
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const totalSteps = isSimplifiedForm ? 1 : 4;
+  const nextStep = () => { if (validateStep(currentStep)) setCurrentStep(prev => Math.min(prev + 1, 4)); };
+  const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
+
+  const uploadDocImage = async (file: File, side: string): Promise<string | null> => {
+    if (!user) return null;
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/${side}_${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from('chat-files').upload(path, file);
+      if (error) return null;
+      const { data } = supabase.storage.from('chat-files').getPublicUrl(path);
+      return data.publicUrl;
+    } catch { return null; }
+  };
+
+  const handleSubmit = async () => {
+    if (isSimplifiedForm) {
+      if (!validateSimplified()) return;
+    } else {
+      if (!validateStep(4)) return;
+    }
     setIsLoading(true);
-    
-    const requestData = {
-      ...data,
-      requestDate: new Date().toISOString(),
-      requestNumber: generateRequestNumber(),
-    };
-    
-    console.log('Submitting credit application:', requestData);
-    console.log('Uploaded files:', uploadedFiles);
 
     try {
-      // Simular análise automática dos dados
-      await analyzeApplication(requestData);
-      
-      // Simular envio de email de notificação
-      await sendEmailNotification(requestData);
-      
-      // Simular integração com WhatsApp Business API
-      await sendWhatsAppNotification(requestData);
+      const address = `${form.neighborhood}, ${form.district}, ${form.province}`;
 
+      // Upload doc images (non-blocking)
+      let frontUrl: string | null = null;
+      let backUrl: string | null = null;
+      if (!isSimplifiedForm) {
+        try { if (docFront) frontUrl = await uploadDocImage(docFront, 'frente'); } catch { }
+        try { if (docBack) backUrl = await uploadDocImage(docBack, 'verso'); } catch { }
+      }
+
+      // Try to create/update client record
+      if (user) {
+        try {
+          const { data: existingClient } = await supabase
+            .from('clients').select('id').eq('user_id', user.id).maybeSingle();
+          if (!existingClient) {
+            await supabase.from('clients').insert({
+              user_id: user.id, name: form.fullName,
+              email: form.email || user.email, phone: form.phone,
+              address, id_number: form.documentNumber, status: 'active',
+            });
+          }
+        } catch { }
+      }
+
+      const { error } = await supabase.from('credit_requests').insert({
+        client_name: form.fullName,
+        client_email: form.email || null,
+        client_phone: form.phone,
+        client_address: address,
+        amount: parseFloat(form.requestedAmount),
+        purpose: form.creditPurpose,
+        term: 1,
+        status: 'pending',
+        user_id: user?.id || null,
+        agent_id: user?.role === 'agente' ? user.id : null,
+        birth_date: form.birthDate || null,
+        gender: form.gender || null,
+        document_type: form.documentType || null,
+        document_number: form.documentNumber || null,
+        document_issue_date: form.documentIssueDate || null,
+        document_expiry_date: form.documentExpiryDate || null,
+        nuit: form.nuit || null,
+        neighborhood: form.neighborhood || null,
+        district: form.district || null,
+        province: form.province || null,
+        residence_type: form.residenceType || null,
+        occupation: form.occupation || null,
+        company_name: form.companyName || null,
+        work_duration: form.workDuration || null,
+        monthly_income: form.monthlyIncome || null,
+        credit_purpose: form.creditPurpose || null,
+        receive_date: form.receiveDate || null,
+        guarantee_type: form.guaranteeType || null,
+        guarantee_mode: form.guaranteeMode || null,
+        observations: form.observations || null,
+        doc_front_url: frontUrl,
+        doc_back_url: backUrl,
+      });
+
+      if (error) throw error;
       setIsSubmitted(true);
-      toast({
-        title: "Pedido enviado com sucesso",
-        description: `Pedido Nº ${requestData.requestNumber} - Será analisado em menos de 24h úteis.`,
-      });
-    } catch (error) {
-      toast({
-        title: "Erro ao enviar pedido",
-        description: "Tente novamente mais tarde.",
-        variant: "destructive",
-      });
+      toast({ title: "Pedido enviado com sucesso!", description: "Será analisado em menos de 24h úteis." });
+    } catch (error: any) {
+      toast({ title: "Erro ao enviar", description: error.message || "Tente novamente.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const analyzeApplication = async (data: any) => {
-    const analysisResult = {
-      riskScore: Math.floor(Math.random() * 100),
-      recommendation: Math.random() > 0.5 ? 'APROVADO' : 'ANÁLISE_MANUAL',
-      factors: ['Histórico de crédito', 'Renda declarada', 'Finalidade do crédito']
-    };
-    
-    console.log('Análise automática:', analysisResult);
-    return analysisResult;
-  };
+  const FieldError = ({ field }: { field: string }) =>
+    errors[field] ? <p className="text-xs text-red-500 mt-1">{errors[field]}</p> : null;
 
-  const sendEmailNotification = async (data: any) => {
-    console.log('Enviando notificação por email para administradores...');
-    console.log('Dados do pedido:', data);
-  };
+  // Loading state
+  if (checkingStatus) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-[#1b5e20]" />
+          <p className="text-sm text-gray-500">A verificar o seu perfil...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const sendWhatsAppNotification = async (data: any) => {
-    console.log('Enviando notificação via WhatsApp Business API...');
-    console.log('Novo pedido de crédito recebido para:', data.fullName);
-  };
+  // Blocked state
+  if (isBlocked) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full border-0 shadow-xl overflow-hidden">
+          <div className="h-2 bg-gradient-to-r from-amber-500 to-orange-500" />
+          <CardContent className="p-8 text-center space-y-5">
+            <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto">
+              <Ban className="h-10 w-10 text-amber-600" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Pedido Não Disponível</h2>
+              <p className="text-sm text-gray-500 leading-relaxed">{blockReason}</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-left">
+              <p className="font-semibold mb-2">📋 Regras:</p>
+              <ul className="space-y-1">
+                <li>• Só é permitido <strong>1 pedido activo</strong> de cada vez</li>
+                <li>• Se rejeitado, pode tentar novamente</li>
+                <li>• Se aprovado, deve quitar a dívida antes de pedir novamente</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
+  // Success state
   if (isSubmitted) {
     return (
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="pt-6">
-          <div className="text-center space-y-4">
-            <CheckCircle className="h-16 w-16 text-green-500 mx-auto" />
-            <h2 className="text-2xl font-bold text-green-700">Pedido Enviado com Sucesso!</h2>
-            <Alert>
-              <AlertDescription className="text-center">
-                <strong>Obrigado!</strong> Seu pedido será analisado em menos de 24h úteis.
-                <br />Taxa de juro: 25% por mês (pode variar conforme o valor).
-                <br />Entraremos em contacto através do telefone fornecido.
-              </AlertDescription>
-            </Alert>
-            {isPublicAccess && (
-              <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Próximos Passos:</strong><br/>
-                  • Nossa equipe analisará seu pedido<br/>
-                  • Você receberá uma chamada telefônica em até 24h<br/>
-                  • Mantenha seus documentos organizados para agilizar o processo
-                </p>
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <Card className="max-w-lg w-full border-0 shadow-xl overflow-hidden">
+          <div className="h-2 bg-gradient-to-r from-[#1b5e20] to-[#43a047]" />
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto">
+              <CheckCircle className="h-10 w-10 text-green-600" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Pedido Enviado!</h2>
+              <p className="text-gray-500">O seu pedido será analisado em menos de <strong>24h úteis</strong>.</p>
+            </div>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 text-left">
+              <p className="font-semibold mb-2">📋 Próximos Passos:</p>
+              <ul className="space-y-1">
+                <li>• A equipa irá analisar o seu pedido</li>
+                <li>• Receberá uma chamada em até 24h</li>
+                <li>• Taxa de juro: 30% por mês (pode variar)</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ===================== SIMPLIFIED FORM (returning client) =====================
+  if (isSimplifiedForm) {
+    return (
+      <div className="max-w-2xl mx-auto p-3 md:p-6 space-y-6">
+        <div className="text-center space-y-2">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Novo Pedido de Crédito</h1>
+          <p className="text-sm text-gray-500">Os seus dados pessoais já estão registados</p>
+        </div>
+
+        {/* Saved data summary */}
+        <Card className="border-0 shadow-md bg-green-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-semibold text-green-800">Dados Pessoais Guardados</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs text-green-700">
+              <span>👤 {form.fullName}</span>
+              <span>📞 {form.phone}</span>
+              <span>📍 {form.neighborhood}, {form.district}</span>
+              <span>💼 {form.companyName}</span>
+              <span>💰 MZN {form.monthlyIncome}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Credit form only */}
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-[#1b5e20] to-[#43a047]" />
+          <CardContent className="p-5 md:p-8 space-y-5">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-[#1b5e20]/10 flex items-center justify-center">
+                <CreditCard className="h-5 w-5 text-[#1b5e20]" />
               </div>
-            )}
-            {!isPublicAccess && (
-              <Button 
-                onClick={() => {
-                  setIsSubmitted(false);
-                  form.reset();
-                  setUploadedFiles([]);
-                }}
-                variant="outline"
-              >
-                Fazer Novo Pedido
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Informações do Crédito</h2>
+                <p className="text-xs text-gray-500">Preencha apenas os detalhes do novo empréstimo</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label className="text-sm font-medium">Valor Solicitado (MZN) *</Label>
+                <Input type="number" value={form.requestedAmount} onChange={e => updateField('requestedAmount', e.target.value)} placeholder="Ex: 50000" className="mt-1.5" />
+                <FieldError field="requestedAmount" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Data para Receber *</Label>
+                <Input type="date" value={form.receiveDate} onChange={e => updateField('receiveDate', e.target.value)} className="mt-1.5" />
+                <FieldError field="receiveDate" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Finalidade do Crédito *</Label>
+                <Select value={form.creditPurpose} onValueChange={v => updateField('creditPurpose', v)}>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="negocio">Negócio</SelectItem>
+                    <SelectItem value="consumo">Consumo</SelectItem>
+                    <SelectItem value="saude">Saúde</SelectItem>
+                    <SelectItem value="educacao">Educação</SelectItem>
+                    <SelectItem value="emergencia">Emergência</SelectItem>
+                    <SelectItem value="construcao">Construção/Reforma</SelectItem>
+                    <SelectItem value="outros">Outros</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError field="creditPurpose" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Prazo de Pagamento</Label>
+                <div className="mt-1.5 bg-gray-50 border rounded-md px-3 py-2.5 text-sm text-gray-700 font-medium">30 dias (1 mês)</div>
+                <p className="text-[10px] text-gray-400 mt-1">Prazo fixo</p>
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Tipo de Garantia *</Label>
+                <Select value={form.guaranteeType} onValueChange={v => updateField('guaranteeType', v)}>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bem_movel">Bem Móvel</SelectItem>
+                    <SelectItem value="bem_imovel">Bem Imóvel</SelectItem>
+                    <SelectItem value="fiador">Fiador</SelectItem>
+                    <SelectItem value="salario">Salário</SelectItem>
+                    <SelectItem value="sem_garantia">Sem Garantia</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError field="guaranteeType" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Modo de Garantia *</Label>
+                <Select value={form.guaranteeMode} onValueChange={v => updateField('guaranteeMode', v)}>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="antecipado">Antecipado</SelectItem>
+                    <SelectItem value="postecipado">Postecipado</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError field="guaranteeMode" />
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-sm font-medium">Observações (opcional)</Label>
+              <Textarea value={form.observations} onChange={e => updateField('observations', e.target.value)} placeholder="Informações adicionais..." className="mt-1.5" rows={3} />
+            </div>
+
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <Checkbox checked={form.truthDeclaration} onCheckedChange={(v) => updateField('truthDeclaration', v === true)} className="mt-0.5" />
+              <div>
+                <Label className="text-sm font-medium cursor-pointer">Declaração de Veracidade *</Label>
+                <p className="text-xs text-amber-700 mt-1">Declaro que todas as informações são verdadeiras. Taxa de juro: 30% por mês (pode variar conforme o valor).</p>
+                <FieldError field="truthDeclaration" />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-4 border-t border-gray-100">
+              <Button onClick={handleSubmit} disabled={isLoading} className="gap-2 text-white font-semibold px-8 shadow-lg" style={{ backgroundColor: '#d37c22' }}>
+                {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>) : (<><Send className="h-4 w-4" /> Enviar Pedido</>)}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // ===================== FULL FORM (first-time client) =====================
+  return (
+    <div className="max-w-3xl mx-auto p-3 md:p-6 space-y-6">
+      <div className="text-center space-y-2">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Pedido de Crédito</h1>
+        <p className="text-sm text-gray-500">Preencha as informações em 4 etapas simples</p>
+      </div>
+
+      {/* Step Progress Bar */}
+      <div className="relative">
+        <div className="flex items-center justify-between">
+          {FULL_STEPS.map((step, index) => {
+            const isActive = currentStep === step.id;
+            const isCompleted = currentStep > step.id;
+            const StepIcon = step.icon;
+            return (
+              <React.Fragment key={step.id}>
+                <div className="flex flex-col items-center z-10 relative">
+                  <button onClick={() => { if (isCompleted) setCurrentStep(step.id); }}
+                    className={`w-11 h-11 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm ${isCompleted ? 'bg-[#1b5e20] text-white shadow-md cursor-pointer hover:scale-105' : isActive ? 'bg-white border-2 border-[#1b5e20] text-[#1b5e20] shadow-lg scale-105' : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-default'}`}>
+                    {isCompleted ? <CheckCircle className="h-5 w-5 md:h-6 md:w-6" /> : <StepIcon className="h-5 w-5 md:h-6 md:w-6" />}
+                  </button>
+                  <span className={`mt-2 text-[10px] md:text-xs font-medium text-center leading-tight ${isActive ? 'text-[#1b5e20] font-bold' : isCompleted ? 'text-[#1b5e20]' : 'text-gray-400'}`}>{step.title}</span>
+                </div>
+                {index < FULL_STEPS.length - 1 && (
+                  <div className="flex-1 mx-1 md:mx-3 mt-[-20px]">
+                    <div className="h-1 rounded-full bg-gray-200 overflow-hidden">
+                      <div className="h-full bg-[#1b5e20] transition-all duration-500 rounded-full" style={{ width: isCompleted ? '100%' : '0%' }} />
+                    </div>
+                  </div>
+                )}
+              </React.Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      <Card className="border-0 shadow-xl overflow-hidden">
+        <div className="h-1.5 bg-gradient-to-r from-[#1b5e20] to-[#43a047]" style={{ width: `${(currentStep / 4) * 100}%`, transition: 'width 0.5s ease' }} />
+        <CardContent className="p-5 md:p-8">
+
+          {/* Step 1: Dados Pessoais */}
+          {currentStep === 1 && (
+            <div className="space-y-5 animate-in fade-in duration-300">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-[#1b5e20]/10 flex items-center justify-center"><User className="h-5 w-5 text-[#1b5e20]" /></div>
+                <div><h2 className="text-lg font-bold text-gray-900">Dados Pessoais</h2><p className="text-xs text-gray-500">Informações de identificação</p></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="md:col-span-2">
+                  <Label className="text-sm font-medium">Nome Completo *</Label>
+                  <Input value={form.fullName} onChange={e => updateField('fullName', e.target.value)} placeholder="Digite o nome completo" className="mt-1.5" />
+                  <FieldError field="fullName" />
+                </div>
+                <div><Label className="text-sm font-medium">Data de Nascimento *</Label><Input type="date" value={form.birthDate} onChange={e => updateField('birthDate', e.target.value)} className="mt-1.5" /><FieldError field="birthDate" /></div>
+                <div><Label className="text-sm font-medium">Sexo *</Label>
+                  <Select value={form.gender} onValueChange={v => updateField('gender', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="masculino">Masculino</SelectItem><SelectItem value="feminino">Feminino</SelectItem></SelectContent></Select><FieldError field="gender" /></div>
+                <div><Label className="text-sm font-medium">Tipo de Documento *</Label>
+                  <Select value={form.documentType} onValueChange={v => updateField('documentType', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="bi">Bilhete de Identidade (BI)</SelectItem><SelectItem value="passaporte">Passaporte</SelectItem><SelectItem value="cedula">Cédula Pessoal</SelectItem></SelectContent></Select><FieldError field="documentType" /></div>
+                <div><Label className="text-sm font-medium">Número do Documento *</Label><Input value={form.documentNumber} onChange={e => updateField('documentNumber', e.target.value)} placeholder="Ex: 123456789BA123" className="mt-1.5" /><FieldError field="documentNumber" /></div>
+                <div><Label className="text-sm font-medium">Data de Emissão</Label><Input type="date" value={form.documentIssueDate} onChange={e => updateField('documentIssueDate', e.target.value)} className="mt-1.5" /></div>
+                <div><Label className="text-sm font-medium">Data de Validade</Label><Input type="date" value={form.documentExpiryDate} onChange={e => updateField('documentExpiryDate', e.target.value)} className="mt-1.5" /></div>
+                <div><Label className="text-sm font-medium">NUIT (opcional)</Label><Input value={form.nuit} onChange={e => updateField('nuit', e.target.value)} placeholder="Identificação fiscal" className="mt-1.5" /></div>
+                <div><Label className="text-sm font-medium">Telefone / WhatsApp *</Label><Input value={form.phone} onChange={e => updateField('phone', e.target.value)} placeholder="+258 84 123 4567" className="mt-1.5" /><FieldError field="phone" /></div>
+                <div><Label className="text-sm font-medium">Email (opcional)</Label><Input type="email" value={form.email} onChange={e => updateField('email', e.target.value)} placeholder="exemplo@email.com" className="mt-1.5" /></div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 2: Endereço */}
+          {currentStep === 2 && (
+            <div className="space-y-5 animate-in fade-in duration-300">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-[#1b5e20]/10 flex items-center justify-center"><MapPin className="h-5 w-5 text-[#1b5e20]" /></div>
+                <div><h2 className="text-lg font-bold text-gray-900">Endereço</h2><p className="text-xs text-gray-500">Local de residência</p></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><Label className="text-sm font-medium">Bairro *</Label><Input value={form.neighborhood} onChange={e => updateField('neighborhood', e.target.value)} placeholder="Digite o bairro" className="mt-1.5" /><FieldError field="neighborhood" /></div>
+                <div><Label className="text-sm font-medium">Distrito *</Label><Input value={form.district} onChange={e => updateField('district', e.target.value)} placeholder="Digite o distrito" className="mt-1.5" /><FieldError field="district" /></div>
+                <div><Label className="text-sm font-medium">Província *</Label><Input value={form.province} onChange={e => updateField('province', e.target.value)} placeholder="Digite a província" className="mt-1.5" /><FieldError field="province" /></div>
+                <div><Label className="text-sm font-medium">Tipo de Residência *</Label>
+                  <Select value={form.residenceType} onValueChange={v => updateField('residenceType', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="casa_propria">Casa Própria</SelectItem><SelectItem value="arrendada">Arrendada</SelectItem><SelectItem value="casa_familiar">Casa Familiar</SelectItem></SelectContent></Select><FieldError field="residenceType" /></div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Dados Profissionais */}
+          {currentStep === 3 && (
+            <div className="space-y-5 animate-in fade-in duration-300">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-[#1b5e20]/10 flex items-center justify-center"><Briefcase className="h-5 w-5 text-[#1b5e20]" /></div>
+                <div><h2 className="text-lg font-bold text-gray-900">Dados Profissionais</h2><p className="text-xs text-gray-500">Fonte de renda e atividade</p></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><Label className="text-sm font-medium">Ocupação Principal *</Label>
+                  <Select value={form.occupation} onValueChange={v => updateField('occupation', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="empregado_formal">Empregado Formal</SelectItem><SelectItem value="conta_propria">Conta Própria</SelectItem><SelectItem value="informal">Informal</SelectItem><SelectItem value="aposentado">Aposentado</SelectItem><SelectItem value="estudante">Estudante</SelectItem><SelectItem value="desempregado">Desempregado</SelectItem></SelectContent></Select><FieldError field="occupation" /></div>
+                <div><Label className="text-sm font-medium">Empresa / Atividade *</Label><Input value={form.companyName} onChange={e => updateField('companyName', e.target.value)} placeholder="Nome da empresa ou atividade" className="mt-1.5" /><FieldError field="companyName" /></div>
+                <div><Label className="text-sm font-medium">Tempo de Trabalho *</Label><Input value={form.workDuration} onChange={e => updateField('workDuration', e.target.value)} placeholder="Ex: 2 anos e 6 meses" className="mt-1.5" /><FieldError field="workDuration" /></div>
+                <div><Label className="text-sm font-medium">Rendimento Mensal (MZN) *</Label><Input type="number" value={form.monthlyIncome} onChange={e => updateField('monthlyIncome', e.target.value)} placeholder="Ex: 25000" className="mt-1.5" /><FieldError field="monthlyIncome" /></div>
+              </div>
+            </div>
+          )}
+
+          {/* Step 4: Crédito */}
+          {currentStep === 4 && (
+            <div className="space-y-5 animate-in fade-in duration-300">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-[#1b5e20]/10 flex items-center justify-center"><CreditCard className="h-5 w-5 text-[#1b5e20]" /></div>
+                <div><h2 className="text-lg font-bold text-gray-900">Informações do Crédito</h2><p className="text-xs text-gray-500">Detalhes do empréstimo</p></div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><Label className="text-sm font-medium">Valor Solicitado (MZN) *</Label><Input type="number" value={form.requestedAmount} onChange={e => updateField('requestedAmount', e.target.value)} placeholder="Ex: 50000" className="mt-1.5" /><FieldError field="requestedAmount" /></div>
+                <div><Label className="text-sm font-medium">Data para Receber *</Label><Input type="date" value={form.receiveDate} onChange={e => updateField('receiveDate', e.target.value)} className="mt-1.5" /><FieldError field="receiveDate" /></div>
+                <div><Label className="text-sm font-medium">Finalidade do Crédito *</Label>
+                  <Select value={form.creditPurpose} onValueChange={v => updateField('creditPurpose', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="negocio">Negócio</SelectItem><SelectItem value="consumo">Consumo</SelectItem><SelectItem value="saude">Saúde</SelectItem><SelectItem value="educacao">Educação</SelectItem><SelectItem value="emergencia">Emergência</SelectItem><SelectItem value="construcao">Construção/Reforma</SelectItem><SelectItem value="outros">Outros</SelectItem></SelectContent></Select><FieldError field="creditPurpose" /></div>
+                <div>
+                  <Label className="text-sm font-medium">Prazo de Pagamento</Label>
+                  <div className="mt-1.5 bg-gray-50 border rounded-md px-3 py-2.5 text-sm text-gray-700 font-medium">30 dias (1 mês)</div>
+                  <p className="text-[10px] text-gray-400 mt-1">Prazo fixo</p>
+                </div>
+                <div><Label className="text-sm font-medium">Tipo de Garantia *</Label>
+                  <Select value={form.guaranteeType} onValueChange={v => updateField('guaranteeType', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="bem_movel">Bem Móvel</SelectItem><SelectItem value="bem_imovel">Bem Imóvel</SelectItem><SelectItem value="fiador">Fiador</SelectItem><SelectItem value="salario">Salário</SelectItem><SelectItem value="sem_garantia">Sem Garantia</SelectItem></SelectContent></Select><FieldError field="guaranteeType" /></div>
+                <div><Label className="text-sm font-medium">Modo de Garantia *</Label>
+                  <Select value={form.guaranteeMode} onValueChange={v => updateField('guaranteeMode', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="antecipado">Antecipado</SelectItem><SelectItem value="postecipado">Postecipado</SelectItem></SelectContent></Select><FieldError field="guaranteeMode" /></div>
+              </div>
+              <div><Label className="text-sm font-medium">Observações (opcional)</Label><Textarea value={form.observations} onChange={e => updateField('observations', e.target.value)} placeholder="Informações adicionais..." className="mt-1.5" rows={3} /></div>
+
+              {/* Doc Upload */}
+              <div>
+                <Label className="text-sm font-medium">Documento de Identidade (Frente e Verso)</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+                  <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer hover:border-[#1b5e20]/40 ${docFront ? 'border-green-300 bg-green-50' : 'border-gray-200'}`} onClick={() => document.getElementById('doc-front')?.click()}>
+                    <Upload className={`h-6 w-6 mx-auto mb-1.5 ${docFront ? 'text-green-600' : 'text-gray-400'}`} />
+                    <p className="text-xs font-medium text-gray-700">📋 Frente do BI</p>
+                    {docFront ? (<div className="mt-1.5 flex items-center justify-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-600" /><span className="text-xs text-green-700 truncate max-w-[150px]">{docFront.name}</span><button onClick={e => { e.stopPropagation(); setDocFront(null); }} className="ml-1 text-gray-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button></div>) : (<p className="text-[10px] text-gray-400 mt-1">Clique para selecionar</p>)}
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => { if (e.target.files?.[0]) setDocFront(e.target.files[0]); }} className="hidden" id="doc-front" />
+                  </div>
+                  <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer hover:border-[#1b5e20]/40 ${docBack ? 'border-green-300 bg-green-50' : 'border-gray-200'}`} onClick={() => document.getElementById('doc-back')?.click()}>
+                    <Upload className={`h-6 w-6 mx-auto mb-1.5 ${docBack ? 'text-green-600' : 'text-gray-400'}`} />
+                    <p className="text-xs font-medium text-gray-700">📋 Verso do BI</p>
+                    {docBack ? (<div className="mt-1.5 flex items-center justify-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-600" /><span className="text-xs text-green-700 truncate max-w-[150px]">{docBack.name}</span><button onClick={e => { e.stopPropagation(); setDocBack(null); }} className="ml-1 text-gray-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button></div>) : (<p className="text-[10px] text-gray-400 mt-1">Clique para selecionar</p>)}
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => { if (e.target.files?.[0]) setDocBack(e.target.files[0]); }} className="hidden" id="doc-back" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1.5">Formatos: JPG, PNG, PDF (máx. 5MB)</p>
+              </div>
+
+              <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                <Checkbox checked={form.truthDeclaration} onCheckedChange={(v) => updateField('truthDeclaration', v === true)} className="mt-0.5" />
+                <div><Label className="text-sm font-medium cursor-pointer">Declaração de Veracidade *</Label><p className="text-xs text-amber-700 mt-1">Declaro que todas as informações são verdadeiras. Taxa de juro: 30% por mês (pode variar).</p><FieldError field="truthDeclaration" /></div>
+              </div>
+            </div>
+          )}
+
+          {/* Nav */}
+          <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+            {currentStep > 1 ? (<Button variant="outline" onClick={prevStep} className="gap-2"><ChevronLeft className="h-4 w-4" />Anterior</Button>) : <div />}
+            {currentStep < 4 ? (
+              <Button onClick={nextStep} className="gap-2 text-white font-semibold px-6" style={{ backgroundColor: '#1b5e20' }}> Próximo<ChevronRight className="h-4 w-4" /></Button>
+            ) : (
+              <Button onClick={handleSubmit} disabled={isLoading} className="gap-2 text-white font-semibold px-8 shadow-lg" style={{ backgroundColor: '#d37c22' }}>
+                {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>) : (<><Send className="h-4 w-4" /> Enviar Pedido</>)}
               </Button>
             )}
           </div>
         </CardContent>
       </Card>
-    );
-  }
-
-  return (
-    <Card className="max-w-6xl mx-auto m-2 md:m-4">
-      <CardHeader className="p-4 md:p-6">
-        <CardTitle className="text-lg md:text-xl">Pedido de Crédito</CardTitle>
-        <CardDescription className="text-sm md:text-base">
-          Preencha todos os campos obrigatórios para solicitar seu crédito. Taxa de juro: 25% por mês (pode variar conforme o valor).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="p-4 md:p-6">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            
-            {/* DADOS PESSOAIS */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 border-b pb-2">
-                <User className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-blue-900">DADOS PESSOAIS</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome Completo *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite seu nome completo" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="birthDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Nascimento *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="documentType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de Documento *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="bi">Bilhete de Identidade (BI)</SelectItem>
-                          <SelectItem value="passaporte">Passaporte</SelectItem>
-                          <SelectItem value="cedula">Cédula Pessoal</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="documentNumber"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Número do Documento *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: 123456789BA123" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="documentIssueDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Emissão *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="documentExpiryDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data de Validade *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="nuit"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>NUIT (opcional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Número único de identificação" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="gender"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sexo *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="masculino">Masculino</SelectItem>
-                          <SelectItem value="feminino">Feminino</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone/WhatsApp *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: +244 912 345 678" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email (opcional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="exemplo@email.com" type="email" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* ENDEREÇO */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 border-b pb-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-blue-900">ENDEREÇO</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <FormField
-                  control={form.control}
-                  name="neighborhood"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bairro *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite o bairro" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="district"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Distrito *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite o distrito" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="province"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Província *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite a província" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="residenceType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tipo de Residência *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="casa_propria">Casa Própria</SelectItem>
-                          <SelectItem value="arrendada">Arrendada</SelectItem>
-                          <SelectItem value="casa_familiar">Casa Familiar</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* DADOS PROFISSIONAIS / FONTE DE RENDA */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 border-b pb-2">
-                <Briefcase className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-blue-900">💼 DADOS PROFISSIONAIS / FONTE DE RENDA</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="occupation"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Ocupação Principal *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a ocupação" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="empregado_formal">Empregado Formal</SelectItem>
-                          <SelectItem value="conta_propria">Trabalhador por Conta Própria</SelectItem>
-                          <SelectItem value="informal">Informal</SelectItem>
-                          <SelectItem value="aposentado">Aposentado</SelectItem>
-                          <SelectItem value="estudante">Estudante</SelectItem>
-                          <SelectItem value="desempregado">Desempregado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="companyName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome da Empresa ou Atividade *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Digite o nome da empresa/atividade" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="workDuration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tempo de Trabalho *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: 2 anos e 6 meses" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="monthlyIncome"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Rendimento Mensal Médio/Estimativa *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: 150000 AOA" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            {/* INFORMAÇÕES DO CRÉDITO */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-2 border-b pb-2">
-                <CreditCard className="h-5 w-5 text-blue-600" />
-                <h3 className="text-lg font-semibold text-blue-900">💳 INFORMAÇÕES DO CRÉDITO</h3>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="requestedAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valor Solicitado (AOA) *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: 500000" type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="receiveDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Data para Receber o Empréstimo *</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="paymentTermType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Prazo de Pagamento *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="semanas">Em Semanas</SelectItem>
-                          <SelectItem value="meses">Em Meses</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="paymentTerm"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Quantidade de Tempo *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ex: 12" type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="guaranteeType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Garantia *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione a garantia" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="bem_movel">Bem Móvel</SelectItem>
-                          <SelectItem value="bem_imovel">Bem Imóvel</SelectItem>
-                          <SelectItem value="fiador">Fiador</SelectItem>
-                          <SelectItem value="salario">Salário</SelectItem>
-                          <SelectItem value="sem_garantia">Sem Garantia</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="guaranteeMode"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Concordância por Modo de Garantia *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione o modo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="antecipado">Antecipado</SelectItem>
-                          <SelectItem value="postecipado">Postecipado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="creditPurpose"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Finalidade do Crédito *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione a finalidade" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="negocio">Negócio</SelectItem>
-                        <SelectItem value="consumo">Consumo</SelectItem>
-                        <SelectItem value="saude">Saúde</SelectItem>
-                        <SelectItem value="educacao">Educação</SelectItem>
-                        <SelectItem value="emergencia">Emergência</SelectItem>
-                        <SelectItem value="construcao">Construção/Reforma</SelectItem>
-                        <SelectItem value="outros">Outros</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="observations"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Observações (opcional)</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Informações adicionais sobre o pedido"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-
-            {/* Upload de Documentos */}
-            <div className="space-y-4">
-              <label className="text-sm font-medium">Upload de Documentos (opcional)</label>
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
-                <div className="text-center">
-                  <Upload className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                  <p className="text-sm text-gray-600 mb-2">
-                    Arraste arquivos aqui ou clique para selecionar
-                  </p>
-                  <input
-                    type="file"
-                    multiple
-                    accept=".pdf,.doc,.docx,.jpg,.png"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                    id="file-upload"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => document.getElementById('file-upload')?.click()}
-                  >
-                    Selecionar Arquivos
-                  </Button>
-                </div>
-              </div>
-
-              {uploadedFiles.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-sm font-medium">Documentos carregados:</p>
-                  {uploadedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                      <span className="text-sm">{file.name}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                      >
-                        Remover
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <FormField
-              control={form.control}
-              name="truthDeclaration"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel>
-                      Declaração de Veracidade *
-                    </FormLabel>
-                    <p className="text-sm text-muted-foreground">
-                      Declaro que todas as informações fornecidas são verdadeiras e concordo com os termos e condições do pedido de crédito. Taxa de juro: 25% por mês (pode variar conforme o valor).
-                    </p>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>Enviando...</>
-              ) : (
-                <>
-                  <Send className="h-4 w-4 mr-2" />
-                  Enviar Pedido
-                </>
-              )}
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+      <p className="text-center text-xs text-gray-400">Etapa {currentStep} de 4</p>
+    </div>
   );
 };
 

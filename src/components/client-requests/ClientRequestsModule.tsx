@@ -1,310 +1,209 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, FileText, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+
+interface CreditRequest {
+  id: string;
+  client_name: string;
+  amount: number;
+  purpose: string | null;
+  term: number | null;
+  status: string;
+  created_at: string;
+}
 
 const ClientRequestsModule = () => {
-  // Mock data dos pedidos do cliente
-  const requests = [
-    {
-      id: 1,
-      type: 'Novo Empréstimo',
-      amount: 75000,
-      status: 'em_analise',
-      date: '2024-01-10',
-      description: 'Solicitação de crédito para expansão de negócio',
-      documents: ['BI', 'Comprovante de Renda', 'Declaração de IVA']
-    },
-    {
-      id: 2,
-      type: 'Renegociação',
-      amount: 35000,
-      status: 'aprovado',
-      date: '2023-12-15',
-      description: 'Renegociação de prazo do contrato CTR-001',
-      documents: ['Proposta', 'Comprovante de Renda Atualizado']
-    },
-    {
-      id: 3,
-      type: 'Novo Empréstimo',
-      amount: 50000,
-      status: 'rejeitado',
-      date: '2023-11-20',
-      description: 'Solicitação de crédito pessoal',
-      documents: ['BI', 'Comprovante de Renda'],
-      rejectionReason: 'Renda insuficiente para o valor solicitado'
-    }
-  ];
+  const { user } = useAuth();
+  const [requests, setRequests] = useState<CreditRequest[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [hasDebt, setHasDebt] = useState(true);
+  const [hasCompletedProfile, setHasCompletedProfile] = useState(false);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'aprovado': return 'bg-green-100 text-green-800';
-      case 'em_analise': return 'bg-yellow-100 text-yellow-800';
-      case 'rejeitado': return 'bg-red-100 text-red-800';
-      case 'pendente_documentos': return 'bg-blue-100 text-blue-800';
-      default: return 'bg-gray-100 text-gray-800';
+  useEffect(() => {
+    if (user) loadData();
+  }, [user]);
+
+  const loadData = async () => {
+    if (!user) return;
+    setLoading(true);
+    try {
+      // Fetch credit requests
+      const { data: reqs } = await supabase
+        .from('credit_requests')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      setRequests(reqs || []);
+
+      // Check if has debt (to control new credit button)
+      const { data: client } = await supabase.from('clients').select('id').eq('user_id', user.id).single();
+      if (client) {
+        const { data: activeLoans } = await supabase
+          .from('loans')
+          .select('remaining_amount')
+          .eq('client_id', client.id)
+          .in('status', ['active', 'overdue']);
+
+        const totalDebt = (activeLoans || []).reduce((s, l) => s + (l.remaining_amount || 0), 0);
+        setHasDebt(totalDebt > 0);
+
+        // Check if client has full profile (id_number filled = completed full form)
+        const { data: clientInfo } = await supabase.from('clients').select('id_number, phone, address').eq('user_id', user.id).single();
+        setHasCompletedProfile(!!(clientInfo?.id_number && clientInfo?.phone));
+      } else {
+        setHasDebt(false);
+        setHasCompletedProfile(false);
+      }
+    } catch (e) {
+      console.error('Error loading requests:', e);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'aprovado': return <CheckCircle className="h-4 w-4" />;
-      case 'em_analise': return <Clock className="h-4 w-4" />;
-      case 'rejeitado': return <XCircle className="h-4 w-4" />;
-      case 'pendente_documentos': return <AlertCircle className="h-4 w-4" />;
-      default: return <FileText className="h-4 w-4" />;
-    }
+  const fmt = (v: number) => v.toLocaleString('pt-MZ', { minimumFractionDigits: 0 });
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('pt-MZ');
+
+  const getStatusBadge = (status: string) => {
+    const map: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
+      pending: { label: 'Em Análise', cls: 'bg-yellow-100 text-yellow-800', icon: <Clock className="h-3 w-3" /> },
+      approved: { label: 'Aprovado', cls: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-3 w-3" /> },
+      rejected: { label: 'Rejeitado', cls: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" /> },
+    };
+    const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-800', icon: <FileText className="h-3 w-3" /> };
+    return (
+      <Badge className={s.cls}>
+        <span className="flex items-center gap-1">{s.icon}{s.label}</span>
+      </Badge>
+    );
   };
+
+  const stats = {
+    total: requests.length,
+    pending: requests.filter(r => r.status === 'pending').length,
+    approved: requests.filter(r => r.status === 'approved').length,
+    rejected: requests.filter(r => r.status === 'rejected').length,
+  };
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6 flex items-center justify-center min-h-[40vh]">
+        <RefreshCw className="h-6 w-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  // Determine which form to show:
+  // - First time (no completed profile): full form (CreditApplicationForm)
+  // - Repeat (has profile): simple form (CreditRequestForm via /credit-form tab)
+  const creditFormPath = '/credit-form';
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 md:p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Meus Pedidos</h1>
-          <p className="text-muted-foreground">
-            Acompanhe o status dos seus pedidos de crédito
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Meus Pedidos</h1>
+          <p className="text-sm text-muted-foreground">Acompanhe seus pedidos de crédito</p>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Pedido
-        </Button>
+        {!hasDebt ? (
+          <Link to={creditFormPath}>
+            <Button className="text-white font-semibold" style={{ backgroundColor: '#d37c22' }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Novo Pedido
+            </Button>
+          </Link>
+        ) : (
+          <Button disabled variant="outline" title="Quite a dívida actual para solicitar novo crédito">
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Pedido
+          </Button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Pedidos</p>
-                <p className="text-lg font-semibold">{requests.length}</p>
-              </div>
-            </div>
+      {hasDebt && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+          ⚠️ Só poderá solicitar novo crédito após quitar toda a dívida actual.
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-2xl font-bold">{stats.total}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-yellow-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">Em Análise</p>
-                <p className="text-lg font-semibold">
-                  {requests.filter(r => r.status === 'em_analise').length}
-                </p>
-              </div>
-            </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-yellow-700">Em Análise</p>
+            <p className="text-2xl font-bold text-yellow-700">{stats.pending}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">Aprovados</p>
-                <p className="text-lg font-semibold">
-                  {requests.filter(r => r.status === 'aprovado').length}
-                </p>
-              </div>
-            </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-green-700">Aprovados</p>
+            <p className="text-2xl font-bold text-green-700">{stats.approved}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <XCircle className="h-5 w-5 text-red-500" />
-              <div>
-                <p className="text-sm text-muted-foreground">Rejeitados</p>
-                <p className="text-lg font-semibold">
-                  {requests.filter(r => r.status === 'rejeitado').length}
-                </p>
-              </div>
-            </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-4 text-center">
+            <p className="text-xs text-red-600">Rejeitados</p>
+            <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="all" className="space-y-6">
+      {/* Requests List */}
+      <Tabs defaultValue="all" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="all">Todos os Pedidos</TabsTrigger>
+          <TabsTrigger value="all">Todos</TabsTrigger>
           <TabsTrigger value="pending">Em Análise</TabsTrigger>
           <TabsTrigger value="approved">Aprovados</TabsTrigger>
           <TabsTrigger value="rejected">Rejeitados</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="all" className="space-y-4">
-          <div className="space-y-4">
-            {requests.map((request) => (
-              <Card key={request.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">{request.type}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Solicitado em {request.date}
-                      </p>
-                    </div>
-                    <Badge className={getStatusColor(request.status)}>
-                      <div className="flex items-center gap-1">
-                        {getStatusIcon(request.status)}
-                        {request.status.replace('_', ' ')}
-                      </div>
-                    </Badge>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">Valor Solicitado</p>
-                        <p className="font-semibold text-lg">{request.amount.toLocaleString()} MZN</p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Documentos Enviados</p>
-                        <p className="font-medium">{request.documents.length} documento(s)</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-muted-foreground">Descrição</p>
-                      <p className="font-medium">{request.description}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-muted-foreground">Documentos</p>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {request.documents.map((doc, index) => (
-                          <Badge key={index} variant="outline">{doc}</Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    {request.rejectionReason && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                        <p className="text-sm text-red-800">
-                          <strong>Motivo da Rejeição:</strong> {request.rejectionReason}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2 pt-2">
-                      <Button variant="outline" size="sm">
-                        Ver Detalhes
-                      </Button>
-                      {request.status === 'em_analise' && (
-                        <Button variant="outline" size="sm">
-                          Enviar Documentos
-                        </Button>
-                      )}
-                      {request.status === 'aprovado' && (
-                        <Button size="sm">
-                          Aceitar Proposta
-                        </Button>
-                      )}
-                      {request.status === 'rejeitado' && (
-                        <Button variant="outline" size="sm">
-                          Nova Solicitação
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="pending">
-          <div className="space-y-4">
-            {requests.filter(r => r.status === 'em_analise').map((request) => (
-              <Card key={request.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{request.type}</h3>
-                      <p className="text-sm text-muted-foreground">{request.amount.toLocaleString()} MZN</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge className={getStatusColor(request.status)}>
-                        Em Análise
-                      </Badge>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Desde {request.date}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <p className="text-sm">
-                      Seu pedido está sendo analisado pela nossa equipe. Você receberá uma notificação assim que houver uma resposta.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="approved">
-          <div className="space-y-4">
-            {requests.filter(r => r.status === 'aprovado').map((request) => (
-              <Card key={request.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{request.type}</h3>
-                      <p className="text-sm text-muted-foreground">{request.amount.toLocaleString()} MZN</p>
-                    </div>
-                    <Badge className={getStatusColor(request.status)}>
-                      Aprovado
-                    </Badge>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button size="sm">
-                      Aceitar Proposta
-                    </Button>
-                    <Button variant="outline" size="sm">
-                      Ver Condições
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="rejected">
-          <div className="space-y-4">
-            {requests.filter(r => r.status === 'rejeitado').map((request) => (
-              <Card key={request.id}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{request.type}</h3>
-                      <p className="text-sm text-muted-foreground">{request.amount.toLocaleString()} MZN</p>
-                    </div>
-                    <Badge className={getStatusColor(request.status)}>
-                      Rejeitado
-                    </Badge>
-                  </div>
-                  {request.rejectionReason && (
-                    <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
-                      <p className="text-sm text-red-800">
-                        <strong>Motivo:</strong> {request.rejectionReason}
-                      </p>
-                    </div>
-                  )}
-                  <div className="mt-4">
-                    <Button variant="outline" size="sm">
-                      Nova Solicitação
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
+        {['all', 'pending', 'approved', 'rejected'].map(tab => {
+          const filtered = tab === 'all' ? requests : requests.filter(r => r.status === tab);
+          return (
+            <TabsContent key={tab} value={tab}>
+              {filtered.length === 0 ? (
+                <Card className="border-0 shadow-md">
+                  <CardContent className="py-12 text-center text-muted-foreground">
+                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
+                    <p>Nenhum pedido encontrado</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {filtered.map(req => (
+                    <Card key={req.id} className="border-0 shadow-md">
+                      <CardContent className="p-4 md:p-6">
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <p className="font-semibold text-lg">{fmt(req.amount)} MZN</p>
+                            <p className="text-xs text-muted-foreground">{formatDate(req.created_at)} {req.term ? `• ${req.term} meses` : ''}</p>
+                          </div>
+                          {getStatusBadge(req.status)}
+                        </div>
+                        {req.purpose && (
+                          <p className="text-sm text-muted-foreground">{req.purpose}</p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+          );
+        })}
       </Tabs>
     </div>
   );
