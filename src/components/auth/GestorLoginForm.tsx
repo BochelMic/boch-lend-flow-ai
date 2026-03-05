@@ -10,13 +10,13 @@ const GestorLoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { loginWithRoleValidation } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const result = await loginWithRoleValidation(email, password, 'gestor');
+    const result = await login(email, password);
     setIsLoading(false);
     if (!result.success) {
       toast({ title: "Erro", description: result.message, variant: "destructive" });

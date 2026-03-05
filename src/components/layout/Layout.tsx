@@ -4,12 +4,16 @@ import Header from './Header';
 import MobileHeader from './MobileHeader';
 import MobileBottomNav from './MobileBottomNav';
 import { SidebarProvider, SidebarInset } from '../ui/sidebar';
+import { NotificationPrompt } from '../notifications/NotificationPrompt';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LayoutProps {
   children: React.ReactNode;
 }
 
 const Layout = ({ children }: LayoutProps) => {
+  const { user } = useAuth();
+
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full" style={{ background: '#f5f6f8' }}>
@@ -35,6 +39,9 @@ const Layout = ({ children }: LayoutProps) => {
 
         {/* Mobile bottom nav - only on small screens */}
         <MobileBottomNav />
+
+        {/* Soft Prompt for Push Notifications */}
+        <NotificationPrompt userId={user?.id} />
       </div>
     </SidebarProvider>
   );

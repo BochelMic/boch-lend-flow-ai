@@ -10,6 +10,7 @@ export interface Notification {
   fromRole?: string;
   timestamp: string;
   read: boolean;
+  link_url?: string;
 }
 
 export function useNotifications(userId?: string) {
@@ -33,6 +34,7 @@ export function useNotifications(userId?: string) {
         body: n.body,
         timestamp: n.created_at,
         read: n.read,
+        link_url: n.link_url,
       })));
     }
   }, [userId]);
@@ -51,7 +53,10 @@ export function useNotifications(userId?: string) {
           table: 'notifications',
           filter: `user_id=eq.${userId}`,
         },
-        () => refresh()
+        () => {
+          playNotificationSound();
+          refresh();
+        }
       )
       .subscribe();
 
@@ -102,3 +107,52 @@ export function useNotifications(userId?: string) {
     refresh,
   };
 }
+
+// Utility function to convert VAPID key
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding)
+    .replace(/\-/g, '+')
+    .replace(/_/g, '/');
+
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
+// A pleasant, asset-free double-chime notification sound using Web Audio API
+export const playNotificationSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+
+    const playNote = (freq: number, startTime: number, duration: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+
+      gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
+      gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + startTime + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(ctx.currentTime + startTime);
+      osc.stop(ctx.currentTime + startTime + duration);
+    };
+
+    // Play E5 then A5
+    playNote(659.25, 0, 0.4);
+    playNote(880.00, 0.15, 0.6);
+  } catch (e) {
+    console.warn("Could not play notification sound", e);
+  }
+};

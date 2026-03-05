@@ -30,6 +30,7 @@ interface LoanData {
   remainingAmount: number;
   installments: number;
   startDate: string | null;
+  endDate?: string | null;
 }
 
 const ClientDashboard = () => {
@@ -56,13 +57,31 @@ const ClientDashboard = () => {
     }
 
     try {
+      let totalAmount = Number(currentLoan.total_amount);
+      let remainingAmount = Number(currentLoan.remaining_amount);
+
+      if (currentLoan.end_date && remainingAmount > 0) {
+        const end = new Date(currentLoan.end_date);
+        const today = new Date();
+        const diffTime = end.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+          const lateDays = Math.abs(diffDays);
+          const penalty = remainingAmount * (0.015 * lateDays); // 1.5% penalty per day of delay
+          totalAmount += penalty;
+          remainingAmount += penalty;
+        }
+      }
+
       // Loan details
       setLoanData({
         amount: Number(currentLoan.amount),
-        totalAmount: Number(currentLoan.total_amount),
-        remainingAmount: Number(currentLoan.remaining_amount),
+        totalAmount,
+        remainingAmount,
         installments: currentLoan.installments || 12,
         startDate: currentLoan.start_date || null,
+        endDate: currentLoan.end_date || null,
       });
 
       // Pagamentos deste empréstimo
@@ -93,9 +112,7 @@ const ClientDashboard = () => {
       }
 
       // Pie chart
-      const totalAmount = Number(currentLoan.total_amount);
-      const remaining = Number(currentLoan.remaining_amount);
-      const paidPercent = totalAmount > 0 ? Math.round(((totalAmount - remaining) / totalAmount) * 100) : 0;
+      const paidPercent = totalAmount > 0 ? Math.round(((totalAmount - remainingAmount) / totalAmount) * 100) : 0;
       const pendingPercent = 100 - paidPercent;
 
       setPaymentStats([
@@ -199,6 +216,39 @@ const ClientDashboard = () => {
             </div>
           </div>
         </div>
+
+        {/* Countdown Banner */}
+        {loanData?.endDate && loanData.remainingAmount > 0 && (() => {
+          const end = new Date(loanData.endDate);
+          const today = new Date();
+          const diffTime = end.getTime() - today.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          const isLate = diffDays < 0;
+
+          return (
+            <Card className={`border-0 shadow-lg text-white ${isLate ? 'bg-red-600' : 'bg-[#1b5e20]'}`}>
+              <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="p-3 bg-white/20 rounded-full">
+                    {isLate ? <AlertTriangle className="h-8 w-8" /> : <Clock className="h-8 w-8" />}
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold">{isLate ? 'Empréstimo em Atraso!' : 'Prazo de Pagamento'}</h2>
+                    <p className="text-white/90 mt-1">
+                      {isLate
+                        ? `A sua dívida está em atraso há ${Math.abs(diffDays)} dias.`
+                        : `Faltam ${diffDays} dias para o encerramento do empréstimo de 30 dias.`}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-left md:text-right">
+                  <p className="text-sm text-white/80">Data Limite</p>
+                  <p className="text-2xl font-black">{end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Quick Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

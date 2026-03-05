@@ -145,7 +145,34 @@ const ChatModule = () => {
     if (!profiles) return;
 
     const roleMap = new Map((roles || []).map(r => [r.user_id, r.role]));
-    const allowed = user.role === 'gestor' ? ['agente', 'cliente'] : user.role === 'agente' ? ['gestor', 'cliente'] : ['gestor', 'agente'];
+
+    // Determine which contacts this user can see
+    let allowedUserIds: Set<string> | null = null; // null = no restriction
+
+    if (user.role === 'agente') {
+      // Agents can only chat with their own clients + gestor
+      const { data: myClients } = await supabase
+        .from('clients')
+        .select('user_id')
+        .eq('agent_id', user.id)
+        .not('user_id', 'is', null);
+
+      const clientUserIds = new Set((myClients || []).map(c => c.user_id).filter(Boolean));
+
+      // Also include all gestors
+      allowedUserIds = new Set<string>();
+      for (const [uid, role] of roleMap) {
+        if (role === 'gestor' || clientUserIds.has(uid)) {
+          allowedUserIds.add(uid);
+        }
+      }
+    } else {
+      // Gestor sees agentes + clientes, Cliente sees gestor + agente
+      const allowed = user.role === 'gestor' ? ['agente', 'cliente'] : ['gestor', 'agente'];
+      allowedUserIds = new Set(
+        [...roleMap.entries()].filter(([, role]) => allowed.includes(role)).map(([uid]) => uid)
+      );
+    }
 
     const [{ data: unread }, { data: allMsgs }] = await Promise.all([
       supabase.from('chat_messages').select('sender_id').eq('receiver_id', user.id).eq('read', false),
@@ -164,7 +191,7 @@ const ChatModule = () => {
     });
 
     const list: Contact[] = profiles
-      .filter(p => allowed.includes(roleMap.get(p.user_id) || 'cliente'))
+      .filter(p => allowedUserIds === null || allowedUserIds.has(p.user_id))
       .map(p => ({
         id: p.user_id, name: p.name, role: roleMap.get(p.user_id) || 'cliente',
         avatar_url: (p as any).avatar_url || null,

@@ -21,6 +21,7 @@ export default function MobileBottomNav() {
                 ],
                 more: [
                     { name: 'Histórico', href: '/historico' },
+                    { name: 'Contratos', href: '/contratos' },
                 ],
             };
         }
@@ -32,7 +33,12 @@ export default function MobileBottomNav() {
                     { name: 'Clientes', href: `${prefix}/clientes`, icon: Calculator },
                     { name: 'Chat', href: `${prefix}/chat`, icon: MessageCircle },
                 ],
-                more: [],
+                more: [
+                    { name: 'Novo Pedido', href: `${prefix}/credit-form` },
+                    { name: 'Empréstimos', href: `${prefix}/emprestimos` },
+                    { name: 'Cobranças', href: `${prefix}/cobrancas` },
+                    { name: 'Contratos', href: `${prefix}/contratos` },
+                ],
             };
         }
         // gestor
@@ -43,7 +49,18 @@ export default function MobileBottomNav() {
                 { name: 'Clientes', href: `${prefix}/clientes`, icon: Calculator },
                 { name: 'Chat', href: `${prefix}/chat`, icon: MessageCircle },
             ],
-            more: [],
+            more: [
+                { name: 'Empréstimos', href: `${prefix}/emprestimos` },
+                { name: 'Cobranças', href: `${prefix}/cobrancas` },
+                { name: 'Contratos', href: `${prefix}/contratos` },
+                { name: 'Crédito', href: `${prefix}/credit-form` },
+                { name: 'Simulador', href: `${prefix}/credit-simulator` },
+                { name: 'Usuários', href: `${prefix}/usuarios` },
+                { name: 'Agentes', href: `${prefix}/agentes` },
+                { name: 'Relatórios', href: `${prefix}/reports` },
+                { name: 'Subsistemas', href: `${prefix}/subsistemas` },
+                { name: 'Configurações', href: `${prefix}/settings` },
+            ],
         };
     };
 
@@ -82,8 +99,8 @@ export default function MobileBottomNav() {
                                 key={item.name}
                                 to={item.href}
                                 className={`flex flex-col items-center gap-0.5 min-w-[56px] py-1.5 rounded-xl transition-all ${isActive
-                                        ? 'text-[#d37c22]'
-                                        : 'text-gray-400 active:text-gray-600'
+                                    ? 'text-[#d37c22]'
+                                    : 'text-gray-400 active:text-gray-600'
                                     }`}
                             >
                                 <div className={`p-1.5 rounded-xl transition-colors ${isActive ? 'bg-[#d37c22]/10' : ''}`}>

@@ -93,8 +93,7 @@ self.addEventListener('fetch', (event) => {
 
   // Bypass caching for Vite dev scripts/modules to prevent stale React copies
   if (shouldBypassCache(request)) {
-    event.respondWith(fetch(request));
-    return;
+    return; // Don't use respondWith(), let the browser handle it natively
   }
 
   // Cache-first for small static assets and app shell
@@ -107,6 +106,52 @@ self.addEventListener('fetch', (event) => {
         caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
         return response;
       });
+    })
+  );
+});
+
+// --- Push Notifications ---
+self.addEventListener('push', function (event) {
+  let data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { body: event.data.text() };
+    }
+  }
+
+  const title = data.title || 'Nova Notificação - Bochel';
+  const options = {
+    body: data.body || 'Você tem uma nova mensagem.',
+    icon: '/logo-bochel.png',
+    badge: '/logo-bochel.png',
+    data: data.url || '/'
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+  );
+});
+
+self.addEventListener('notificationclick', function (event) {
+  event.notification.close();
+
+  const targetUrl = event.notification.data || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If a window is already open, focus it and navigate
+      for (const client of clientList) {
+        if (client.url.includes(self.registration.scope) && 'focus' in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      // Otherwise, open a new window
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
     })
   );
 });

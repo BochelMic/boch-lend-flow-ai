@@ -134,6 +134,39 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_rules: {
+        Row: {
+          active: boolean | null
+          channels: string[] | null
+          created_at: string
+          event_trigger: string
+          id: string
+          message_template: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean | null
+          channels?: string[] | null
+          created_at?: string
+          event_trigger: string
+          id?: string
+          message_template: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean | null
+          channels?: string[] | null
+          created_at?: string
+          event_trigger?: string
+          id?: string
+          message_template?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           content: string
@@ -265,6 +298,8 @@ export type Database = {
           created_at: string
           from_user_id: string | null
           id: string
+          link_url: string | null
+          push_delivered: boolean | null
           read: boolean
           title: string
           type: string
@@ -275,6 +310,8 @@ export type Database = {
           created_at?: string
           from_user_id?: string | null
           id?: string
+          link_url?: string | null
+          push_delivered?: boolean | null
           read?: boolean
           title: string
           type?: string
@@ -285,6 +322,8 @@ export type Database = {
           created_at?: string
           from_user_id?: string | null
           id?: string
+          link_url?: string | null
+          push_delivered?: boolean | null
           read?: boolean
           title?: string
           type?: string
@@ -374,6 +413,33 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          p256dh: string
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          p256dh: string
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          p256dh?: string
           user_id?: string
         }
         Relationships: []

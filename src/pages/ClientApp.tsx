@@ -13,6 +13,8 @@ import Layout from '../components/layout/Layout';
 import { Loader2 } from 'lucide-react';
 import LandingPage from './LandingPage';
 import RegisterForm from '../components/auth/RegisterForm';
+import PrivacyPolicy from './PrivacyPolicy';
+import TermsOfUse from './TermsOfUse';
 
 const ClientApp = () => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -21,19 +23,9 @@ const ClientApp = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse flex flex-col items-center">
-          <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-16 md:h-20 object-contain mb-4" />
-          <div className="w-12 h-1 bg-gray-200 mt-4 rounded overflow-hidden">
-            <div className="h-full bg-[#1b5e20] animate-[pulse_1s_ease-in-out_infinite] w-full origin-left scale-x-0" style={{ animation: 'progress 1.5s infinite ease-in-out' }}></div>
-          </div>
-          <style>{`
-             @keyframes progress {
-               0% { transform: scaleX(0); transform-origin: left; }
-               50% { transform: scaleX(1); transform-origin: left; }
-               50.1% { transform: scaleX(1); transform-origin: right; }
-               100% { transform: scaleX(0); transform-origin: right; }
-             }
-           `}</style>
+        <div className="flex flex-col items-center">
+          <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-16 md:h-20 object-contain mb-4 animate-pulse" />
+          <div className="w-8 h-8 border-3 border-gray-200 border-t-[#1b5e20] rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -45,6 +37,8 @@ const ClientApp = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<ClientLoginForm />} />
         <Route path="/register" element={<RegisterForm onSwitchToLogin={() => navigate('/login')} />} />
+        <Route path="/politicas-de-privacidade" element={<PrivacyPolicy />} />
+        <Route path="/termos-de-uso" element={<TermsOfUse />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );

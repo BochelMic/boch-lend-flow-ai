@@ -1,8 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PDFDocument } from 'pdf-lib';
+import { saveAs } from 'file-saver';
+import { pdfjs, Document, Page } from 'react-pdf';
+import 'react-pdf/dist/Page/AnnotationLayer.css';
+import 'react-pdf/dist/Page/TextLayer.css';
+import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
+
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    'pdfjs-dist/build/pdf.worker.min.mjs',
+    import.meta.url,
+).toString();
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +30,7 @@ interface Contract {
     client_id: string;
     client_name: string;
     signature_url: string | null;
+    contract_url?: string | null;
     status: string;
     signed_at: string | null;
     created_at: string;
@@ -35,10 +48,18 @@ const ContractModule = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
-    // Signature canvas
+    // Signature state
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [isDrawing, setIsDrawing] = useState(false);
     const [hasSignature, setHasSignature] = useState(false);
+    const [signatureImage, setSignatureImage] = useState<string | null>(null);
+    const [sigPos, setSigPos] = useState({ x: 50, y: 50 }); // Draggable position
+    const [inkColor, setInkColor] = useState('#0000a0'); // Default to Bic Blue
+
+    // PDF Viewer State
+    const [numPages, setNumPages] = useState<number>(0);
+    const [pageNumber, setPageNumber] = useState(1);
+    const pdfWrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => { if (user) loadContracts(); }, [user]);
 
@@ -89,7 +110,7 @@ const ContractModule = () => {
         if (!ctx) return;
         const pos = getPos(e);
         ctx.lineTo(pos.x, pos.y);
-        ctx.strokeStyle = '#000';
+        ctx.strokeStyle = inkColor;
         ctx.lineWidth = 2.5;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -113,45 +134,127 @@ const ContractModule = () => {
             if (!canvas) return;
             canvas.width = 600;
             canvas.height = 200;
+            // Removed white background fill so the signature PNG is transparent
             const ctx = canvas.getContext('2d');
             if (ctx) {
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
         }, 100);
     };
 
+    const prepareDragSignature = () => {
+        if (!canvasRef.current) return;
+        const dataUrl = canvasRef.current.toDataURL('image/png');
+        setSignatureImage(dataUrl);
+        // We will now show the PDF with the signature on top instead of the canvas
+    };
+
+    const handleDrag = (e: DraggableEvent, data: DraggableData) => {
+        setSigPos({ x: data.x, y: data.y });
+    };
+
     const signContract = async () => {
-        if (!selectedContract || !user || !hasSignature || !canvasRef.current) return;
+        if (!selectedContract || !user || !signatureImage) return;
         setSaving(true);
         try {
-            // Upload signature
-            const blob = await new Promise<Blob>((resolve) => {
-                canvasRef.current!.toBlob(b => resolve(b!), 'image/png');
-            });
-            const path = `${user.id}/${selectedContract.id}.png`;
+            // Convert dataurl to blob to upload signature png to storage
+            const resData = await fetch(signatureImage);
+            const blob = await resData.blob();
+
+            const timestamp = Date.now();
+            const path = `${user.id}/${selectedContract.id}_${timestamp}.png`;
             const { error: uploadErr } = await supabase.storage.from('signatures').upload(path, blob, { upsert: true });
             if (uploadErr) throw uploadErr;
 
             const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(path);
 
-            // Update contract
+            // Fetch existing PDF
+            const pdfUrl = selectedContract.contract_url || "/contrato-bochel.pdf";
+            const existingPdfBytes = await fetch(pdfUrl).then(res => res.arrayBuffer());
+            const pdfDoc = await PDFDocument.load(existingPdfBytes);
+
+            const sigBytes = await blob.arrayBuffer();
+            const pngImage = await pdfDoc.embedPng(sigBytes);
+            // Default scale for signature, adjusted for realism
+            const pngDims = pngImage.scale(0.20);
+
+            const pages = pdfDoc.getPages();
+            const lastPage = pages[pages.length - 1]; // Embed onto the last page
+
+            // Calculate coordinates
+            // Assuming the PDF viewer renders at native react-pdf scale roughly equal to PDF points
+            const { width, height } = lastPage.getSize();
+            // Optional: ratio if we know the display rect width vs PDF rect width
+            let scaleRatio = 1;
+            if (pdfWrapperRef.current) {
+                const uiWidth = pdfWrapperRef.current.getBoundingClientRect().width;
+                scaleRatio = width / uiWidth;
+            }
+
+            // UI coordinates translation
+            // pdf-lib Y starts differently from bottom-left (0,0)
+            const pdfX = sigPos.x * scaleRatio;
+            // pdfY must subtract the height of the signature so it doesn't draw above cursor
+            const uiSigHeight = 60; // approximate signature div height in px
+            const pdfY = height - ((sigPos.y + uiSigHeight) * scaleRatio);
+
+            lastPage.drawImage(pngImage, {
+                x: pdfX,
+                y: pdfY,
+                width: pngDims.width,
+                height: pngDims.height,
+            });
+
+            // Save PDF physically and upload
+            const finalPdfBytes = await pdfDoc.save();
+            const signedPdfBlob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+
+            const pdfPath = `signed_${selectedContract.id}_${timestamp}.pdf`;
+            const { error: pdfUploadErr } = await supabase.storage.from('contracts').upload(pdfPath, signedPdfBlob, { upsert: true });
+            if (pdfUploadErr) throw pdfUploadErr;
+
+            const { data: pdfUrlData } = supabase.storage.from('contracts').getPublicUrl(pdfPath);
+
+            // Update DB with both signature image URL and the new interactive final PDF
             const { error } = await supabase.from('contracts').update({
                 signature_url: urlData.publicUrl,
+                contract_url: pdfUrlData.publicUrl,
                 status: 'signed',
                 signed_at: new Date().toISOString(),
                 updated_at: new Date().toISOString(),
             }).eq('id', selectedContract.id);
-
             if (error) throw error;
 
-            toast({ title: 'Contrato assinado!', description: 'A sua assinatura foi registada com sucesso.' });
+            toast({ title: 'Contrato assinado!', description: 'A sua assinatura foi aplicada no documento com sucesso!' });
             setShowSigning(false);
+            setSignatureImage(null);
             setSelectedContract(null);
             loadContracts();
         } catch (e: any) {
             toast({ title: 'Erro', description: e.message || 'Erro ao assinar.', variant: 'destructive' });
         } finally { setSaving(false); }
+    };
+
+    const handleDownloadPdf = async (contract: Contract | null) => {
+        if (!contract) return;
+        try {
+            toast({ title: 'A preparar documento...' });
+            const pdfUrl = contract.contract_url || "/contrato-bochel.pdf";
+
+            // Add cache buster to fetch the latest signed doc from storage
+            const cacheBuster = `?t=${new Date().getTime()}`;
+            const res = await fetch(pdfUrl + cacheBuster);
+            if (!res.ok) throw new Error("Erro ao transferir PDF original");
+            const pdfBytes = await res.arrayBuffer();
+
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+            saveAs(blob, `Contrato_${contract.status === 'signed' ? 'Assinado' : 'Pendente'}_${contract.client_name.replace(/\s+/g, '_')}.pdf`);
+
+            toast({ title: 'Download concluído!' });
+        } catch (error: any) {
+            console.error(error);
+            toast({ title: 'Erro ao baixar documento', description: error.message, variant: 'destructive' });
+        }
     };
 
     const getStatusInfo = (status: string) => {
@@ -169,88 +272,126 @@ const ContractModule = () => {
     if (showSigning && selectedContract) {
         return (
             <div className="container mx-auto p-4 md:p-6 space-y-4">
-                <Button variant="ghost" onClick={() => { setShowSigning(false); clearCanvas(); }} className="mb-2">
+                <Button variant="ghost" onClick={() => { setShowSigning(false); clearCanvas(); setSignatureImage(null); }} className="mb-2">
                     <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
                 </Button>
 
                 <div className="text-center mb-4">
                     <h1 className="text-2xl font-bold text-gray-900">Assinar Contrato</h1>
-                    <p className="text-sm text-gray-500">Leia o contrato abaixo e assine no campo indicado</p>
+                    <p className="text-sm text-gray-500">
+                        {!signatureImage
+                            ? "Primeiro, desenhe a sua assinatura no quadro."
+                            : "Arraste a assinatura para o local desejado no documento e confirme."}
+                    </p>
                 </div>
 
-                {/* PDF Viewer */}
-                <Card className="border-0 shadow-lg overflow-hidden">
-                    <CardContent className="p-0">
-                        <div className="bg-gray-100 p-2 flex items-center justify-between border-b">
-                            <div className="flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-gray-600" />
-                                <span className="text-sm font-medium text-gray-700">Contrato Bochel Microcrédito</span>
-                            </div>
-                            <a href="/contrato-bochel.pdf" download className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                                <Download className="h-3 w-3" /> Baixar PDF
-                            </a>
-                        </div>
-                        <iframe
-                            src="/contrato-bochel.pdf"
-                            className="w-full border-0"
-                            style={{ height: '60vh', minHeight: '400px' }}
-                            title="Contrato"
-                        />
-                    </CardContent>
-                </Card>
-
-                {/* Signature Pad */}
-                <Card className="border-0 shadow-lg">
-                    <CardContent className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <PenLine className="h-5 w-5 text-[#1a3a5c]" />
-                                <h3 className="font-bold text-gray-900">Assinatura Digital</h3>
-                            </div>
-                            <Button variant="outline" size="sm" onClick={clearCanvas} disabled={!hasSignature}>
-                                <Eraser className="h-3.5 w-3.5 mr-1" /> Limpar
-                            </Button>
-                        </div>
-
-                        <p className="text-xs text-gray-500 mb-3">Desenhe a sua assinatura no campo abaixo usando o rato ou o dedo</p>
-
-                        <div className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white relative">
-                            <canvas
-                                ref={canvasRef}
-                                className="w-full cursor-crosshair touch-none"
-                                style={{ height: '150px' }}
-                                onMouseDown={startDraw}
-                                onMouseMove={draw}
-                                onMouseUp={stopDraw}
-                                onMouseLeave={stopDraw}
-                                onTouchStart={startDraw}
-                                onTouchMove={draw}
-                                onTouchEnd={stopDraw}
-                            />
-                            {!hasSignature && (
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    <p className="text-gray-300 text-sm font-medium">Assine aqui</p>
+                {!signatureImage ? (
+                    <Card className="border-0 shadow-lg">
+                        <CardContent className="p-6">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+                                <div className="flex items-center gap-2">
+                                    <PenLine className="h-5 w-5 text-[#1a3a5c]" />
+                                    <h3 className="font-bold text-gray-900">Desenhar Assinatura</h3>
                                 </div>
+                                <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                                    <div className="flex gap-2 items-center">
+                                        <span className="text-sm font-medium text-gray-600">Cor:</span>
+                                        <button
+                                            onClick={() => setInkColor('#0000a0')}
+                                            className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#0000a0' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'} transition-all`}
+                                            style={{ backgroundColor: '#0000a0' }}
+                                            title="Azul Bic"
+                                            type="button"
+                                        />
+                                        <button
+                                            onClick={() => setInkColor('#000000')}
+                                            className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#000000' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'} transition-all`}
+                                            style={{ backgroundColor: '#000000' }}
+                                            title="Preto"
+                                            type="button"
+                                        />
+                                    </div>
+                                    <Button variant="outline" onClick={clearCanvas} size="sm">
+                                        <Eraser className="h-4 w-4 mr-2" /> Limpar
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white relative">
+                                <canvas
+                                    ref={canvasRef}
+                                    className="w-full cursor-crosshair touch-none"
+                                    style={{ height: '200px', touchAction: 'none' }}
+                                    onMouseDown={startDraw}
+                                    onMouseMove={draw}
+                                    onMouseUp={stopDraw}
+                                    onMouseLeave={stopDraw}
+                                    onTouchStart={startDraw}
+                                    onTouchMove={draw}
+                                    onTouchEnd={stopDraw}
+                                />
+                                {!hasSignature && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        <p className="text-gray-300 text-sm font-medium">Assine aqui</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <Button onClick={prepareDragSignature} disabled={!hasSignature} className="w-full mt-4 h-12">
+                                Continuar
+                            </Button>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <Card className="border-0 shadow-lg overflow-hidden flex flex-col items-center p-2 bg-gray-50">
+                        {/* Interactive PDF Drag View */}
+                        <div className="text-sm bg-blue-100 text-blue-800 p-2 rounded-md mb-2 w-full text-center">
+                            <strong>Dica:</strong> Toque e segure a assinatura para arrastá-la para o espaço "Nome" na última página! Vá até a última página para assinar.
+                        </div>
+
+                        <div className="flex flex-col mb-4 bg-white p-2 rounded w-full">
+                            <div className="flex justify-between items-center mb-2">
+                                <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.max(p - 1, 1))} disabled={pageNumber <= 1}>Página Anterior</Button>
+                                <span className="text-sm text-gray-600">Página {pageNumber} de {numPages || '--'}</span>
+                                <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.min(p + 1, numPages))} disabled={pageNumber >= numPages}>Próxima Página</Button>
+                            </div>
+                        </div>
+
+                        <div className="relative border shadow-sm select-none" ref={pdfWrapperRef} style={{ maxWidth: '100%', overflow: 'hidden' }}>
+                            <Document
+                                file={selectedContract?.contract_url || "/contrato-bochel.pdf"}
+                                onLoadSuccess={({ numPages }) => { setNumPages(numPages); setPageNumber(numPages); }} /* Auto go to last page */
+                                className="w-full"
+                            >
+                                <Page
+                                    pageNumber={pageNumber}
+                                    renderTextLayer={false}
+                                    renderAnnotationLayer={false}
+                                    width={Math.min(window.innerWidth - 60, 800)}
+                                />
+                            </Document>
+
+                            {/* Only show signature if we are on the final page */}
+                            {pageNumber === numPages && (
+                                <Draggable position={sigPos} onDrag={handleDrag} bounds="parent">
+                                    <div className="absolute top-0 left-0 cursor-move border-2 border-dashed border-blue-500 rounded p-1 bg-white/50 z-50">
+                                        <img src={signatureImage} alt="Assinatura" style={{ height: '60px', opacity: 0.9 }} draggable={false} />
+                                    </div>
+                                </Draggable>
                             )}
                         </div>
 
-                        <div className="flex items-center gap-3 mt-5">
-                            <Button
-                                onClick={signContract}
-                                disabled={!hasSignature || saving}
-                                className="flex-1 h-12 text-white font-bold text-base shadow-lg"
-                                style={{ backgroundColor: '#1a3a5c' }}
-                            >
+                        <div className="flex items-center w-full gap-3 mt-5 px-4 pb-4">
+                            <Button variant="outline" onClick={() => setSignatureImage(null)} className="flex-1 h-12">
+                                Redesenhar
+                            </Button>
+                            <Button onClick={signContract} disabled={saving} className="flex-1 h-12 text-white font-bold text-base shadow-lg bg-[#1a3a5c]">
                                 {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                                {saving ? 'A assinar...' : 'Confirmar Assinatura'}
+                                {saving ? 'A Guardar...' : 'Confirmar e Submeter'}
                             </Button>
                         </div>
-
-                        <p className="text-[10px] text-gray-400 mt-3 text-center">
-                            Ao assinar, declara ter lido e aceite os termos do contrato de microcrédito da Bochel.
-                        </p>
-                    </CardContent>
-                </Card>
+                    </Card>
+                )}
             </div>
         );
     }
@@ -281,27 +422,17 @@ const ContractModule = () => {
 
                         {/* PDF */}
                         <div className="border rounded-xl overflow-hidden">
-                            <div className="bg-gray-100 p-2 flex items-center justify-between border-b">
+                            <div className="bg-gray-100 p-2 flex flex-wrap items-center justify-between border-b gap-2">
                                 <span className="text-sm text-gray-600 flex items-center gap-1"><FileText className="h-4 w-4" /> Contrato</span>
-                                <a href="/contrato-bochel.pdf" download className="text-xs text-blue-600 hover:underline flex items-center gap-1">
-                                    <Download className="h-3 w-3" /> Baixar
-                                </a>
+                                <Button variant="default" size="sm" onClick={() => handleDownloadPdf(selectedContract)} className="h-8 text-xs bg-[#1a3a5c]">
+                                    <Download className="h-3 w-3 mr-1" /> Baixar PDF
+                                </Button>
                             </div>
-                            <iframe src="/contrato-bochel.pdf" className="w-full border-0" style={{ height: '50vh' }} title="Contrato" />
+                            <iframe src={`${selectedContract.contract_url || "/contrato-bochel.pdf"}#toolbar=0`} className="w-full border-0" style={{ height: '50vh' }} title="Contrato" />
                         </div>
 
-                        {/* Signature */}
-                        {selectedContract.signature_url && (
-                            <div>
-                                <p className="text-xs text-gray-500 mb-2">Assinatura do cliente</p>
-                                <div className="border rounded-xl p-4 bg-gray-50">
-                                    <img src={selectedContract.signature_url} alt="Assinatura" className="max-h-[100px] mx-auto" />
-                                </div>
-                            </div>
-                        )}
-
                         {/* Actions */}
-                        {selectedContract.status === 'pending' && !isAdmin && (
+                        {selectedContract.status === 'pending' && (
                             <Button
                                 onClick={() => { setShowSigning(true); initCanvas(); }}
                                 className="w-full h-12 text-white font-bold shadow-lg"
@@ -311,18 +442,118 @@ const ContractModule = () => {
                             </Button>
                         )}
 
+                        {/* Admin Actions */}
+                        {isAdmin && selectedContract.status === 'pending' && (
+                            <div className="border rounded-xl p-4 bg-gray-50 flex flex-col gap-2 mt-4">
+                                <p className="text-sm font-medium">Personalizar PDF do Contrato</p>
+                                <p className="text-xs text-gray-500">Faça o upload de um PDF específico para este cliente. Caso contrário, será usado o contrato padronizado.</p>
+                                <Input
+                                    type="file"
+                                    accept=".pdf"
+                                    className="bg-white cursor-pointer"
+                                    onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (!file) return;
+                                        setSaving(true);
+                                        toast({ title: 'A fazer upload...', description: 'Aguarde um momento.' });
+                                        try {
+                                            const path = `${selectedContract.id}.pdf`;
+                                            const { error: uploadErr } = await supabase.storage.from('contracts').upload(path, file, { upsert: true });
+                                            if (uploadErr) throw uploadErr;
+
+                                            const { data } = supabase.storage.from('contracts').getPublicUrl(path);
+                                            await supabase.from('contracts').update({ contract_url: data.publicUrl }).eq('id', selectedContract.id);
+
+                                            setSelectedContract({ ...selectedContract, contract_url: data.publicUrl });
+                                            toast({ title: 'PDF Atualizado com sucesso!' });
+                                            loadContracts();
+                                        } catch (err: any) {
+                                            toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+                                        } finally {
+                                            setSaving(false);
+                                        }
+                                    }}
+                                />
+                            </div>
+                        )}
+
                         {isAdmin && selectedContract.status === 'signed' && (
                             <Button
                                 onClick={async () => {
-                                    await supabase.from('contracts').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', selectedContract.id);
-                                    toast({ title: 'Contrato finalizado' });
-                                    setSelectedContract(null);
-                                    loadContracts();
+                                    setSaving(true);
+                                    try {
+                                        // 1. Obter os dados do pedido de crédito para saber o valor
+                                        let loanAmount = 0;
+                                        if (selectedContract.credit_request_id) {
+                                            const { data: requestData } = await supabase
+                                                .from('credit_requests')
+                                                .select('amount')
+                                                .eq('id', selectedContract.credit_request_id)
+                                                .single();
+                                            if (requestData?.amount) {
+                                                loanAmount = Number(requestData.amount);
+                                            }
+                                        }
+
+                                        if (loanAmount <= 0) {
+                                            toast({ title: 'Aviso', description: 'Não foi possível determinar o valor do empréstimo a partir do pedido associado.', variant: 'destructive' });
+                                            setSaving(false);
+                                            return;
+                                        }
+
+                                        // 2. Buscar o ID do Client associado a este user_id
+                                        const { data: clientRecord } = await supabase
+                                            .from('clients')
+                                            .select('id')
+                                            .eq('user_id', selectedContract.client_id)
+                                            .single();
+
+                                        if (!clientRecord) {
+                                            toast({ title: 'Aviso', description: 'Registo de Cliente não encontrado para este utilizador. Crie um perfil de cliente primeiro.', variant: 'destructive' });
+                                            setSaving(false);
+                                            return;
+                                        }
+
+                                        // 3. Criar Empréstimo Ativo (30 Dias, 30% Juros Fixos)
+                                        const interestRate = 30;
+                                        const interestValue = loanAmount * (interestRate / 100);
+                                        const totalAmount = loanAmount + interestValue;
+
+                                        const startDate = new Date();
+                                        const endDate = new Date();
+                                        endDate.setDate(startDate.getDate() + 30);
+
+                                        const { error: loanError } = await supabase.from('loans').insert({
+                                            client_id: clientRecord.id,
+                                            amount: loanAmount,
+                                            interest_rate: interestRate,
+                                            total_amount: totalAmount,
+                                            remaining_amount: totalAmount,
+                                            installments: 1,
+                                            status: 'active',
+                                            start_date: startDate.toISOString().split('T')[0],
+                                            end_date: endDate.toISOString().split('T')[0],
+                                        });
+
+                                        if (loanError) throw loanError;
+
+                                        // 4. Finalizar Contrato
+                                        await supabase.from('contracts').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', selectedContract.id);
+
+                                        toast({ title: 'Saldo Injetado e Contrato Finalizado!' });
+                                        setSelectedContract(null);
+                                        loadContracts();
+                                    } catch (err: any) {
+                                        toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+                                    } finally {
+                                        setSaving(false);
+                                    }
                                 }}
-                                className="w-full h-12 text-white font-bold shadow-lg"
+                                className="w-full h-12 text-white font-bold shadow-lg mt-4"
                                 style={{ backgroundColor: '#1b5e20' }}
+                                disabled={saving}
                             >
-                                <CheckCircle className="h-4 w-4 mr-2" /> Marcar como Finalizado
+                                <CheckCircle className="h-4 w-4 mr-2" /> {saving ? 'A Processar...' : 'Injetar Saldo e Finalizar'}
                             </Button>
                         )}
                     </CardContent>

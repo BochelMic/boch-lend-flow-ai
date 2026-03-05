@@ -6,13 +6,13 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
-import { 
-  Bell, 
-  MessageSquare, 
-  Phone, 
-  Mail, 
-  Send, 
-  Settings, 
+import {
+  Bell,
+  MessageSquare,
+  Phone,
+  Mail,
+  Send,
+  Settings,
   Clock,
   CheckCircle,
   XCircle,
@@ -25,21 +25,51 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Switch } from '../ui/switch';
+import { supabase } from '@/integrations/supabase/client';
+
+export interface AutomationRule {
+  id: string;
+  name: string;
+  trigger: string;
+  message: string;
+  active: boolean;
+  channel: string;
+}
 
 const NotificationsModule = () => {
   const { toast } = useToast();
   const [notifications, setNotifications] = useState([
-    { id: 1, type: 'SMS', recipient: 'João Silva', message: 'Seu empréstimo foi aprovado!', status: 'Enviado', date: '15/06/2024 10:30', method: 'Automático' },
-    { id: 2, type: 'SMS', recipient: 'Maria Santos', message: 'Lembrete: Pagamento vence em 5 dias', status: 'Enviado', date: '15/06/2024 09:15', method: 'Automático' },
-    { id: 3, type: 'Ligação', recipient: 'Carlos Mussa', message: 'Cobrança - pagamento vencido', status: 'Pendente', date: '15/06/2024 14:00', method: 'Manual' },
+    { id: '1', type: 'SMS', recipient: 'João Silva', message: 'Seu empréstimo foi aprovado!', status: 'Enviado', date: '15/06/2024 10:30', method: 'Automático' },
+    { id: '2', type: 'SMS', recipient: 'Maria Santos', message: 'Lembrete: Pagamento vence em 5 dias', status: 'Enviado', date: '15/06/2024 09:15', method: 'Automático' },
+    { id: '3', type: 'Ligação', recipient: 'Carlos Mussa', message: 'Cobrança - pagamento vencido', status: 'Pendente', date: '15/06/2024 14:00', method: 'Manual' },
   ]);
 
-  const [automationRules, setAutomationRules] = useState([
-    { id: 1, name: 'Aprovação de Empréstimo', trigger: 'loan_approved', message: 'Parabéns! Seu empréstimo de {amount} foi aprovado. O dinheiro estará disponível em sua conta em até 24h.', active: true, channel: 'SMS' },
-    { id: 2, name: 'Lembrete 5 dias', trigger: 'payment_due_5_days', message: 'Lembrete: Seu pagamento de {amount} vence em 5 dias ({due_date}). Evite multas pagando em dia.', active: true, channel: 'SMS' },
-    { id: 3, name: 'Lembrete 1 dia', trigger: 'payment_due_1_day', message: 'URGENTE: Seu pagamento de {amount} vence AMANHÃ ({due_date}). Pague hoje e evite juros de mora.', active: true, channel: 'SMS' },
-    { id: 4, name: 'Pagamento Vencido', trigger: 'payment_overdue', message: 'Seu pagamento de {amount} está VENCIDO desde {due_date}. Entre em contato conosco: (21) 123-4567', active: true, channel: 'SMS+Ligação' },
-  ]);
+  const [automationRules, setAutomationRules] = useState<AutomationRule[]>([]);
+  const [isLoadingRules, setIsLoadingRules] = useState(true);
+
+  const fetchRules = async () => {
+    setIsLoadingRules(true);
+    const { data, error } = await supabase
+      .from('automation_rules')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (data && !error) {
+      setAutomationRules(data.map(d => ({
+        id: d.id,
+        name: d.name,
+        trigger: d.event_trigger,
+        message: d.message_template,
+        active: !!d.active,
+        channel: d.channels ? d.channels.join('+') : 'N/A'
+      })));
+    }
+    setIsLoadingRules(false);
+  };
+
+  useEffect(() => {
+    fetchRules();
+  }, []);
 
   const [messageTemplate, setMessageTemplate] = useState({
     type: '',
@@ -57,45 +87,102 @@ const NotificationsModule = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const checkAutomaticTriggers = () => {
-    // Simula verificação de triggers automáticos
-    console.log('Verificando triggers automáticos...');
-    
-    // Aqui seria a lógica real para verificar:
-    // - Empréstimos aprovados hoje
-    // - Pagamentos que vencem em 5 dias
-    // - Pagamentos que vencem amanhã
-    // - Pagamentos vencidos
-  };
-
-  const sendNotification = (type: string, recipient: string, message: string) => {
-    const newNotification = {
-      id: notifications.length + 1,
-      type,
-      recipient,
-      message,
-      status: 'Enviado',
-      date: new Date().toLocaleString('pt-BR'),
-      method: 'Manual'
-    };
-
-    setNotifications([newNotification, ...notifications]);
-    
+  const checkAutomaticTriggers = async () => {
+    // In production, pg_cron handles this.
+    // For manual triggers we could theoretically invoke another edge function
+    // but the button explicitly says "Verificando triggers automáticos"
     toast({
-      title: "Notificação Enviada",
-      description: `${type} enviado para ${recipient}`,
+      title: "Verificação Manual",
+      description: "As verificações de data de pagamento estão configuradas via banco de dados.",
     });
   };
 
-  const toggleAutomationRule = (ruleId: number) => {
-    setAutomationRules(prev => prev.map(rule => 
-      rule.id === ruleId ? { ...rule, active: !rule.active } : rule
+  const sendNotification = async (type: string, recipient: string, message: string) => {
+    // Minimal mockup recipient mapping. In real scenario, `recipient` should be a client ID or search
+    toast({
+      title: "Enviando...",
+      description: "Processando notificação manual.",
+    });
+
+    try {
+      // Find client id or profile by name (mocking this part, we need an actual user ID to send PUSH to)
+      const { data: clientData } = await supabase
+        .from('clients')
+        .select('user_id')
+        .ilike('name', `%${recipient}%`)
+        .limit(1)
+        .single();
+
+      const targetUserId = clientData?.user_id;
+
+      const { data, error } = await supabase.functions.invoke('send-notification', {
+        body: {
+          userId: targetUserId || null,
+          title: 'Notificação Direta',
+          body: message,
+          type: type.toLowerCase() === 'ligação' ? 'alert' : 'system',
+          link_url: '/',
+          client_id: targetUserId ? null : undefined // fallback logic
+        }
+      });
+
+      if (error) throw error;
+
+      const newNotification = {
+        id: String(Date.now()),
+        type,
+        recipient,
+        message,
+        status: data?.pushDelivered ? 'Enviado (Push)' : 'Enviado (In-App)',
+        date: new Date().toLocaleString('pt-BR'),
+        method: 'Manual'
+      };
+
+      setNotifications([newNotification, ...notifications]);
+
+      toast({
+        title: "Sucesso",
+        description: `Notificação enviada para ${recipient}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Erro no envio",
+        description: err.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const toggleAutomationRule = async (ruleId: string, currentActive: boolean) => {
+    const newActiveState = !currentActive;
+
+    // Optmistic update
+    setAutomationRules(prev => prev.map(rule =>
+      rule.id === ruleId ? { ...rule, active: newActiveState } : rule
     ));
-    
-    toast({
-      title: "Regra Atualizada",
-      description: "Configuração de automação atualizada.",
-    });
+
+    // Save to DB
+    const { error } = await supabase
+      .from('automation_rules')
+      .update({ active: newActiveState })
+      .eq('id', ruleId);
+
+    if (error) {
+      // Revert if error
+      setAutomationRules(prev => prev.map(rule =>
+        rule.id === ruleId ? { ...rule, active: currentActive } : rule
+      ));
+      toast({
+        title: "Erro ao atualizar regra",
+        description: error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Regra Atualizada",
+        description: "Configuração de automação salva com sucesso.",
+      });
+    }
   };
 
   const getStatusIcon = (status: string) => {
@@ -120,7 +207,7 @@ const NotificationsModule = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Sistema de Notificações</h1>
-        <Button onClick={() => toast({ title: "Verificação Manual", description: "Executando verificação de triggers..." })}>
+        <Button onClick={checkAutomaticTriggers}>
           <Zap className="mr-2 h-4 w-4" />
           Executar Verificação
         </Button>
@@ -222,7 +309,7 @@ const NotificationsModule = () => {
               <CardContent className="space-y-4">
                 <div>
                   <Label htmlFor="notificationType">Tipo</Label>
-                  <Select onValueChange={(value) => setMessageTemplate({...messageTemplate, type: value})}>
+                  <Select onValueChange={(value) => setMessageTemplate({ ...messageTemplate, type: value })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
@@ -236,7 +323,7 @@ const NotificationsModule = () => {
 
                 <div>
                   <Label htmlFor="recipient">Destinatário</Label>
-                  <Input 
+                  <Input
                     id="recipient"
                     placeholder="Nome do cliente"
                   />
@@ -244,16 +331,16 @@ const NotificationsModule = () => {
 
                 <div>
                   <Label htmlFor="message">Mensagem</Label>
-                  <Textarea 
+                  <Textarea
                     id="message"
                     placeholder="Digite sua mensagem..."
                     className="min-h-[100px]"
                     value={messageTemplate.message}
-                    onChange={(e) => setMessageTemplate({...messageTemplate, message: e.target.value})}
+                    onChange={(e) => setMessageTemplate({ ...messageTemplate, message: e.target.value })}
                   />
                 </div>
 
-                <Button 
+                <Button
                   className="w-full"
                   onClick={() => sendNotification(messageTemplate.type, 'Cliente Teste', messageTemplate.message)}
                 >
@@ -273,34 +360,39 @@ const NotificationsModule = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {automationRules.map((rule) => (
-                  <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3">
-                        <Switch 
-                          checked={rule.active}
-                          onCheckedChange={() => toggleAutomationRule(rule.id)}
-                        />
-                        <div>
-                          <h3 className="font-medium">{rule.name}</h3>
-                          <p className="text-sm text-gray-600">{rule.message}</p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              {rule.channel}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              Trigger: {rule.trigger}
-                            </span>
+                {isLoadingRules ? (
+                  <div className="py-8 text-center text-gray-500">A carregar regras de automação...</div>
+                ) : automationRules.length === 0 ? (
+                  <div className="py-8 text-center text-gray-500">Nenhuma regra configurada.</div>
+                ) : (
+                  automationRules.map((rule) => (
+                    <div key={rule.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3">
+                          <Switch
+                            checked={rule.active}
+                            onCheckedChange={() => toggleAutomationRule(rule.id, rule.active)}
+                          />
+                          <div>
+                            <h3 className="font-medium">{rule.name}</h3>
+                            <p className="text-sm text-gray-600">{rule.message}</p>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                {rule.channel}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                Trigger: {rule.trigger}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
+                      <Button size="sm" variant="outline">
+                        <Settings className="h-3 w-3 mr-1" />
+                        Editar
+                      </Button>
                     </div>
-                    <Button size="sm" variant="outline">
-                      <Settings className="h-3 w-3 mr-1" />
-                      Editar
-                    </Button>
-                  </div>
-                ))}
+                  )))}
               </div>
             </CardContent>
           </Card>

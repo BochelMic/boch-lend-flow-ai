@@ -168,18 +168,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return { success: false, message: 'Credenciais inválidas.' };
         }
 
-        // Check role — use timeout to prevent hanging
-        const roleResult = await withTimeout(
-            supabase.from('user_roles').select('role').eq('user_id', data.user.id).maybeSingle(),
-            4000
-        );
+        // Check role from DB, then fallback to metadata
+        let userRole: string | undefined;
 
-        const userRole = roleResult?.data?.role || data.user.user_metadata?.role;
+        try {
+            const roleResult = await withTimeout(
+                supabase.from('user_roles').select('role').eq('user_id', data.user.id).maybeSingle(),
+                5000
+            );
+            userRole = roleResult?.data?.role;
+            console.log('[Auth] DB role query result:', roleResult?.data, 'role:', userRole);
+        } catch (e) {
+            console.warn('[Auth] Role query failed:', e);
+        }
+
+        // Fallback to user_metadata if DB query returned nothing
+        if (!userRole) {
+            userRole = data.user.user_metadata?.role;
+            console.log('[Auth] Fallback to metadata role:', userRole);
+        }
+
+        console.log('[Auth] Expected role:', expectedRole, '| Found role:', userRole);
 
         if (userRole !== expectedRole) {
             await supabase.auth.signOut();
             setLoading(false);
-            return { success: false, message: 'Credenciais inválidas.' };
+            const msg = !userRole
+                ? 'Não foi possível verificar o papel do utilizador. Tente novamente.'
+                : 'Credenciais inválidas para este painel.';
+            return { success: false, message: msg };
         }
 
         return { success: true, message: 'Login realizado com sucesso!' };

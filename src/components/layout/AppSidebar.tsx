@@ -17,9 +17,11 @@ import {
   Shield,
   Camera,
   PenLine,
+  Key,
 } from 'lucide-react';
 
 import { useAuth } from '../../hooks/useAuth';
+import { ChangePasswordDialog } from '../auth/ChangePasswordDialog';
 import {
   Sidebar,
   SidebarContent,
@@ -71,11 +73,9 @@ export function AppSidebar() {
     if (user?.role === 'gestor') {
       return [
         { name: 'Dashboard', href: '/gestor/dashboard', icon: LayoutDashboard, permission: 'all' },
-        { name: 'Usuários', href: '/gestor/usuarios', icon: UserPlus, permission: 'all' },
         { name: 'Pedidos', href: '/gestor/credit-requests', icon: FormInput, permission: 'all' },
         { name: 'Clientes', href: '/gestor/clientes', icon: Users, permission: 'all' },
         { name: 'Empréstimos', href: '/gestor/emprestimos', icon: CreditCard, permission: 'all' },
-        { name: 'Simulador', href: '/gestor/credit-simulator', icon: Calculator, permission: 'all' },
         { name: 'Crédito', href: '/gestor/credit-form', icon: FormInput, permission: 'all' },
         { name: 'Cobranças', href: '/gestor/cobrancas', icon: Phone, permission: 'all' },
         { name: 'Agentes', href: '/gestor/agentes', icon: UserCheck, permission: 'all' },
@@ -228,14 +228,25 @@ export function AppSidebar() {
 
       {/* Footer */}
       <SidebarFooter className="border-t border-gray-200/80 p-2" style={{ background: '#ffffff' }}>
-        <SidebarMenu>
+        <SidebarMenu className="gap-1">
+          <SidebarMenuItem>
+            <ChangePasswordDialog>
+              <SidebarMenuButton
+                tooltip={isCollapsed ? 'Alterar Senha' : undefined}
+                className="h-10 text-gray-600 hover:text-[#0b3a20] hover:bg-gray-100 transition-all rounded-xl w-full flex items-center"
+              >
+                <Key className="h-4 w-4 flex-shrink-0 mr-2" />
+                <span className={`${isCollapsed ? 'sr-only' : ''} text-[13px] font-medium`}>Alterar Senha</span>
+              </SidebarMenuButton>
+            </ChangePasswordDialog>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={logout}
               tooltip={isCollapsed ? 'Sair' : undefined}
-              className="h-10 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all rounded-xl"
+              className="h-10 text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all rounded-xl w-full flex items-center"
             >
-              <LogOut className="h-4 w-4 flex-shrink-0" />
+              <LogOut className="h-4 w-4 flex-shrink-0 mr-2" />
               <span className={`${isCollapsed ? 'sr-only' : ''} text-[13px] font-medium`}>Terminar sessão</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

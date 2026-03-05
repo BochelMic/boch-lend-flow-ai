@@ -11,15 +11,31 @@ import {
   CheckCircle2,
   ChevronDown,
   Star,
-  ArrowRight
+  ArrowRight,
+  Terminal,
+  Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { motion } from 'framer-motion';
+import AboutSection from '@/components/landing/AboutSection';
+import ProductsSection from '@/components/landing/ProductsSection';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [logoClicks, setLogoClicks] = useState(0);
+
+  const handleLogoClick = () => {
+    if (logoClicks + 1 >= 6) {
+      setLogoClicks(0);
+      sessionStorage.setItem('secretAccess', 'internal');
+      navigate('/gestor');
+    } else {
+      setLogoClicks(prev => prev + 1);
+    }
+  };
 
   // Simulator State
   const [amount, setAmount] = useState(5000);
@@ -78,11 +94,13 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
             {/* Logo */}
-            <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={() => window.scrollTo(0, 0)}>
+            <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={handleLogoClick}>
               {scrolled ? (
-                <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-10 md:h-12 object-contain" />
+                <div className="logo-animated logo-glow">
+                  <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-10 md:h-12 object-contain" />
+                </div>
               ) : (
-                <div className="bg-white/90 backdrop-blur-sm p-1.5 rounded-lg border border-white/20">
+                <div className="logo-animated bg-white/90 backdrop-blur-sm p-1.5 rounded-lg border border-white/20">
                   <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-8 md:h-10 object-contain" />
                 </div>
               )}
@@ -93,6 +111,7 @@ const LandingPage = () => {
               <a href="#vantagens" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>Vantagens</a>
               <a href="#como-funciona" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>Como Funciona</a>
               <a href="#simulador" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>Simulador</a>
+              <a href="#sobre" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>Sobre Nós</a>
               <a href="#faq" className={`text-sm font-bold hover:text-[${secondaryColor}] transition-colors ${scrolled ? 'text-gray-700' : 'text-gray-100 shadow-sm'}`}>FAQ</a>
 
               <div className="flex items-center space-x-4 pl-4 border-l border-gray-300">
@@ -145,15 +164,20 @@ const LandingPage = () => {
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1573164713988-8665fc963095?q=80&w=2069&auto=format&fit=crop"
-            alt="Profissionais de Negócios"
+            src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2069&auto=format&fit=crop"
+            alt="Escritório Moderno"
             className="w-full h-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0b3a20]/95 via-[#0b3a20]/80 to-[#0b3a20]/40 mix-blend-multiply"></div>
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <div className="max-w-2xl">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="max-w-2xl"
+          >
             <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/20 rounded-full px-4 py-1.5 mb-6">
               <span className="flex h-2 w-2 rounded-full" style={{ backgroundColor: secondaryColor }}></span>
               <span className="text-xs font-bold tracking-wider text-white uppercase">Mais que um empréstimo</span>
@@ -185,89 +209,154 @@ const LandingPage = () => {
                 Conhecer Vantagens
               </Button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Vantagens Section */}
       <section id="vantagens" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.6 }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
             <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: secondaryColor }}>Porquê Escolher-nos</h2>
             <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">A experiência financeira que o seu negócio merece</h3>
             <p className="text-lg text-gray-600">A Bochel remove a burocracia tradicional para lhe entregar o crédito que precisa num tempo recorde.</p>
-          </div>
+          </motion.div>
 
           <div className="grid md:grid-cols-3 gap-10">
             {/* Feature 1 */}
-            <div className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group"
+            >
               <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${primaryColor}15`, color: primaryColor }}>
                 <Zap size={28} strokeWidth={2} />
               </div>
               <h4 className="text-xl font-bold text-gray-900 mb-3 block">Aprovação Rápida</h4>
               <p className="text-gray-600 leading-relaxed font-medium">O nosso sistema inteligente analisa o seu pedido em instantes, garantindo uma resposta célere à sua solicitação.</p>
-            </div>
+            </motion.div>
 
             {/* Feature 2 */}
-            <div className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group"
+            >
               <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${secondaryColor}15`, color: secondaryColor }}>
                 <Clock size={28} strokeWidth={2} />
               </div>
               <h4 className="text-xl font-bold text-gray-900 mb-3 block">100% Digital</h4>
               <p className="text-gray-600 leading-relaxed font-medium">Faça tudo através do seu telemóvel ou computador. Sem filas, sem papeladas infindáveis e sem sair de casa.</p>
-            </div>
+            </motion.div>
 
             {/* Feature 3 */}
-            <div className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="bg-gray-50 rounded-2xl p-8 hover:shadow-xl transition-shadow border border-gray-100 group"
+            >
               <div className="w-14 h-14 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform" style={{ backgroundColor: `${accentColor}15`, color: accentColor }}>
                 <ShieldCheck size={28} strokeWidth={2} />
               </div>
               <h4 className="text-xl font-bold text-gray-900 mb-3 block">Total Confiança</h4>
               <p className="text-gray-600 leading-relaxed font-medium">A proteção e privacidade dos seus dados é a nossa prioridade. Operamos com máxima transparência fiscal, sem custos ocultos.</p>
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
+      <ProductsSection />
+
       {/* Como Funciona Section */}
-      <section id="como-funciona" className="py-24 bg-gray-50 border-y border-gray-100">
+      < section id="como-funciona" className="py-24 bg-gray-50 border-y border-gray-100" >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.5 }}
+            className="text-center max-w-3xl mx-auto mb-16"
+          >
             <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: primaryColor }}>Simples e Direto</h2>
             <h3 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Como funciona o nosso crédito?</h3>
-            <p className="text-lg text-gray-600">Em apenas três passos simples o dinheiro que precisa estará na sua conta.</p>
-          </div>
+            <p className="text-lg text-gray-600">Em apenas quatro passos simples o dinheiro que precisa estará na sua conta.</p>
+          </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8 relative">
+          <div className="grid md:grid-cols-4 gap-6 relative">
             {/* Lines connecting steps */}
-            <div className="hidden md:block absolute top-[60px] left-[16%] right-[16%] h-0.5 border-t-2 border-dashed border-gray-300 z-0"></div>
+            <div className="hidden md:block absolute top-[60px] left-[12%] right-[12%] h-0.5 border-t-2 border-dashed border-gray-300 z-0"></div>
 
             {/* Step 1 */}
-            <div className="relative z-10 flex flex-col items-center text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="relative z-10 flex flex-col items-center text-center"
+            >
               <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg mb-6" style={{ backgroundColor: primaryColor }}>
                 1
               </div>
-              <h4 className="text-xl font-bold text-gray-900 mb-2">Simule o Crédito</h4>
-              <p className="text-gray-600 font-medium px-4">Utilize o nosso simulador para escolher o montante e os prazos que melhor se adaptam a si.</p>
-            </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-2">Simulação</h4>
+              <p className="text-gray-600 font-medium px-2">Utilize o nosso simulador para escolher o montante e os prazos que melhor se adaptam a si.</p>
+            </motion.div>
 
             {/* Step 2 */}
-            <div className="relative z-10 flex flex-col items-center text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="relative z-10 flex flex-col items-center text-center"
+            >
               <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg mb-6" style={{ backgroundColor: secondaryColor }}>
                 2
               </div>
-              <h4 className="text-xl font-bold text-gray-900 mb-2">Crie a sua Conta</h4>
-              <p className="text-gray-600 font-medium px-4">Registe-se em segundos, preencha o formulário e faça upload dos seus documentos.</p>
-            </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-2">Solicite Crédito</h4>
+              <p className="text-gray-600 font-medium px-2">Crie a sua conta, preencha o formulário e faça upload dos seus documentos.</p>
+            </motion.div>
 
             {/* Step 3 */}
-            <div className="relative z-10 flex flex-col items-center text-center">
-              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg mb-6" style={{ backgroundColor: accentColor }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="relative z-10 flex flex-col items-center text-center"
+            >
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg mb-6" style={{ backgroundColor: '#0b3a20' }}>
                 3
               </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-2 mt-[-5px]">Assinar Contrato<br />(Após Aprovação)</h4>
+              <p className="text-gray-600 font-medium px-2 mt-2">Leia atentamente e assine digitalmente o seu contrato após análise da nossa equipa.</p>
+            </motion.div>
+
+            {/* Step 4 */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-50px" }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="relative z-10 flex flex-col items-center text-center"
+            >
+              <div className="w-20 h-20 rounded-full flex items-center justify-center text-3xl font-black text-white shadow-lg mb-6" style={{ backgroundColor: accentColor }}>
+                4
+              </div>
               <h4 className="text-xl font-bold text-gray-900 mb-2">Receba o Dinheiro</h4>
-              <p className="text-gray-600 font-medium px-4">Após aprovação e assinatura digital, enviamos o dinheiro para a sua conta bancária imediatamente.</p>
-            </div>
+              <p className="text-gray-600 font-medium px-2">Após a assinatura digital, enviamos o dinheiro para a sua conta bancária imediatamente.</p>
+            </motion.div>
           </div>
           <div className="mt-16 text-center">
             <Button
@@ -278,13 +367,13 @@ const LandingPage = () => {
               Começar Agora <ArrowRight className="ml-2 w-4 h-4" />
             </Button>
           </div>
-        </div>
-      </section>
+        </div >
+      </section >
 
       {/* Simulador Section */}
-      <section id="simulador" className="py-24 bg-white relative overflow-hidden">
+      < section id="simulador" className="py-24 bg-white relative overflow-hidden" >
         {/* Background decorative elements */}
-        <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-gray-100 rounded-full blur-3xl opacity-50"></div>
+        < div className="absolute top-0 right-0 -translate-y-12 translate-x-1/3 w-96 h-96 bg-gray-100 rounded-full blur-3xl opacity-50" ></div >
         <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-[500px] h-[500px] rounded-full blur-3xl opacity-20" style={{ backgroundColor: `${secondaryColor}40` }}></div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
@@ -383,10 +472,10 @@ const LandingPage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Testemunhos (Testimonials) Section */}
-      <section className="py-24 bg-gray-50 border-t border-gray-100">
+      < section className="py-24 bg-gray-50 border-t border-gray-100" >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: secondaryColor }}>Feedback</h2>
@@ -440,10 +529,13 @@ const LandingPage = () => {
             </div>
           </div>
         </div>
-      </section>
+      </section >
+
+      {/* Sobre Nós Section */}
+      < AboutSection />
 
       {/* FAQ Section */}
-      <section id="faq" className="py-24 bg-white">
+      < section id="faq" className="py-24 bg-white" >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-sm font-bold tracking-widest uppercase mb-3" style={{ color: primaryColor }}>Dúvidas frequentes</h2>
@@ -469,10 +561,10 @@ const LandingPage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section >
 
       {/* Footer */}
-      <footer className="bg-[#082a17] text-white py-16 border-t border-[#0b3a20]">
+      < footer className="bg-[#082a17] text-white py-16 border-t border-[#0b3a20]" >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8 mb-10 pb-10 border-b border-[#0f4a29]">
             <div className="col-span-2">
@@ -498,17 +590,26 @@ const LandingPage = () => {
               <h4 className="font-bold text-lg mb-5" style={{ color: secondaryColor }}>Contactos</h4>
               <ul className="space-y-3 text-sm font-medium text-gray-300">
                 <li>Avenida Principal, Maputo, MOZ</li>
-                <li>suporte@bochel.com</li>
-                <li>+258 84 000 0000</li>
+                <li>bochelmicrocredito@gmail.com</li>
+                <li>+258 86 188 7302</li>
               </ul>
             </div>
           </div>
-          <div className="text-center font-medium text-sm text-gray-400">
-            &copy; {new Date().getFullYear()} Bochel Microcrédito, EI. Todos os direitos reservados.
+          <div className="flex flex-col md:flex-row justify-between items-center text-center font-medium text-sm text-gray-400 mt-4 pt-4 border-t border-[#0f4a29]">
+            <div className="mb-4 md:mb-0 flex flex-col md:items-start text-left">
+              <span>&copy; {new Date().getFullYear()} Bochel Microcrédito, EI. Todos os direitos reservados.</span>
+              <span className="mt-1 text-xs text-gray-500">
+                Desenvolvido por <a href="https://www.lgtecserv.com" target="_blank" rel="noopener noreferrer" className="text-[#d37c22] hover:text-white transition-colors">LG TecServ</a>
+              </span>
+            </div>
+            <div className="flex space-x-6">
+              <button onClick={() => navigate('/termos-de-uso')} className="hover:text-white transition-colors">Termos de Uso</button>
+              <button onClick={() => navigate('/politicas-de-privacidade')} className="hover:text-white transition-colors">Políticas de Privacidade</button>
+            </div>
           </div>
         </div>
-      </footer>
-    </div>
+      </footer >
+    </div >
   );
 };
 

@@ -92,6 +92,10 @@ const CreditRequestManager = () => {
       toast({ title: 'Erro', description: 'Mensagem obrigatória para rejeitar.', variant: 'destructive' });
       return;
     }
+
+    const request = requests.find(r => r.id === id);
+    if (!request) return;
+
     try {
       const { error } = await supabase.from('credit_requests').update({
         status: action,
@@ -100,7 +104,23 @@ const CreditRequestManager = () => {
         review_message: reviewMsg || (action === 'approved' ? 'Aprovado' : ''),
       }).eq('id', id);
       if (error) throw error;
-      toast({ title: action === 'approved' ? 'Pedido Aprovado' : 'Pedido Rejeitado' });
+
+      if (action === 'approved') {
+        const { error: contractError } = await supabase.from('contracts').insert({
+          credit_request_id: id,
+          client_id: request.user_id || '', // use the user id associated with the request
+          client_name: request.client_name,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+        });
+
+        if (contractError) {
+          console.error('Error creating contract:', contractError);
+          toast({ title: 'Aviso', description: 'Pedido aprovado, mas falhou ao criar o contrato.', variant: 'destructive' });
+        }
+      }
+
+      toast({ title: action === 'approved' ? 'Pedido Aprovado e Contrato Gerado' : 'Pedido Rejeitado' });
       setSelected(null); setReviewMsg(''); load();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });

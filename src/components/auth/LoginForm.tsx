@@ -5,13 +5,26 @@ import { Label } from '../ui/label';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const LoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [logoClicks, setLogoClicks] = useState(0);
   const { login } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleLogoClick = () => {
+    if (logoClicks + 1 >= 6) {
+      setLogoClicks(0);
+      sessionStorage.setItem('secretAccess', 'internal');
+      navigate('/gestor');
+    } else {
+      setLogoClicks(prev => prev + 1);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +45,7 @@ const LoginForm = () => {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-accent/3 blur-3xl" />
 
         <div className="relative z-10 max-w-sm text-center">
-          <img src="/logo-bochel.png?v=3" alt="BOCHEL" className="h-24 object-contain mx-auto mb-4" />
+          <img src="/logo-bochel.png?v=3" alt="BOCHEL" className="h-24 object-contain mx-auto mb-4 cursor-pointer" onClick={handleLogoClick} />
           <p className="text-lg font-semibold text-primary mb-1">Microcrédito</p>
           <p className="text-sm text-muted-foreground mb-10 leading-relaxed">
             Plataforma integrada de gestão financeira para concessão e acompanhamento de microcrédito.
@@ -58,7 +71,7 @@ const LoginForm = () => {
         <div className="w-full max-w-md space-y-6">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-6">
-            <img src="/logo-bochel.png?v=3" alt="BOCHEL" className="h-10 object-contain" />
+            <img src="/logo-bochel.png?v=3" alt="BOCHEL" className="h-10 object-contain cursor-pointer" onClick={handleLogoClick} />
             <div>
               <p className="text-xs text-muted-foreground mt-1">Microcrédito</p>
             </div>

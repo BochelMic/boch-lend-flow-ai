@@ -1,13 +1,15 @@
-import React from 'react';
-import { Bell, User, LogOut, ChevronDown, MessageCircle, AlertTriangle, Check, Trash2, CheckCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bell, User, LogOut, ChevronDown, MessageCircle, AlertTriangle, Check, Trash2, CheckCheck, Eye, EyeOff, Key } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
+import { useClientAccess } from '../../hooks/useClientAccess';
 import { SidebarTrigger } from '../ui/sidebar';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
+import { ChangePasswordDialog } from '../auth/ChangePasswordDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +29,10 @@ const Header = () => {
   const navigate = useNavigate();
   const role = roleLabel[user?.role ?? ''] ?? { label: user?.role ?? '', color: 'bg-muted text-muted-foreground border-border' };
   const { notifications, unreadCount, unreadChat, unreadAlerts, markAllRead, markOneRead, clearAll } = useNotifications(user?.id);
+  const { currentLoan } = useClientAccess();
+  const [showBalance, setShowBalance] = useState(false);
+
+  const remainingAmount = currentLoan?.remaining_amount || 0;
 
   const formatTime = (ts: string) => {
     const d = new Date(ts);
@@ -41,8 +47,15 @@ const Header = () => {
 
   const handleNotifClick = (notif: typeof notifications[0]) => {
     markOneRead(notif.id);
-    if (notif.type === 'chat' || notif.type === 'alert') {
-      navigate('/chat');
+    if (notif.link_url) {
+      if (notif.link_url.startsWith('http')) {
+        window.open(notif.link_url, '_blank');
+      } else {
+        navigate(notif.link_url);
+      }
+    } else if (notif.type === 'chat' || notif.type === 'alert') {
+      const prefix = user?.role === 'cliente' ? '' : `/${user?.role}`;
+      navigate(`${prefix}/chat`);
     }
   };
 
@@ -69,6 +82,27 @@ const Header = () => {
           >
             {role.label}
           </Badge>
+
+          {/* Client Balance Toggle (Desktop) */}
+          {user?.role === 'cliente' && (
+            <div className="hidden md:flex items-center gap-2 bg-secondary/10 px-3 py-1.5 rounded-lg border border-secondary/20 mr-2">
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase font-bold text-secondary/70 leading-none">Saldo Devedor</span>
+                {showBalance ? (
+                  <span className="text-sm font-black text-secondary leading-none mt-0.5">{remainingAmount.toLocaleString()} MZN</span>
+                ) : (
+                  <span className="text-sm font-black text-secondary leading-none mt-0.5">••••••</span>
+                )}
+              </div>
+              <button
+                onClick={() => setShowBalance(!showBalance)}
+                className="p-1 rounded-md hover:bg-secondary/20 transition-colors text-secondary/70 ml-1"
+                title={showBalance ? "Ocultar Saldo" : "Mostrar Saldo"}
+              >
+                {showBalance ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          )}
 
           {/* ── Notifications Bell ── */}
           <DropdownMenu>
@@ -223,6 +257,12 @@ const Header = () => {
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <DropdownMenuSeparator className="bg-border/50" />
+              <ChangePasswordDialog>
+                <DropdownMenuItem className="text-sm gap-2 cursor-pointer mx-1 mb-1 rounded-md" onSelect={(e) => e.preventDefault()}>
+                  <Key className="h-4 w-4" />
+                  Alterar Senha
+                </DropdownMenuItem>
+              </ChangePasswordDialog>
               <DropdownMenuItem onClick={logout} className="text-sm text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 cursor-pointer mx-1 mb-1 rounded-md">
                 <LogOut className="h-4 w-4" />
                 Terminar sessão

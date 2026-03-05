@@ -5,13 +5,26 @@ import { Label } from '../ui/label';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const ClientLoginForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [logoClicks, setLogoClicks] = useState(0);
   const { loginWithRoleValidation } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const handleLogoClick = () => {
+    if (logoClicks + 1 >= 6) {
+      setLogoClicks(0);
+      sessionStorage.setItem('secretAccess', 'internal');
+      navigate('/gestor');
+    } else {
+      setLogoClicks(prev => prev + 1);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +44,7 @@ const ClientLoginForm = () => {
         <div className="absolute bottom-[-60px] right-[-60px] w-80 h-80 rounded-full bg-accent/8 blur-3xl" />
 
         <div className="relative z-10 max-w-sm text-center">
-          <img src="/logo-bochel.png" alt="BOCHEL" className="h-24 object-contain mx-auto mb-4" />
+          <img src="/logo-bochel.png" alt="BOCHEL" className="h-24 object-contain mx-auto mb-4 cursor-pointer" onClick={handleLogoClick} />
           <p className="text-lg font-semibold mb-1" style={{ color: '#0b3a20' }}>Minha Conta</p>
           <p className="text-sm text-muted-foreground mb-10 leading-relaxed">
             Acompanhe o seu crédito, pagamentos e histórico de forma simples e segura.
@@ -57,7 +70,7 @@ const ClientLoginForm = () => {
         <div className="w-full max-w-md space-y-6">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-3 mb-6">
-            <img src="/logo-bochel.png" alt="BOCHEL" className="h-10 object-contain" />
+            <img src="/logo-bochel.png" alt="BOCHEL" className="h-10 object-contain cursor-pointer" onClick={handleLogoClick} />
             <div>
               <p className="text-xs text-muted-foreground mt-1">Minha Conta</p>
             </div>
@@ -96,7 +109,7 @@ const ClientLoginForm = () => {
             </div>
 
             <Button type="submit" className="w-full h-11 font-semibold text-sm gap-2 group"
-              style={{ background: 'linear-gradient(135deg, hsl(270 60% 55%), hsl(280 70% 60%))' }}
+              style={{ background: 'linear-gradient(135deg, hsl(152 60% 40%), hsl(160 70% 35%))' }}
               disabled={isLoading}>
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                 <>Entrar<ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" /></>

@@ -10,6 +10,7 @@ import GestorApp from "./pages/GestorApp";
 import NotFound from "./pages/NotFound";
 import PublicCreditForm from "./pages/PublicCreditForm";
 import { AuthProvider } from "./contexts/AuthContext";
+import FloatingWhatsApp from "./components/common/FloatingWhatsApp";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <InstallPWA />
+      <FloatingWhatsApp />
     </AuthProvider>
   </QueryClientProvider>
 );

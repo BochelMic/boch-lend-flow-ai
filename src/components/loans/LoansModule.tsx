@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CreditCard, Plus, Search, FileText, Calculator, AlertTriangle } from 'lucide-react';
+import { CreditCard, Plus, Search, FileText, Calculator, AlertTriangle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,19 +55,51 @@ const LoansModule = () => {
     loadClients();
   }, []);
 
+  const isAgent = user?.role === 'agente';
+
   const loadLoans = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('loans')
-        .select('*, clients(name)')
+        .select('*, clients(name, agent_id)')
         .order('created_at', { ascending: false });
+
+      // Agents only see loans for their own clients
+      if (isAgent) {
+        query = query.eq('clients.agent_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      const mapped = (data || []).map((l: any) => ({
-        ...l,
-        client_name: l.clients?.name || 'Cliente desconhecido',
-      }));
+      const mapped = (data || []).map((l: any) => {
+        let total = Number(l.total_amount);
+        let remaining = Number(l.remaining_amount);
+        let status = l.status;
+
+        if (l.end_date && remaining > 0) {
+          const end = new Date(l.end_date);
+          const today = new Date();
+          const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+          if (diffDays < 0 && status !== 'completed') {
+            status = 'overdue';
+            const lateDays = Math.abs(diffDays);
+            const penalty = remaining * (0.015 * lateDays); // 1.5% penalty per day of delay
+            total += penalty;
+            remaining += penalty;
+          }
+        }
+
+        return {
+          ...l,
+          total_amount: total,
+          remaining_amount: remaining,
+          status,
+          client_name: l.clients?.name || 'Cliente desconhecido',
+        };
+      });
       setLoans(mapped);
     } catch (error) {
       console.error('Error loading loans:', error);
@@ -155,23 +187,33 @@ const LoansModule = () => {
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-3xl font-bold tracking-tight">Gestão de Empréstimos</h1>
+          <h1 className="text-xl md:text-3xl font-bold tracking-tight">
+            {isAgent ? 'Empréstimos dos Meus Clientes' : 'Gestão de Empréstimos'}
+          </h1>
           <p className="text-sm text-muted-foreground">
-            Gerencie contratos e acompanhe pagamentos
+            {isAgent ? 'Acompanhe os empréstimos dos seus clientes' : 'Gerencie contratos e acompanhe pagamentos'}
           </p>
         </div>
-        <Button onClick={() => setActiveTab('create')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Novo Empréstimo
-        </Button>
+        {!isAgent && (
+          <Button onClick={() => setActiveTab('create')}>
+            <Plus className="mr-2 h-4 w-4" />
+            Novo Empréstimo
+          </Button>
+        )}
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4 md:space-y-6">
-        <TabsList className="w-full grid grid-cols-3">
-          <TabsTrigger value="active" className="text-xs md:text-sm">Empréstimos</TabsTrigger>
-          <TabsTrigger value="create" className="text-xs md:text-sm">Criar</TabsTrigger>
-          <TabsTrigger value="calculator" className="text-xs md:text-sm">Calculadora</TabsTrigger>
-        </TabsList>
+        {isAgent ? (
+          <TabsList className="w-full grid grid-cols-1">
+            <TabsTrigger value="active" className="text-xs md:text-sm">Empréstimos</TabsTrigger>
+          </TabsList>
+        ) : (
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="active" className="text-xs md:text-sm">Empréstimos</TabsTrigger>
+            <TabsTrigger value="create" className="text-xs md:text-sm">Criar</TabsTrigger>
+            <TabsTrigger value="calculator" className="text-xs md:text-sm">Calculadora</TabsTrigger>
+          </TabsList>
+        )}
 
         <TabsContent value="active" className="space-y-4">
           <Card>
@@ -227,9 +269,9 @@ const LoansModule = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`px-2 py-1 rounded-full text-xs ${loan.status === 'active' ? 'bg-green-100 text-green-800' :
-                              loan.status === 'overdue' ? 'bg-red-100 text-red-800' :
-                                loan.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                                  'bg-yellow-100 text-yellow-800'
+                            loan.status === 'overdue' ? 'bg-red-100 text-red-800' :
+                              loan.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                'bg-yellow-100 text-yellow-800'
                             }`}>
                             {loan.status === 'active' ? 'Ativo' :
                               loan.status === 'overdue' ? 'Em Atraso' :
@@ -264,6 +306,31 @@ const LoansModule = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Actions - only for gestor */}
+                      {!isAgent && (loan.status === 'active' || loan.status === 'overdue') && (
+                        <div className="pt-3 mt-3 border-t border-gray-100 flex justify-end">
+                          <Button
+                            size="sm"
+                            className="bg-[#1b5e20] hover:bg-[#124016] text-white font-semibold"
+                            onClick={async () => {
+                              try {
+                                const { error } = await supabase
+                                  .from('loans')
+                                  .update({ status: 'completed', remaining_amount: 0 })
+                                  .eq('id', loan.id);
+                                if (error) throw error;
+                                toast({ title: 'Empréstimo liquidado e marcado como Pago!' });
+                                loadLoans();
+                              } catch (e: any) {
+                                toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+                              }
+                            }}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" /> Marcar como Pago
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

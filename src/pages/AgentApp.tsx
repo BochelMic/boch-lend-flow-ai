@@ -1,7 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import AgentLoginForm from '../components/auth/AgentLoginForm';
 import AgentDashboard from '../components/dashboard/AgentDashboard';
 import CreditRequestManager from '../components/credit-requests/CreditRequestManager';
 import ClientsModule from '../components/clients/ClientsModule';
@@ -21,26 +20,18 @@ const AgentApp = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="animate-pulse flex flex-col items-center">
-          <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-16 md:h-20 object-contain mb-4" />
-          <div className="w-12 h-1 bg-gray-200 mt-4 rounded overflow-hidden">
-            <div className="h-full bg-[#1b5e20] w-full" style={{ animation: 'progress 1.5s infinite ease-in-out' }}></div>
-          </div>
-          <style>{`
-            @keyframes progress {
-              0% { transform: scaleX(0); transform-origin: left; }
-              50% { transform: scaleX(1); transform-origin: left; }
-              50.1% { transform: scaleX(1); transform-origin: right; }
-              100% { transform: scaleX(0); transform-origin: right; }
-            }
-          `}</style>
+        <div className="flex flex-col items-center">
+          <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-16 md:h-20 object-contain mb-4 animate-pulse" />
+          <div className="w-8 h-8 border-3 border-gray-200 border-t-[#1b5e20] rounded-full animate-spin" />
         </div>
       </div>
     );
   }
 
+  // Agent must be authenticated with role 'agente'
+  // They enter through the unified login at /gestor, which redirects them here
   if (!isAuthenticated || user?.role !== 'agente') {
-    return <AgentLoginForm />;
+    return <Navigate to="/" replace />;
   }
 
   return (
