@@ -26,7 +26,25 @@ const FULL_STEPS = [
 ];
 
 const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationFormProps) => {
-  const [currentStep, setCurrentStep] = useState(1);
+  // Initial form state constant
+  const initialFormState = {
+    fullName: '', birthDate: '', documentType: '', documentNumber: '',
+    documentIssueDate: '', documentExpiryDate: '', nuit: '', gender: '',
+    phone: '', email: '',
+    neighborhood: '', district: '', province: '', residenceType: '',
+    occupation: '', companyName: '', workDuration: '', monthlyIncome: '',
+    requestedAmount: '', creditPurpose: '', receiveDate: '',
+    guaranteeType: '', guaranteeMode: '',
+    observations: '', truthDeclaration: false,
+  };
+
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bochel_credit_form_step');
+      return saved ? parseInt(saved, 10) : 1;
+    }
+    return 1;
+  });
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [checkingStatus, setCheckingStatus] = useState(true);
@@ -40,17 +58,24 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   const [hasExistingData, setHasExistingData] = useState(false);
   const [isSimplifiedForm, setIsSimplifiedForm] = useState(false);
 
-  // Form data
-  const [form, setForm] = useState({
-    fullName: '', birthDate: '', documentType: '', documentNumber: '',
-    documentIssueDate: '', documentExpiryDate: '', nuit: '', gender: '',
-    phone: '', email: '',
-    neighborhood: '', district: '', province: '', residenceType: '',
-    occupation: '', companyName: '', workDuration: '', monthlyIncome: '',
-    requestedAmount: '', creditPurpose: '', receiveDate: '',
-    guaranteeType: '', guaranteeMode: '',
-    observations: '', truthDeclaration: false,
+  // Form data with localStorage persistence
+  const [form, setForm] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('bochel_credit_form_data');
+      return saved ? JSON.parse(saved) : initialFormState;
+    }
+    return initialFormState;
   });
+
+  // Save form data to localStorage on changes
+  useEffect(() => {
+    localStorage.setItem('bochel_credit_form_data', JSON.stringify(form));
+  }, [form]);
+
+  // Save current step to localStorage on changes
+  useEffect(() => {
+    localStorage.setItem('bochel_credit_form_step', currentStep.toString());
+  }, [currentStep]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -262,6 +287,11 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       });
 
       if (error) throw error;
+
+      // Clear localStorage after successful submission
+      localStorage.removeItem('bochel_credit_form_data');
+      localStorage.removeItem('bochel_credit_form_step');
+
       setIsSubmitted(true);
       toast({ title: "Pedido enviado com sucesso!", description: "Será analisado em menos de 24h úteis." });
     } catch (error: any) {
@@ -622,11 +652,11 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
           {/* Nav */}
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
-            {currentStep > 1 ? (<Button variant="outline" onClick={prevStep} className="gap-2"><ChevronLeft className="h-4 w-4" />Anterior</Button>) : <div />}
+            {currentStep > 1 ? (<Button type="button" variant="outline" onClick={prevStep} className="gap-2"><ChevronLeft className="h-4 w-4" />Anterior</Button>) : <div />}
             {currentStep < 4 ? (
-              <Button onClick={nextStep} className="gap-2 text-white font-semibold px-6" style={{ backgroundColor: '#1b5e20' }}> Próximo<ChevronRight className="h-4 w-4" /></Button>
+              <Button type="button" onClick={nextStep} className="gap-2 text-white font-semibold px-6" style={{ backgroundColor: '#1b5e20' }}> Próximo<ChevronRight className="h-4 w-4" /></Button>
             ) : (
-              <Button onClick={handleSubmit} disabled={isLoading} className="gap-2 text-white font-semibold px-8 shadow-lg" style={{ backgroundColor: '#d37c22' }}>
+              <Button type="button" onClick={handleSubmit} disabled={isLoading} className="gap-2 text-white font-semibold px-8 shadow-lg" style={{ backgroundColor: '#d37c22' }}>
                 {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>) : (<><Send className="h-4 w-4" /> Enviar Pedido</>)}
               </Button>
             )}

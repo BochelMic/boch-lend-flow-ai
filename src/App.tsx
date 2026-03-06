@@ -17,6 +17,7 @@ const PublicCreditForm = lazy(() => import("./pages/PublicCreditForm"));
 
 const queryClient = new QueryClient();
 
+// Main App Component - Vercel Deployment Check
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
