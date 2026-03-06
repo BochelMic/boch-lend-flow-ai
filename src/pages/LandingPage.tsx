@@ -97,11 +97,11 @@ const LandingPage = () => {
             <div className="flex-shrink-0 flex items-center cursor-pointer" onClick={handleLogoClick}>
               {scrolled ? (
                 <div className="logo-animated logo-glow">
-                  <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-10 md:h-12 object-contain" />
+                  <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-[4.5rem] md:h-14 object-contain" />
                 </div>
               ) : (
                 <div className="logo-animated bg-white/90 backdrop-blur-sm p-1.5 rounded-lg border border-white/20">
-                  <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-8 md:h-10 object-contain" />
+                  <img src="/logo-bochel.png?v=3" alt="Bochel Microcrédito" className="h-14 md:h-12 object-contain" />
                 </div>
               )}
             </div>
@@ -164,8 +164,8 @@ const LandingPage = () => {
         {/* Background Image & Overlay */}
         <div className="absolute inset-0 z-0">
           <img
-            src="https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=2069&auto=format&fit=crop"
-            alt="Escritório Moderno"
+            src="/hero-bg-metical.png"
+            alt="Fundo Notas e Moedas de Metical"
             className="w-full h-full object-cover object-center"
           />
           <div className="absolute inset-0 bg-gradient-to-r from-[#0b3a20]/95 via-[#0b3a20]/80 to-[#0b3a20]/40 mix-blend-multiply"></div>
@@ -355,7 +355,7 @@ const LandingPage = () => {
                 4
               </div>
               <h4 className="text-xl font-bold text-gray-900 mb-2">Receba o Dinheiro</h4>
-              <p className="text-gray-600 font-medium px-2">Após a assinatura digital, enviamos o dinheiro para a sua conta bancária imediatamente.</p>
+              <p className="text-gray-600 font-medium px-2">Após a assinatura digital, enviamos o dinheiro para a sua conta bancária ou carteira móvel imediatamente.</p>
             </motion.div>
           </div>
           <div className="mt-16 text-center">

@@ -19,6 +19,7 @@ import SubsystemsControl from '../components/admin/SubsystemsControl';
 import CashFlowModule from '../components/cashflow/CashFlowModule';
 import ChatModule from '../components/chat/ChatModule';
 import ContractModule from '../components/contracts/ContractModule';
+import DocumentGenerator from '../components/documents/DocumentGenerator';
 import NotificationsModule from '../components/notifications/NotificationsModule';
 import Layout from '../components/layout/Layout';
 import { Loader2 } from 'lucide-react';
@@ -76,6 +77,7 @@ const GestorApp = () => {
         <Route path="/notifications/*" element={<NotificationsModule />} />
         <Route path="/chat/*" element={<ChatModule />} />
         <Route path="/contratos/*" element={<ContractModule />} />
+        <Route path="/faturas/*" element={<DocumentGenerator />} />
         <Route path="*" element={<Navigate to="/gestor/dashboard" replace />} />
       </Routes>
     </Layout>

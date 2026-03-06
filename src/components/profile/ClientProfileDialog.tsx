@@ -1,0 +1,172 @@
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { Button } from '../ui/button';
+import { User, History, CreditCard, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '../../integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { DropdownMenuItem } from '../ui/dropdown-menu';
+
+export interface ClientProfileDialogProps {
+    children?: React.ReactNode;
+    clientData?: {
+        id: string;
+        name: string;
+        email?: string;
+        phone?: string;
+    };
+}
+
+export const ClientProfileDialog = ({ children, clientData }: ClientProfileDialogProps) => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
+    const [open, setOpen] = useState(false);
+    const [stats, setStats] = useState({
+        totalLoans: 0,
+        paidLoans: 0,
+        activeDebt: 0,
+        totalBorrowed: 0,
+    });
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            fetchStats();
+        }
+    }, [open, user?.id, clientData?.id]);
+
+    const fetchStats = async () => {
+        setLoading(true);
+        try {
+            let targetClientId = clientData?.id;
+
+            // Se não foi passado um cliente específico, busca o id do cliente logado
+            if (!targetClientId && user?.id) {
+                const { data: clients } = await supabase
+                    .from('clients')
+                    .select('id')
+                    .eq('user_id', user?.id)
+                    .single();
+
+                if (clients) {
+                    targetClientId = clients.id;
+                }
+            }
+
+            if (targetClientId) {
+                const { data: loans } = await supabase
+                    .from('loans')
+                    .select('status, amount, remaining_amount')
+                    .eq('client_id', targetClientId);
+
+                let total = 0;
+                let paid = 0;
+                let debt = 0;
+                let borrowed = 0;
+
+                loans?.forEach((loan) => {
+                    total++;
+                    borrowed += Number(loan.amount) || 0;
+                    if (loan.status === 'completed') {
+                        paid++;
+                    } else if (loan.status === 'active' || loan.status === 'overdue') {
+                        debt++;
+                    }
+                });
+
+                setStats({
+                    totalLoans: total,
+                    paidLoans: paid,
+                    activeDebt: debt,
+                    totalBorrowed: borrowed,
+                });
+            }
+        } catch (error) {
+            console.error('Erro ao buscar estatísticas do cliente:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleGoToHistory = () => {
+        setOpen(false);
+        if (clientData && user?.role !== 'cliente') {
+            const prefix = user?.role === 'gestor' ? '/gestor' : '/agente';
+            navigate(`${prefix}/emprestimos`);
+        } else {
+            navigate('/historico');
+        }
+    };
+
+    const displayName = clientData?.name || user?.name || 'Cliente';
+    const displayEmail = clientData?.email || user?.email || '';
+    const initial = displayName?.[0]?.toUpperCase() || 'U';
+
+    return (
+        <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+                {children || (
+                    <DropdownMenuItem className="text-sm gap-2 cursor-pointer mx-1 mb-1 rounded-md" onSelect={(e) => {
+                        e.preventDefault();
+                        setOpen(true);
+                    }}>
+                        <User className="h-4 w-4" />
+                        Meu Perfil e Resumo
+                    </DropdownMenuItem>
+                )}
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md bg-white border border-gray-100 shadow-2xl rounded-2xl p-0 overflow-hidden">
+                <div className="bg-gradient-to-r from-secondary/10 to-secondary/5 p-6 border-b border-gray-100 flex items-center gap-4">
+                    <div className="h-16 w-16 rounded-full bg-gradient-primary flex items-center justify-center shadow-lg border-4 border-white flex-shrink-0">
+                        <span className="text-2xl font-bold text-white uppercase">{initial}</span>
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>
+                        {displayEmail && <p className="text-sm text-gray-500">{displayEmail}</p>}
+                        {clientData?.phone && <p className="text-sm text-gray-500">{clientData.phone}</p>}
+                        <p className="text-xs font-semibold text-secondary mt-1 bg-secondary/10 inline-block px-2 py-0.5 rounded-full uppercase tracking-wider">
+                            {clientData ? 'Perfil do Cliente' : 'Meu Perfil'}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="p-6">
+                    <h3 className="text-sm font-bold text-gray-900 mb-4 uppercase tracking-wider">Resumo de Empréstimos</h3>
+
+                    {loading ? (
+                        <div className="flex justify-center py-8">
+                            <div className="w-8 h-8 border-3 border-gray-200 border-t-secondary rounded-full animate-spin" />
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col items-center text-center">
+                                <CreditCard className="h-6 w-6 text-blue-500 mb-2" />
+                                <span className="text-2xl font-black text-gray-900">{stats.totalLoans}</span>
+                                <span className="text-xs font-medium text-gray-500 uppercase">Total Pedidos</span>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col items-center text-center">
+                                <CheckCircle className="h-6 w-6 text-success mb-2" />
+                                <span className="text-2xl font-black text-success">{stats.paidLoans}</span>
+                                <span className="text-xs font-medium text-gray-500 uppercase">Pagos</span>
+                            </div>
+                            <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex flex-col items-center text-center col-span-2">
+                                <AlertTriangle className="h-6 w-6 text-warning mb-2" />
+                                <span className="text-2xl font-black text-warning">{stats.activeDebt}</span>
+                                <span className="text-xs font-medium text-gray-500 uppercase">Em Dívida / Ativos</span>
+                            </div>
+                        </div>
+                    )}
+
+                    <Button
+                        onClick={handleGoToHistory}
+                        className="w-full h-12 text-base font-bold text-white shadow-lg hover:shadow-xl transition-all"
+                        style={{ backgroundColor: '#0b3a20' }}
+                    >
+                        <History className="h-5 w-5 mr-2" />
+                        Ver Histórico Completo
+                    </Button>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+};

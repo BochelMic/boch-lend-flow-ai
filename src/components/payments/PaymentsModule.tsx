@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Receipt, Clock, CheckCircle } from 'lucide-react';
+import { DollarSign, Receipt, Clock, CheckCircle, Printer } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { generateReceiptHTML, printDocument } from '../../utils/exportUtils';
 
 interface Payment {
   id: string;
@@ -149,6 +150,20 @@ const PaymentsModule = () => {
   const getMethodLabel = (method: string | null) => {
     const methods: Record<string, string> = { cash: 'Dinheiro', transfer: 'Transferência', mpesa: 'M-Pesa', check: 'Cheque' };
     return methods[method || 'cash'] || method || 'N/A';
+  };
+
+  const handlePrintReceipt = (payment: Payment) => {
+    const html = generateReceiptHTML({
+      number: `REC-${payment.id.slice(0, 8).toUpperCase()}`,
+      date: payment.payment_date,
+      clientName: payment.loan_client_name || 'Cliente',
+      amount: Number(payment.amount),
+      paymentMethod: payment.payment_method || 'cash',
+      description: payment.notes || 'Pagamento de prestação de microcrédito',
+      companyName: 'BOCHEL MICROCREDITO',
+    });
+    printDocument(html);
+    toast({ title: 'Recibo Gerado', description: 'O recibo foi enviado para impressão/PDF.' });
   };
 
   return (
@@ -312,9 +327,20 @@ const PaymentsModule = () => {
                         {getMethodLabel(payment.payment_method)} • {payment.payment_date}
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-sm">{Number(payment.amount).toLocaleString()} MZN</p>
-                      <Badge className="bg-green-100 text-green-800 text-xs">Pago</Badge>
+                    <div className="flex items-center gap-2">
+                      <div className="text-right">
+                        <p className="font-semibold text-sm">{Number(payment.amount).toLocaleString()} MZN</p>
+                        <Badge className="bg-green-100 text-green-800 text-xs">Pago</Badge>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-gray-500 hover:text-[#0b3a20]"
+                        onClick={() => handlePrintReceipt(payment)}
+                        title="Gerar Recibo PDF"
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))

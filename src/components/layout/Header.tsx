@@ -10,6 +10,7 @@ import { SidebarTrigger } from '../ui/sidebar';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { ChangePasswordDialog } from '../auth/ChangePasswordDialog';
+import { ClientProfileDialog } from '../profile/ClientProfileDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -263,6 +264,11 @@ const Header = () => {
                   Alterar Senha
                 </DropdownMenuItem>
               </ChangePasswordDialog>
+
+              {user?.role === 'cliente' && (
+                <ClientProfileDialog />
+              )}
+
               <DropdownMenuItem onClick={logout} className="text-sm text-destructive focus:text-destructive focus:bg-destructive/10 gap-2 cursor-pointer mx-1 mb-1 rounded-md">
                 <LogOut className="h-4 w-4" />
                 Terminar sessão

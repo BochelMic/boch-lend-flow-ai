@@ -1,10 +1,13 @@
 import { useState, useRef } from 'react';
-import { Bell, Camera, LogOut, Eye, EyeOff, Key } from 'lucide-react';
+import { Bell, Camera, LogOut, Eye, EyeOff, Key, Loader2, User } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useClientAccess } from '../../hooks/useClientAccess';
 import { useNavigate } from 'react-router-dom';
 import { ChangePasswordDialog } from '../auth/ChangePasswordDialog';
+import { ClientProfileDialog } from '../profile/ClientProfileDialog';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export default function MobileHeader() {
     const { user, logout } = useAuth();
@@ -22,22 +25,69 @@ export default function MobileHeader() {
         : 0;
 
 
-    // Profile photo from localStorage
-    const storageKey = `profile_photo_${user?.id || 'default'}`;
-    const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
-        try { return localStorage.getItem(storageKey); } catch { return null; }
+    const { toast } = useToast();
+    const [isUploading, setIsUploading] = useState(false);
+
+    // Profile photo state (initially null, fetched from Supabase)
+    const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+    // Fetch avatar on mount if we have a user
+    useState(() => {
+        if (user?.id) {
+            supabase
+                .from('profiles')
+                .select('avatar_url')
+                .eq('user_id', user.id)
+                .single()
+                .then(({ data }) => {
+                    if (data?.avatar_url) {
+                        setProfilePhoto(data.avatar_url);
+                    }
+                });
+        }
     });
 
-    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (ev) => {
-            const dataUrl = ev.target?.result as string;
-            setProfilePhoto(dataUrl);
-            try { localStorage.setItem(storageKey, dataUrl); } catch { }
-        };
-        reader.readAsDataURL(file);
+        if (!file || !user) return;
+
+        // Validate size (e.g., max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            toast({ title: 'Erro', description: 'A imagem deve ter no máximo 5MB', variant: 'destructive' });
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const ext = file.name.split('.').pop();
+            const path = `${user.id}/${Date.now()}.${ext}`;
+
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(path, file, { upsert: true });
+
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(path);
+
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ avatar_url: publicUrl })
+                .eq('user_id', user.id);
+
+            if (updateError) throw updateError;
+
+            setProfilePhoto(publicUrl);
+            toast({ title: 'Sucesso', description: 'Foto de perfil atualizada!' });
+        } catch (error: any) {
+            console.error('Error uploading avatar:', error);
+            toast({ title: 'Erro', description: 'Não foi possível atualizar a foto.', variant: 'destructive' });
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
     };
 
     return (
@@ -57,29 +107,60 @@ export default function MobileHeader() {
                 {/* Top row: greeting + actions */}
                 <div className="relative z-10 flex items-center justify-between px-4 pt-4 pb-2">
                     <div className="flex items-center gap-3">
-                        {/* Profile photo */}
-                        <div className="relative" onClick={() => fileInputRef.current?.click()}>
-                            {profilePhoto ? (
-                                <img
-                                    src={profilePhoto}
-                                    alt={user?.name || ''}
-                                    className="w-11 h-11 rounded-full object-cover border-2 border-white/30 shadow-lg"
-                                />
-                            ) : (
-                                <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold border-2 border-white/30 shadow-lg" style={{ background: '#d37c22' }}>
-                                    {user?.name?.[0]?.toUpperCase() || 'U'}
-                                </div>
-                            )}
-                            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#d37c22] flex items-center justify-center border-2 border-[#0b3a20]">
-                                <Camera className="h-2.5 w-2.5 text-white" />
-                            </div>
-                            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                        </div>
+                        {user?.role === 'cliente' ? (
+                            <ClientProfileDialog>
+                                <button className="flex items-center gap-3 text-left focus:outline-none">
+                                    {/* Profile photo */}
+                                    <div className="relative group" onClick={(e) => { e.preventDefault(); e.stopPropagation(); fileInputRef.current?.click(); }}>
+                                        {profilePhoto ? (
+                                            <img
+                                                src={profilePhoto}
+                                                alt={user?.name || ''}
+                                                className="w-11 h-11 rounded-full object-cover border-2 border-white/30 shadow-lg"
+                                            />
+                                        ) : (
+                                            <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold border-2 border-white/30 shadow-lg" style={{ background: '#d37c22' }}>
+                                                {user?.name?.[0]?.toUpperCase() || 'U'}
+                                            </div>
+                                        )}
+                                        <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#d37c22] flex items-center justify-center border-2 border-[#0b3a20] transition-transform group-active:scale-95">
+                                            {isUploading ? <Loader2 className="h-2.5 w-2.5 text-white animate-spin" /> : <Camera className="h-2.5 w-2.5 text-white" />}
+                                        </div>
+                                    </div>
 
-                        <div>
-                            <p className="text-white/60 text-[10px] font-medium uppercase tracking-wider">Olá,</p>
-                            <p className="text-white font-bold text-sm leading-tight">{user?.name || 'Cliente'}</p>
-                        </div>
+                                    <div>
+                                        <p className="text-white/60 text-[10px] font-medium uppercase tracking-wider flex items-center gap-1">Ver Perfil <User className="w-3 h-3" /></p>
+                                        <p className="text-white font-bold text-sm leading-tight">{user?.name || 'Cliente'}</p>
+                                    </div>
+                                </button>
+                            </ClientProfileDialog>
+                        ) : (
+                            <div className="flex items-center gap-3 text-left">
+                                {/* Profile photo */}
+                                <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                                    {profilePhoto ? (
+                                        <img
+                                            src={profilePhoto}
+                                            alt={user?.name || ''}
+                                            className="w-11 h-11 rounded-full object-cover border-2 border-white/30 shadow-lg"
+                                        />
+                                    ) : (
+                                        <div className="w-11 h-11 rounded-full flex items-center justify-center text-white text-sm font-bold border-2 border-white/30 shadow-lg" style={{ background: '#d37c22' }}>
+                                            {user?.name?.[0]?.toUpperCase() || 'U'}
+                                        </div>
+                                    )}
+                                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-[#d37c22] flex items-center justify-center border-2 border-[#0b3a20] transition-transform group-active:scale-95">
+                                        {isUploading ? <Loader2 className="h-2.5 w-2.5 text-white animate-spin" /> : <Camera className="h-2.5 w-2.5 text-white" />}
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-white/60 text-[10px] font-medium uppercase tracking-wider">Olá,</p>
+                                    <p className="text-white font-bold text-sm leading-tight">{user?.name || 'Gestor'}</p>
+                                </div>
+                            </div>
+                        )}
+                        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" disabled={isUploading} onChange={handlePhotoUpload} />
                     </div>
 
                     <div className="flex items-center gap-2">

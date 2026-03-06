@@ -1,12 +1,12 @@
 
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  CreditCard, 
-  Scale, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Users,
+  CreditCard,
+  Scale,
+  Settings,
   TrendingUp,
   Shield,
   FileText,
@@ -42,7 +42,6 @@ const Sidebar = () => {
         { name: 'Clientes', href: '/clientes', icon: Users, permission: 'all' },
         { name: 'Empréstimos', href: '/emprestimos', icon: CreditCard, permission: 'all' },
         { name: 'Simulador', href: '/credit-simulator', icon: Calculator, permission: 'all' },
-        { name: 'Crédito', href: '/credit-form', icon: FormInput, permission: 'all' },
         { name: 'Cobranças', href: '/cobrancas', icon: Phone, permission: 'all' },
         { name: 'Agentes', href: '/agentes', icon: UserCheck, permission: 'all' },
         { name: 'Relatórios', href: '/reports', icon: BarChart3, permission: 'all' },
@@ -81,11 +80,11 @@ const Sidebar = () => {
           </div>
         )}
       </div>
-      
+
       <nav className="mt-2 md:mt-6">
         {navigation.map((item) => {
           if (!hasPermission(item.permission)) return null;
-          
+
           const isActive = location.pathname.startsWith(item.href);
           return (
             <Link
@@ -93,8 +92,8 @@ const Sidebar = () => {
               to={item.href}
               className={cn(
                 'flex items-center px-4 md:px-6 py-2 md:py-3 text-xs md:text-sm font-medium transition-colors',
-                isActive 
-                  ? 'bg-primary/10 text-primary border-r-2 border-primary' 
+                isActive
+                  ? 'bg-primary/10 text-primary border-r-2 border-primary'
                   : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               )}
             >

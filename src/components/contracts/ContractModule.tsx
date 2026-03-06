@@ -19,6 +19,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
     FileText, PenLine, Check, Download, RefreshCw,
     ChevronLeft, Eraser, CheckCircle, Clock, AlertTriangle
@@ -47,6 +48,8 @@ const ContractModule = () => {
     const [showSigning, setShowSigning] = useState(false);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [agreedToTerms, setAgreedToTerms] = useState(false);
+    const [loanInstallments, setLoanInstallments] = useState(1);
 
     // Signature state
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -225,9 +228,27 @@ const ContractModule = () => {
             }).eq('id', selectedContract.id);
             if (error) throw error;
 
+            // Notify admins
+            try {
+                const { data: adminUsers } = await supabase.from('user_roles').select('user_id').eq('role', 'gestor');
+                if (adminUsers && adminUsers.length > 0) {
+                    const notifications = adminUsers.map((admin: any) => ({
+                        user_id: admin.user_id,
+                        type: 'contract_signed',
+                        title: 'Contrato Assinado',
+                        body: `O cliente ${selectedContract.client_name} acabou de assinar o contrato.`,
+                        from_user_id: user?.id || selectedContract.client_id
+                    }));
+                    await supabase.from('notifications').insert(notifications);
+                }
+            } catch (notifyErr) {
+                console.error("Erro ao notificar gestores:", notifyErr);
+            }
+
             toast({ title: 'Contrato assinado!', description: 'A sua assinatura foi aplicada no documento com sucesso!' });
             setShowSigning(false);
             setSignatureImage(null);
+            setAgreedToTerms(false);
             setSelectedContract(null);
             loadContracts();
         } catch (e: any) {
@@ -381,11 +402,30 @@ const ContractModule = () => {
                             )}
                         </div>
 
-                        <div className="flex items-center w-full gap-3 mt-5 px-4 pb-4">
-                            <Button variant="outline" onClick={() => setSignatureImage(null)} className="flex-1 h-12">
+                        <div className="w-full px-4 mt-6">
+                            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+                                <Checkbox
+                                    id="terms_agree"
+                                    checked={agreedToTerms}
+                                    onCheckedChange={(v) => setAgreedToTerms(v === true)}
+                                    className="mt-0.5"
+                                />
+                                <div>
+                                    <label htmlFor="terms_agree" className="text-sm font-medium cursor-pointer text-gray-900">
+                                        Li e concordo com os termos do contrato *
+                                    </label>
+                                    <p className="text-xs text-amber-700 mt-1 pb-1">
+                                        Confirmo que li todas as páginas, compreendo as cláusulas apresentadas neste documento e aceito as condições firmadas de forma livre.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center w-full gap-3 mt-4 px-4 pb-4">
+                            <Button variant="outline" onClick={() => { setSignatureImage(null); setAgreedToTerms(false); }} className="flex-1 h-12">
                                 Redesenhar
                             </Button>
-                            <Button onClick={signContract} disabled={saving} className="flex-1 h-12 text-white font-bold text-base shadow-lg bg-[#1a3a5c]">
+                            <Button onClick={signContract} disabled={saving || !agreedToTerms} className="flex-1 h-12 text-white font-bold text-base shadow-lg bg-[#1a3a5c]">
                                 {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
                                 {saving ? 'A Guardar...' : 'Confirmar e Submeter'}
                             </Button>
@@ -521,7 +561,7 @@ const ContractModule = () => {
 
                                         const startDate = new Date();
                                         const endDate = new Date();
-                                        endDate.setDate(startDate.getDate() + 30);
+                                        endDate.setDate(startDate.getDate() + (30 * loanInstallments));
 
                                         const { error: loanError } = await supabase.from('loans').insert({
                                             client_id: clientRecord.id,
@@ -529,7 +569,7 @@ const ContractModule = () => {
                                             interest_rate: interestRate,
                                             total_amount: totalAmount,
                                             remaining_amount: totalAmount,
-                                            installments: 1,
+                                            installments: loanInstallments,
                                             status: 'active',
                                             start_date: startDate.toISOString().split('T')[0],
                                             end_date: endDate.toISOString().split('T')[0],
@@ -556,6 +596,29 @@ const ContractModule = () => {
                                 <CheckCircle className="h-4 w-4 mr-2" /> {saving ? 'A Processar...' : 'Injetar Saldo e Finalizar'}
                             </Button>
                         )}
+
+                        {isAdmin && selectedContract.status === 'signed' && (
+                            <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl space-y-3">
+                                <p className="text-sm font-semibold text-gray-700">Número de Parcelas</p>
+                                <div className="flex gap-2">
+                                    {[1, 2, 3, 4, 6].map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => setLoanInstallments(n)}
+                                            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${loanInstallments === n
+                                                    ? 'bg-[#0b3a20] text-white shadow-md'
+                                                    : 'bg-white border border-gray-200 text-gray-600 hover:border-[#0b3a20]'
+                                                }`}
+                                        >
+                                            {n}x
+                                        </button>
+                                    ))}
+                                </div>
+                                {loanInstallments > 1 && (
+                                    <p className="text-xs text-gray-500">Prazo total: {loanInstallments * 30} dias ({loanInstallments} meses)</p>
+                                )}
+                            </div>
+                        )}}
                     </CardContent>
                 </Card>
             </div>

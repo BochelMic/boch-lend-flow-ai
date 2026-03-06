@@ -18,7 +18,11 @@ import {
   Camera,
   PenLine,
   Key,
+  Loader2,
+  Receipt,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 import { useAuth } from '../../hooks/useAuth';
 import { ChangePasswordDialog } from '../auth/ChangePasswordDialog';
@@ -44,26 +48,70 @@ export function AppSidebar() {
   const isCollapsed = state === 'collapsed';
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Profile photo state (stored in localStorage per user)
-  const storageKey = `profile_photo_${user?.id || 'default'}`;
-  const [profilePhoto, setProfilePhoto] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(storageKey);
-    } catch {
-      return null;
+  const { toast } = useToast();
+  const [isUploading, setIsUploading] = useState(false);
+
+  // Profile photo state (initially null, fetched from Supabase)
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+
+  // Fetch avatar on mount if we have a user
+  useState(() => {
+    if (user?.id) {
+      supabase
+        .from('profiles')
+        .select('avatar_url')
+        .eq('user_id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.avatar_url) {
+            setProfilePhoto(data.avatar_url);
+          }
+        });
     }
   });
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const dataUrl = ev.target?.result as string;
-      setProfilePhoto(dataUrl);
-      try { localStorage.setItem(storageKey, dataUrl); } catch { /* quota exceeded */ }
-    };
-    reader.readAsDataURL(file);
+    if (!file || !user) return;
+
+    // Validate size (e.g., max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Erro', description: 'A imagem deve ter no máximo 5MB', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const path = `${user.id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(path);
+
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      setProfilePhoto(publicUrl);
+      toast({ title: 'Sucesso', description: 'Foto de perfil atualizada!' });
+    } catch (error: any) {
+      console.error('Error uploading avatar:', error);
+      toast({ title: 'Erro', description: 'Não foi possível atualizar a foto.', variant: 'destructive' });
+    } finally {
+      setIsUploading(false);
+      // Reset input so they can pick the same file again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const getNavigation = () => {
@@ -76,11 +124,11 @@ export function AppSidebar() {
         { name: 'Pedidos', href: '/gestor/credit-requests', icon: FormInput, permission: 'all' },
         { name: 'Clientes', href: '/gestor/clientes', icon: Users, permission: 'all' },
         { name: 'Empréstimos', href: '/gestor/emprestimos', icon: CreditCard, permission: 'all' },
-        { name: 'Crédito', href: '/gestor/credit-form', icon: FormInput, permission: 'all' },
         { name: 'Cobranças', href: '/gestor/cobrancas', icon: Phone, permission: 'all' },
         { name: 'Agentes', href: '/gestor/agentes', icon: UserCheck, permission: 'all' },
         { name: 'Relatórios', href: '/gestor/reports', icon: BarChart3, permission: 'all' },
         { name: 'Contratos', href: '/gestor/contratos', icon: PenLine, permission: 'all' },
+        { name: 'Faturas/Recibos', href: '/gestor/faturas', icon: Receipt, permission: 'all' },
         chatItem,
         { name: 'Subsistemas', href: '/gestor/subsistemas', icon: Shield, permission: 'all' },
         { name: 'Configurações', href: '/gestor/settings', icon: Settings, permission: 'all' },
@@ -145,13 +193,14 @@ export function AppSidebar() {
                 </div>
               )}
               <div className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Camera className="h-5 w-5 text-white" />
+                {isUploading ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <Camera className="h-5 w-5 text-white" />}
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
                 className="hidden"
+                disabled={isUploading}
                 onChange={handlePhotoUpload}
               />
             </div>

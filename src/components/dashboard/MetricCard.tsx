@@ -40,34 +40,38 @@ const variantStyles = {
   },
 };
 
-const MetricCard = ({ 
-  title, 
-  value, 
-  icon: Icon, 
-  trend, 
-  description, 
-  variant = 'default' 
+const MetricCard = ({
+  title,
+  value,
+  icon: Icon,
+  trend,
+  description,
+  variant = 'default'
 }: MetricCardProps) => {
   const isPositive = trend.startsWith('+');
   const styles = variantStyles[variant];
-  
+
   return (
     <Card className={cn('transition-all duration-300 cursor-default', styles.border, styles.glow)}>
       <CardContent className="p-4 md:p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-muted-foreground truncate uppercase tracking-wide">{title}</p>
-            <p className="text-xl md:text-2xl font-bold truncate mt-1">{value}</p>
-            <div className="flex items-center mt-2 gap-1.5">
-              <span className={cn(
-                "text-xs font-semibold px-1.5 py-0.5 rounded-md",
-                isPositive 
-                  ? "bg-success/15 text-success" 
-                  : "bg-destructive/15 text-destructive"
-              )}>
-                {trend}
-              </span>
-              <span className="text-xs text-muted-foreground hidden sm:inline truncate">{description}</span>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide leading-tight break-words">{title}</p>
+            <p className="text-xl md:text-2xl font-bold mt-1 break-words">{value}</p>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center mt-2 gap-1.5 flex-wrap">
+              {trend && (
+                <span className={cn(
+                  "text-xs font-semibold px-1.5 py-0.5 rounded-md whitespace-nowrap",
+                  isPositive
+                    ? "bg-success/15 text-success"
+                    : "bg-destructive/15 text-destructive"
+                )}>
+                  {trend}
+                </span>
+              )}
+              {description && (
+                <span className="text-xs text-muted-foreground break-words">{description}</span>
+              )}
             </div>
           </div>
           <div className={cn(

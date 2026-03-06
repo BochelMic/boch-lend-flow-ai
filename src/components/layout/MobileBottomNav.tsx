@@ -53,6 +53,7 @@ export default function MobileBottomNav() {
                 { name: 'Empréstimos', href: `${prefix}/emprestimos` },
                 { name: 'Cobranças', href: `${prefix}/cobrancas` },
                 { name: 'Contratos', href: `${prefix}/contratos` },
+                { name: 'Faturas/Recibos', href: `${prefix}/faturas` },
                 { name: 'Crédito', href: `${prefix}/credit-form` },
                 { name: 'Simulador', href: `${prefix}/credit-simulator` },
                 { name: 'Usuários', href: `${prefix}/usuarios` },

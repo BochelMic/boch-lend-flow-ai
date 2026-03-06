@@ -11,6 +11,7 @@ import { Users, Plus, Search, FileText, CreditCard, AlertCircle } from 'lucide-r
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { ClientProfileDialog } from '../profile/ClientProfileDialog';
 
 interface Client {
   id: string;
@@ -193,10 +194,19 @@ const ClientsModule = () => {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => toast({ title: client.name, description: `Email: ${client.email || 'N/A'} | Telefone: ${client.phone || 'N/A'} | Endereço: ${client.address || 'N/A'} | BI: ${client.id_number || 'N/A'}` })}>
-                          <FileText className="mr-1 h-3 w-3" />
-                          Perfil
-                        </Button>
+                        <ClientProfileDialog
+                          clientData={{
+                            id: client.id,
+                            name: client.name,
+                            email: client.email || undefined,
+                            phone: client.phone || undefined
+                          }}
+                        >
+                          <Button variant="outline" size="sm" className="text-xs">
+                            <FileText className="mr-1 h-3 w-3" />
+                            Perfil
+                          </Button>
+                        </ClientProfileDialog>
                         <Button variant="outline" size="sm" className="text-xs" onClick={() => {
                           const prefix = user?.role === 'gestor' ? '/gestor' : '/agente';
                           navigate(`${prefix}/emprestimos`);
