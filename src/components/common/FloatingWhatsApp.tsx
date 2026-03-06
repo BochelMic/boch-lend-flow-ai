@@ -1,7 +1,15 @@
 import React from 'react';
 import { MessageCircle } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const FloatingWhatsApp = () => {
+    const location = useLocation();
+
+    // Don't show WhatsApp button inside the admin/agent panels
+    if (location.pathname.startsWith('/gestor') || location.pathname.startsWith('/agente')) {
+        return null;
+    }
+
     // Replace with your actual WhatsApp business number
     const phoneNumber = "258861887302";
     const message = "Olá! Gostaria de saber mais sobre a Bochel Microcrédito.";
