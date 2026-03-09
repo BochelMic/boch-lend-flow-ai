@@ -121,6 +121,26 @@ const CreditRequestManager = () => {
       }
 
       toast({ title: action === 'approved' ? 'Pedido Aprovado e Contrato Gerado' : 'Pedido Rejeitado' });
+
+      // Notify the client about the decision
+      if (request.user_id) {
+        try {
+          const notifData = {
+            user_id: request.user_id,
+            type: 'alert' as const,
+            title: action === 'approved' ? 'Pedido de Crédito Aprovado! ✅' : 'Pedido de Crédito Rejeitado',
+            body: action === 'approved'
+              ? `O seu pedido de MZN ${request.amount.toLocaleString()} foi aprovado! Um contrato foi gerado para assinatura.`
+              : `O seu pedido de MZN ${request.amount.toLocaleString()} foi rejeitado. Motivo: ${reviewMsg || 'Sem motivo especificado.'}`,
+            from_user_id: user?.id || null,
+            link_url: action === 'approved' ? '/contratos' : '/credito',
+          };
+          await supabase.from('notifications').insert(notifData);
+        } catch (notifyErr) {
+          console.warn('Notification error:', notifyErr);
+        }
+      }
+
       setSelected(null); setReviewMsg(''); load();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });

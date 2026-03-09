@@ -396,6 +396,29 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       localStorage.removeItem('bochel_credit_form_data');
       localStorage.removeItem('bochel_credit_form_step');
 
+      // Notify all admins (gestores) about the new credit request
+      try {
+        const { data: adminUsers } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'gestor');
+
+        if (adminUsers && adminUsers.length > 0) {
+          const amount = parseFloat(form.requestedAmount);
+          const notifications = adminUsers.map((admin: any) => ({
+            user_id: admin.user_id,
+            type: 'alert',
+            title: 'Novo Pedido de Crédito',
+            body: `${form.fullName} solicitou um crédito de MZN ${amount.toLocaleString()}.`,
+            from_user_id: user?.id || null,
+            link_url: '/credit-requests',
+          }));
+          await supabase.from('notifications').insert(notifications);
+        }
+      } catch (notifyErr) {
+        console.warn('Notification error (non-blocking):', notifyErr);
+      }
+
       setIsSubmitted(true);
       toast({ title: "Pedido enviado com sucesso!", description: "Será analisado em menos de 24h úteis." });
     } catch (error: any) {

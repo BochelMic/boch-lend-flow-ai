@@ -292,57 +292,43 @@ const ContractModule = () => {
     // Signing view
     if (showSigning && selectedContract) {
         return (
-            <div className="container mx-auto p-4 md:p-6 space-y-4">
+            <div className="container mx-auto p-4 md:p-6 space-y-4 max-w-4xl">
                 <Button variant="ghost" onClick={() => { setShowSigning(false); clearCanvas(); setSignatureImage(null); }} className="mb-2">
                     <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
                 </Button>
 
-                <div className="text-center mb-4">
-                    <h1 className="text-2xl font-bold text-gray-900">Assinar Contrato</h1>
-                    <p className="text-sm text-gray-500">
+                <div className="text-center mb-6">
+                    <h1 className="text-2xl font-bold text-[#1a3a5c]">Assinatura Digital</h1>
+                    <p className="text-sm text-gray-500 mt-1">
                         {!signatureImage
-                            ? "Primeiro, desenhe a sua assinatura no quadro."
-                            : "Arraste a assinatura para o local desejado no documento e confirme."}
+                            ? "Passo 1: Desenhe a sua assinatura abaixo."
+                            : "Passo 2: Posicione a assinatura no documento."}
                     </p>
                 </div>
 
                 {!signatureImage ? (
-                    <Card className="border-0 shadow-lg">
+                    <Card className="border-0 shadow-xl overflow-hidden">
+                        <div className="bg-[#1a3a5c] p-4 text-white">
+                            <h3 className="font-bold flex items-center gap-2"><PenLine className="h-5 w-5" /> Desenhar Assinatura</h3>
+                            <p className="text-xs text-blue-100 mt-1">Desenhe com o dedo ou rato dentro do quadro branco.</p>
+                        </div>
                         <CardContent className="p-6">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-                                <div className="flex items-center gap-2">
-                                    <PenLine className="h-5 w-5 text-[#1a3a5c]" />
-                                    <h3 className="font-bold text-gray-900">Desenhar Assinatura</h3>
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex gap-2 items-center">
+                                    <span className="text-sm font-medium text-gray-600">Cor:</span>
+                                    <button onClick={() => setInkColor('#0000a0')} className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#0000a0' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'}`} style={{ backgroundColor: '#0000a0' }} type="button" />
+                                    <button onClick={() => setInkColor('#000000')} className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#000000' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'}`} style={{ backgroundColor: '#000000' }} type="button" />
                                 </div>
-                                <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
-                                    <div className="flex gap-2 items-center">
-                                        <span className="text-sm font-medium text-gray-600">Cor:</span>
-                                        <button
-                                            onClick={() => setInkColor('#0000a0')}
-                                            className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#0000a0' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'} transition-all`}
-                                            style={{ backgroundColor: '#0000a0' }}
-                                            title="Azul Bic"
-                                            type="button"
-                                        />
-                                        <button
-                                            onClick={() => setInkColor('#000000')}
-                                            className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#000000' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'} transition-all`}
-                                            style={{ backgroundColor: '#000000' }}
-                                            title="Preto"
-                                            type="button"
-                                        />
-                                    </div>
-                                    <Button variant="outline" onClick={clearCanvas} size="sm">
-                                        <Eraser className="h-4 w-4 mr-2" /> Limpar
-                                    </Button>
-                                </div>
+                                <Button variant="outline" onClick={clearCanvas} size="sm" className="text-gray-500">
+                                    <Eraser className="h-4 w-4 mr-2" /> Limpar
+                                </Button>
                             </div>
 
-                            <div className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white relative">
+                            <div className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white relative touch-none shadow-inner">
                                 <canvas
                                     ref={canvasRef}
                                     className="w-full cursor-crosshair touch-none"
-                                    style={{ height: '200px', touchAction: 'none' }}
+                                    style={{ height: '250px', touchAction: 'none' }}
                                     onMouseDown={startDraw}
                                     onMouseMove={draw}
                                     onMouseUp={stopDraw}
@@ -353,84 +339,98 @@ const ContractModule = () => {
                                 />
                                 {!hasSignature && (
                                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                        <p className="text-gray-300 text-sm font-medium">Assine aqui</p>
+                                        <p className="text-gray-300 text-lg font-medium flex flex-col items-center">
+                                            <PenLine className="h-8 w-8 mb-2 opacity-50" /> Assine aqui
+                                        </p>
                                     </div>
                                 )}
                             </div>
 
-                            <Button onClick={prepareDragSignature} disabled={!hasSignature} className="w-full mt-4 h-12">
-                                Continuar
+                            <Button onClick={prepareDragSignature} disabled={!hasSignature} className="w-full mt-6 h-14 text-lg font-bold bg-[#d37c22] hover:bg-[#b0661a] text-white shadow-lg transition-transform active:scale-[0.98]">
+                                Continuar para o Documento <ChevronRight className="h-5 w-5 ml-2" />
                             </Button>
                         </CardContent>
                     </Card>
                 ) : (
-                    <Card className="border-0 shadow-lg overflow-hidden flex flex-col items-center p-2 bg-gray-50">
-                        {/* Interactive PDF Drag View */}
-                        <div className="text-sm bg-blue-100 text-blue-800 p-2 rounded-md mb-2 w-full text-center">
-                            <strong>Dica:</strong> Toque e segure a assinatura para arrastá-la para o espaço "Nome" na última página! Vá até a última página para assinar.
-                        </div>
-
-                        <div className="flex flex-col mb-4 bg-white p-2 rounded w-full">
-                            <div className="flex justify-between items-center mb-2">
-                                <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.max(p - 1, 1))} disabled={pageNumber <= 1}>Página Anterior</Button>
-                                <span className="text-sm text-gray-600">Página {pageNumber} de {numPages || '--'}</span>
-                                <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.min(p + 1, numPages))} disabled={pageNumber >= numPages}>Próxima Página</Button>
-                            </div>
-                        </div>
-
-                        <div className="relative border shadow-sm select-none" ref={pdfWrapperRef} style={{ maxWidth: '100%', overflow: 'hidden' }}>
-                            <Document
-                                file={selectedContract?.contract_url || "/contrato-bochel.pdf"}
-                                onLoadSuccess={({ numPages }) => { setNumPages(numPages); setPageNumber(numPages); }} /* Auto go to last page */
-                                className="w-full"
-                            >
-                                <Page
-                                    pageNumber={pageNumber}
-                                    renderTextLayer={false}
-                                    renderAnnotationLayer={false}
-                                    width={Math.min(window.innerWidth - 60, 800)}
-                                />
-                            </Document>
-
-                            {/* Only show signature if we are on the final page */}
-                            {pageNumber === numPages && (
-                                <Draggable position={sigPos} onDrag={handleDrag} bounds="parent">
-                                    <div className="absolute top-0 left-0 cursor-move border-2 border-dashed border-blue-500 rounded p-1 bg-white/50 z-50">
-                                        <img src={signatureImage} alt="Assinatura" style={{ height: '60px', opacity: 0.9 }} draggable={false} />
-                                    </div>
-                                </Draggable>
-                            )}
-                        </div>
-
-                        <div className="w-full px-4 mt-6">
-                            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-                                <Checkbox
-                                    id="terms_agree"
-                                    checked={agreedToTerms}
-                                    onCheckedChange={(v) => setAgreedToTerms(v === true)}
-                                    className="mt-0.5"
-                                />
+                    <div className="space-y-4">
+                        <Card className="border-0 shadow-xl overflow-hidden">
+                            <div className="bg-[#1a3a5c] p-4 text-white flex justify-between items-center">
                                 <div>
-                                    <label htmlFor="terms_agree" className="text-sm font-medium cursor-pointer text-gray-900">
-                                        Li e concordo com os termos do contrato *
-                                    </label>
-                                    <p className="text-xs text-amber-700 mt-1 pb-1">
-                                        Confirmo que li todas as páginas, compreendo as cláusulas apresentadas neste documento e aceito as condições firmadas de forma livre.
-                                    </p>
+                                    <h3 className="font-bold flex items-center gap-2"><FileText className="h-5 w-5" /> Posicionar Assinatura</h3>
+                                    <p className="text-xs text-blue-100 mt-1">Arraste a sua assinatura para o local correto.</p>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="flex items-center w-full gap-3 mt-4 px-4 pb-4">
-                            <Button variant="outline" onClick={() => { setSignatureImage(null); setAgreedToTerms(false); }} className="flex-1 h-12">
-                                Redesenhar
-                            </Button>
-                            <Button onClick={signContract} disabled={saving || !agreedToTerms} className="flex-1 h-12 text-white font-bold text-base shadow-lg bg-[#1a3a5c]">
-                                {saving ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                                {saving ? 'A Guardar...' : 'Confirmar e Submeter'}
-                            </Button>
-                        </div>
-                    </Card>
+                            <div className="p-4 bg-gray-50 border-b flex justify-between items-center">
+                                <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.max(p - 1, 1))} disabled={pageNumber <= 1}>
+                                    <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
+                                </Button>
+                                <span className="text-sm font-semibold text-gray-700 bg-white px-3 py-1 rounded-full shadow-sm">
+                                    Página {pageNumber} de {numPages || '--'}
+                                </span>
+                                <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.min(p + 1, numPages))} disabled={pageNumber >= numPages}>
+                                    Próxima <ChevronRight className="h-4 w-4 ml-1" />
+                                </Button>
+                            </div>
+
+                            <div className="relative bg-gray-200 p-2 md:p-6 flex justify-center overflow-auto" style={{ minHeight: '60vh' }}>
+                                <div className="relative shadow-2xl bg-white" ref={pdfWrapperRef}>
+                                    <Document
+                                        file={selectedContract?.contract_url || "/contrato-bochel.pdf"}
+                                        onLoadSuccess={({ numPages }) => { setNumPages(numPages); setPageNumber(numPages); }}
+                                        loading={<div className="p-12 text-center text-gray-500"><RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" /> A carregar documento...</div>}
+                                    >
+                                        <Page
+                                            pageNumber={pageNumber}
+                                            renderTextLayer={false}
+                                            renderAnnotationLayer={false}
+                                            width={Math.min(window.innerWidth - 32, 800)}
+                                            className="border border-gray-100"
+                                        />
+                                    </Document>
+
+                                    {/* Draggable Signature */}
+                                    <Draggable position={sigPos} onDrag={handleDrag} bounds="parent">
+                                        <div className="absolute top-0 left-0 cursor-move border-2 border-dashed border-[#d37c22] bg-white/40 p-1 rounded z-50 shadow-sm touch-none transition-colors hover:bg-white/60">
+                                            <div className="absolute -top-3 -right-3 bg-[#d37c22] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow">Arraste-me</div>
+                                            <img src={signatureImage!} alt="Sua Assinatura" style={{ height: '60px', opacity: 0.95 }} draggable={false} className="touch-none pointer-events-none" />
+                                        </div>
+                                    </Draggable>
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card className="border-0 shadow-lg border-t-4 border-t-[#d37c22]">
+                            <CardContent className="p-6">
+                                <div className="flex items-start gap-3 bg-amber-50/50 rounded-xl p-4 border border-amber-100">
+                                    <Checkbox
+                                        id="terms_agree"
+                                        checked={agreedToTerms}
+                                        onCheckedChange={(v) => setAgreedToTerms(v === true)}
+                                        className="mt-1 h-5 w-5 border-2 data-[state=checked]:bg-[#1a3a5c] data-[state=checked]:border-[#1a3a5c]"
+                                    />
+                                    <div>
+                                        <label htmlFor="terms_agree" className="text-base font-bold cursor-pointer text-[#1a3a5c]">
+                                            Li e concordo com os termos do contrato *
+                                        </label>
+                                        <p className="text-sm text-gray-600 mt-1 leading-relaxed">
+                                            Declaro que li atentamente todas as cláusulas deste contrato e aceito as condições de forma livre e esclarecida. A minha assinatura digital aposta acima tem validade legal.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-col sm:flex-row items-center gap-3 mt-6">
+                                    <Button variant="outline" onClick={() => { setSignatureImage(null); setAgreedToTerms(false); }} className="w-full sm:w-1/3 h-14 text-gray-600 border-gray-300">
+                                        Limpar e Redesenhar
+                                    </Button>
+                                    <Button onClick={signContract} disabled={saving || !agreedToTerms} className="w-full sm:w-2/3 h-14 text-white font-bold text-lg shadow-lg bg-[#1a3a5c] hover:bg-[#122a44] transition-all">
+                                        {saving ? <RefreshCw className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle className="h-5 w-5 mr-2" />}
+                                        {saving ? 'A Guardar Documento...' : 'Finalizar Assinatura'}
+                                    </Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 )}
             </div>
         );
@@ -440,190 +440,235 @@ const ContractModule = () => {
     if (selectedContract) {
         const st = getStatusInfo(selectedContract.status);
         return (
-            <div className="container mx-auto p-4 md:p-6 space-y-4">
-                <Button variant="ghost" onClick={() => setSelectedContract(null)} className="mb-2">
-                    <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+            <div className="container mx-auto p-4 md:p-6 space-y-4 max-w-5xl">
+                <Button variant="ghost" onClick={() => setSelectedContract(null)} className="mb-2 hover:bg-white text-gray-600">
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Voltar aos Contratos
                 </Button>
 
-                <Card className="border-0 shadow-lg">
-                    <CardContent className="p-6 space-y-5">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-xl font-bold text-gray-900">Contrato</h2>
-                            <Badge className={st.color}><span className="flex items-center gap-1">{st.icon}{st.label}</span></Badge>
+                <Card className="border-0 shadow-xl overflow-hidden rounded-2xl">
+                    <div className="bg-[#1a3a5c] p-6 md:p-8 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <Badge className={`${st.color.replace('bg-', 'bg-white/20 text-white border-0 ')} mb-3 shadow-none backdrop-blur-sm`}><span className="flex items-center gap-1">{st.icon}{st.label}</span></Badge>
+                            <h2 className="text-2xl md:text-3xl font-bold">Contrato de Crédito</h2>
+                            <p className="text-blue-100 mt-1 flex items-center gap-2"><User className="h-4 w-4" /> Cliente: {selectedContract.client_name}</p>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div><p className="text-xs text-gray-500">Cliente</p><p className="font-medium">{selectedContract.client_name}</p></div>
-                            <div><p className="text-xs text-gray-500">Data</p><p className="font-medium">{formatDate(selectedContract.created_at)}</p></div>
-                            {selectedContract.signed_at && (
-                                <div><p className="text-xs text-gray-500">Assinado em</p><p className="font-medium">{formatDate(selectedContract.signed_at)}</p></div>
-                            )}
+                        <div className="bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/10 text-right">
+                            <p className="text-xs text-blue-200 uppercase tracking-widest font-semibold mb-1">Data de Emissão</p>
+                            <p className="font-bold text-lg flex items-center justify-end gap-2"><Clock className="h-4 w-4" /> {formatDate(selectedContract.created_at)}</p>
                         </div>
+                    </div>
 
-                        {/* PDF */}
-                        <div className="border rounded-xl overflow-hidden">
-                            <div className="bg-gray-100 p-2 flex flex-wrap items-center justify-between border-b gap-2">
-                                <span className="text-sm text-gray-600 flex items-center gap-1"><FileText className="h-4 w-4" /> Contrato</span>
-                                <Button variant="default" size="sm" onClick={() => handleDownloadPdf(selectedContract)} className="h-8 text-xs bg-[#1a3a5c]">
-                                    <Download className="h-3 w-3 mr-1" /> Baixar PDF
+                    <CardContent className="p-0">
+                        {/* PDF Reader replacing iframe */}
+                        <div className="bg-gray-100 border-b">
+                            <div className="bg-white p-4 flex flex-wrap items-center justify-between border-b gap-4">
+                                <div className="flex items-center gap-4">
+                                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2"><FileText className="h-4 w-4 text-[#d37c22]" /> Documento Original</h3>
+                                    <div className="flex items-center bg-gray-100 rounded-lg p-1">
+                                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setPageNumber(p => Math.max(p - 1, 1))} disabled={pageNumber <= 1}>
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <span className="text-xs font-medium px-3 text-gray-600">Pág. {pageNumber} de {numPages || '--'}</span>
+                                        <Button size="sm" variant="ghost" className="h-8 px-2" onClick={() => setPageNumber(p => Math.min(p + 1, numPages))} disabled={pageNumber >= numPages}>
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                                <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(selectedContract)} className="h-9 text-sm font-semibold border-gray-300 shadow-sm hover:bg-gray-50">
+                                    <Download className="h-4 w-4 mr-2 text-[#1a3a5c]" /> Descarregar PDF
                                 </Button>
                             </div>
-                            <iframe src={`${selectedContract.contract_url || "/contrato-bochel.pdf"}#toolbar=0`} className="w-full border-0" style={{ height: '50vh' }} title="Contrato" />
+
+                            <div className="flex justify-center bg-gray-200 p-4 md:p-8 overflow-auto" style={{ maxHeight: '60vh' }}>
+                                <div className="shadow-2xl bg-white">
+                                    <Document
+                                        file={selectedContract.contract_url || "/contrato-bochel.pdf"}
+                                        onLoadSuccess={({ numPages }) => { setNumPages(numPages); setPageNumber(1); }}
+                                        loading={<div className="p-12 text-center text-gray-500"><RefreshCw className="h-6 w-6 animate-spin mx-auto mb-3" /> A carregar contrato...</div>}
+                                    >
+                                        <Page
+                                            pageNumber={pageNumber}
+                                            renderTextLayer={false}
+                                            renderAnnotationLayer={false}
+                                            width={Math.min(window.innerWidth - 32, 800)}
+                                            className="border border-gray-100"
+                                        />
+                                    </Document>
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Actions */}
-                        {selectedContract.status === 'pending' && (
-                            <Button
-                                onClick={() => { setShowSigning(true); initCanvas(); }}
-                                className="w-full h-12 text-white font-bold shadow-lg"
-                                style={{ backgroundColor: '#d37c22' }}
-                            >
-                                <PenLine className="h-4 w-4 mr-2" /> Assinar Contrato
-                            </Button>
-                        )}
-
-                        {/* Admin Actions */}
-                        {isAdmin && selectedContract.status === 'pending' && (
-                            <div className="border rounded-xl p-4 bg-gray-50 flex flex-col gap-2 mt-4">
-                                <p className="text-sm font-medium">Personalizar PDF do Contrato</p>
-                                <p className="text-xs text-gray-500">Faça o upload de um PDF específico para este cliente. Caso contrário, será usado o contrato padronizado.</p>
-                                <Input
-                                    type="file"
-                                    accept=".pdf"
-                                    className="bg-white cursor-pointer"
-                                    onChange={async (e) => {
-                                        const file = e.target.files?.[0];
-                                        if (!file) return;
-                                        setSaving(true);
-                                        toast({ title: 'A fazer upload...', description: 'Aguarde um momento.' });
-                                        try {
-                                            const path = `${selectedContract.id}.pdf`;
-                                            const { error: uploadErr } = await supabase.storage.from('contracts').upload(path, file, { upsert: true });
-                                            if (uploadErr) throw uploadErr;
-
-                                            const { data } = supabase.storage.from('contracts').getPublicUrl(path);
-                                            await supabase.from('contracts').update({ contract_url: data.publicUrl }).eq('id', selectedContract.id);
-
-                                            setSelectedContract({ ...selectedContract, contract_url: data.publicUrl });
-                                            toast({ title: 'PDF Atualizado com sucesso!' });
-                                            loadContracts();
-                                        } catch (err: any) {
-                                            toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-                                        } finally {
-                                            setSaving(false);
-                                        }
-                                    }}
-                                />
-                            </div>
-                        )}
-
-                        {isAdmin && selectedContract.status === 'signed' && (
-                            <Button
-                                onClick={async () => {
-                                    setSaving(true);
-                                    try {
-                                        // 1. Obter os dados do pedido de crédito para saber o valor
-                                        let loanAmount = 0;
-                                        if (selectedContract.credit_request_id) {
-                                            const { data: requestData } = await supabase
-                                                .from('credit_requests')
-                                                .select('amount')
-                                                .eq('id', selectedContract.credit_request_id)
-                                                .single();
-                                            if (requestData?.amount) {
-                                                loanAmount = Number(requestData.amount);
-                                            }
-                                        }
-
-                                        if (loanAmount <= 0) {
-                                            toast({ title: 'Aviso', description: 'Não foi possível determinar o valor do empréstimo a partir do pedido associado.', variant: 'destructive' });
-                                            setSaving(false);
-                                            return;
-                                        }
-
-                                        // 2. Buscar o ID do Client associado a este user_id
-                                        const { data: clientRecord } = await supabase
-                                            .from('clients')
-                                            .select('id')
-                                            .eq('user_id', selectedContract.client_id)
-                                            .single();
-
-                                        if (!clientRecord) {
-                                            toast({ title: 'Aviso', description: 'Registo de Cliente não encontrado para este utilizador. Crie um perfil de cliente primeiro.', variant: 'destructive' });
-                                            setSaving(false);
-                                            return;
-                                        }
-
-                                        // 3. Criar Empréstimo Ativo (30 Dias, 30% Juros Fixos)
-                                        const interestRate = 30;
-                                        const interestValue = loanAmount * (interestRate / 100);
-                                        const totalAmount = loanAmount + interestValue;
-
-                                        const startDate = new Date();
-                                        const endDate = new Date();
-                                        endDate.setDate(startDate.getDate() + (30 * loanInstallments));
-
-                                        const { error: loanError } = await supabase.from('loans').insert({
-                                            client_id: clientRecord.id,
-                                            amount: loanAmount,
-                                            interest_rate: interestRate,
-                                            total_amount: totalAmount,
-                                            remaining_amount: totalAmount,
-                                            installments: loanInstallments,
-                                            status: 'active',
-                                            start_date: startDate.toISOString().split('T')[0],
-                                            end_date: endDate.toISOString().split('T')[0],
-                                        });
-
-                                        if (loanError) throw loanError;
-
-                                        // 4. Finalizar Contrato
-                                        await supabase.from('contracts').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', selectedContract.id);
-
-                                        toast({ title: 'Saldo Injetado e Contrato Finalizado!' });
-                                        setSelectedContract(null);
-                                        loadContracts();
-                                    } catch (err: any) {
-                                        toast({ title: 'Erro', description: err.message, variant: 'destructive' });
-                                    } finally {
-                                        setSaving(false);
-                                    }
-                                }}
-                                className="w-full h-12 text-white font-bold shadow-lg mt-4"
-                                style={{ backgroundColor: '#1b5e20' }}
-                                disabled={saving}
-                            >
-                                <CheckCircle className="h-4 w-4 mr-2" /> {saving ? 'A Processar...' : 'Injetar Saldo e Finalizar'}
-                            </Button>
-                        )}
-
-                        {isAdmin && selectedContract.status === 'signed' && (
-                            <div className="mt-4 p-4 bg-blue-50 border border-blue-100 rounded-xl space-y-3">
-                                <p className="text-sm font-semibold text-gray-700">Número de Parcelas</p>
-                                <div className="flex gap-2">
-                                    {[1, 2, 3, 4, 6].map(n => (
-                                        <button
-                                            key={n}
-                                            onClick={() => setLoanInstallments(n)}
-                                            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${loanInstallments === n
-                                                ? 'bg-[#0b3a20] text-white shadow-md'
-                                                : 'bg-white border border-gray-200 text-gray-600 hover:border-[#0b3a20]'
-                                                }`}
-                                        >
-                                            {n}x
-                                        </button>
-                                    ))}
+                        <div className="p-6 md:p-8 space-y-6 bg-white">
+                            {/* Actions */}
+                            {selectedContract.status === 'pending' && (
+                                <div className="bg-amber-50 border border-amber-200 p-6 rounded-2xl text-center space-y-4">
+                                    <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-2">
+                                        <PenLine className="h-6 w-6" />
+                                    </div>
+                                    <h3 className="text-lg font-bold text-amber-900">Assinatura Pendente</h3>
+                                    <p className="text-amber-700 text-sm max-w-md mx-auto">Leia atentamente o documento acima. Se concordar com todas as cláusulas, proceda para a assinatura digital.</p>
+                                    <Button
+                                        onClick={() => { setShowSigning(true); initCanvas(); }}
+                                        className="w-full md:w-auto px-8 h-14 text-white font-bold shadow-xl transition-transform hover:scale-105"
+                                        style={{ backgroundColor: '#d37c22' }}
+                                    >
+                                        <PenLine className="h-5 w-5 mr-3" /> Iniciar Assinatura Digital
+                                    </Button>
                                 </div>
-                                {loanInstallments > 1 && (
-                                    <p className="text-xs text-gray-500">Prazo total: {loanInstallments * 30} dias ({loanInstallments} meses)</p>
-                                )}
-                            </div>
-                        )}
+                            )}
+
+                            {/* Admin Actions */}
+                            {isAdmin && selectedContract.status === 'pending' && (
+                                <div className="border border-gray-200 rounded-2xl p-6 bg-gray-50 flex flex-col gap-3">
+                                    <h3 className="text-base font-bold text-[#1a3a5c] flex items-center gap-2"><FileText className="h-5 w-5" /> Substituir PDF do Contrato</h3>
+                                    <p className="text-sm text-gray-500">Se precisar de um contrato personalizado para este cliente específico, faça o upload do novo PDF aqui. O cliente assinará este novo documento.</p>
+                                    <div className="mt-2">
+                                        <Input
+                                            type="file"
+                                            accept=".pdf"
+                                            className="bg-white border-gray-300 h-12 cursor-pointer shadow-sm"
+                                            onChange={async (e) => {
+                                                const file = e.target.files?.[0];
+                                                if (!file) return;
+                                                setSaving(true);
+                                                toast({ title: 'A fazer upload...', description: 'A transferir documento para o servidor.' });
+                                                try {
+                                                    const path = `${selectedContract.id}.pdf`;
+                                                    const { error: uploadErr } = await supabase.storage.from('contracts').upload(path, file, { upsert: true });
+                                                    if (uploadErr) throw uploadErr;
+
+                                                    const { data } = supabase.storage.from('contracts').getPublicUrl(path);
+                                                    await supabase.from('contracts').update({ contract_url: data.publicUrl }).eq('id', selectedContract.id);
+
+                                                    setSelectedContract({ ...selectedContract, contract_url: data.publicUrl });
+                                                    toast({ title: 'PDF Atualizado', description: 'O novo documento foi guardado com sucesso!' });
+                                                    loadContracts();
+                                                } catch (err: any) {
+                                                    toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+                                                } finally {
+                                                    setSaving(false);
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {isAdmin && selectedContract.status === 'signed' && (
+                                <div className="border-2 border-green-100 rounded-2xl p-6 bg-green-50/50 space-y-4">
+                                    <h3 className="text-lg font-bold text-green-900 flex items-center gap-2"><CheckCircle className="h-6 w-6 text-green-600" /> Contrato Assinado!</h3>
+                                    <p className="text-sm text-green-800">O cliente assinou o documento em {formatDate(selectedContract.signed_at || '')}. Para aprovar definitivamente o crédito e injetar o saldo na conta corrente do cliente, complete a operação abaixo.</p>
+
+                                    <div className="bg-white p-5 rounded-xl border border-green-100 shadow-sm mt-4">
+                                        <p className="text-sm font-bold text-gray-700 mb-3">Definir Número de Parcelas para o Empréstimo</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {[1, 2, 3, 4, 6, 12].map(n => (
+                                                <button
+                                                    key={n}
+                                                    onClick={() => setLoanInstallments(n)}
+                                                    className={`flex-1 min-w-[60px] py-3 rounded-lg text-sm font-bold transition-all ${loanInstallments === n
+                                                        ? 'bg-[#1b5e20] text-white shadow-md ring-2 ring-[#1b5e20] ring-offset-2'
+                                                        : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
+                                                        }`}
+                                                >
+                                                    {n}x
+                                                </button>
+                                            ))}
+                                        </div>
+                                        {loanInstallments > 1 && (
+                                            <p className="text-xs text-center font-medium text-green-800 bg-green-100 px-3 py-1.5 rounded-full inline-block mt-4">
+                                                Duração do Crédito: {loanInstallments * 30} dias ({loanInstallments} meses)
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    <Button
+                                        onClick={async () => {
+                                            setSaving(true);
+                                            try {
+                                                // 1. Obter os dados do pedido de crédito para saber o valor
+                                                let loanAmount = 0;
+                                                if (selectedContract.credit_request_id) {
+                                                    const { data: requestData } = await supabase
+                                                        .from('credit_requests')
+                                                        .select('amount')
+                                                        .eq('id', selectedContract.credit_request_id)
+                                                        .single();
+                                                    if (requestData?.amount) {
+                                                        loanAmount = Number(requestData.amount);
+                                                    }
+                                                }
+
+                                                if (loanAmount <= 0) {
+                                                    toast({ title: 'Aviso', description: 'Não foi possível determinar o valor do empréstimo a partir do pedido associado.', variant: 'destructive' });
+                                                    setSaving(false);
+                                                    return;
+                                                }
+
+                                                // 2. Buscar o ID do Client associado a este user_id
+                                                const { data: clientRecord } = await supabase
+                                                    .from('clients')
+                                                    .select('id')
+                                                    .eq('user_id', selectedContract.client_id)
+                                                    .single();
+
+                                                if (!clientRecord) {
+                                                    toast({ title: 'Aviso', description: 'Registo de Cliente não encontrado para este utilizador. Crie um perfil de cliente primeiro.', variant: 'destructive' });
+                                                    setSaving(false);
+                                                    return;
+                                                }
+
+                                                // 3. Criar Empréstimo Ativo (30 Dias, 30% Juros Fixos)
+                                                const interestRate = 30;
+                                                const interestValue = loanAmount * (interestRate / 100);
+                                                const totalAmount = loanAmount + interestValue;
+
+                                                const startDate = new Date();
+                                                const endDate = new Date();
+                                                endDate.setDate(startDate.getDate() + (30 * loanInstallments));
+
+                                                const { error: loanError } = await supabase.from('loans').insert({
+                                                    client_id: clientRecord.id,
+                                                    amount: loanAmount,
+                                                    interest_rate: interestRate,
+                                                    total_amount: totalAmount,
+                                                    remaining_amount: totalAmount,
+                                                    installments: loanInstallments,
+                                                    status: 'active',
+                                                    start_date: startDate.toISOString().split('T')[0],
+                                                    end_date: endDate.toISOString().split('T')[0],
+                                                });
+
+                                                if (loanError) throw loanError;
+
+                                                // 4. Finalizar Contrato
+                                                await supabase.from('contracts').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', selectedContract.id);
+
+                                                toast({ title: 'Sucesso Absoluto!', description: 'O saldo foi injetado na conta do cliente e o contrato arquivado.' });
+                                                setSelectedContract(null);
+                                                loadContracts();
+                                            } catch (err: any) {
+                                                toast({ title: 'Erro de Processamento', description: err.message, variant: 'destructive' });
+                                            } finally {
+                                                setSaving(false);
+                                            }
+                                        }}
+                                        className="w-full h-14 text-white font-bold text-lg shadow-xl mt-6 transition-all hover:bg-[#124215]"
+                                        style={{ backgroundColor: '#1b5e20' }}
+                                        disabled={saving}
+                                    >
+                                        {saving ? <RefreshCw className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle className="h-5 w-5 mr-2" />}
+                                        {saving ? 'A Processar Injeção...' : 'Aprovar Final e Injetar Saldo'}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                     </CardContent>
                 </Card>
             </div>
         );
     }
+
 
     // Contract list view
     return (

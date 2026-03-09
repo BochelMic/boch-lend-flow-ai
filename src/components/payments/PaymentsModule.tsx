@@ -25,6 +25,7 @@ interface Payment {
 interface ActiveLoan {
   id: string;
   client_name: string;
+  user_id: string | null;
   remaining_amount: number;
   total_amount: number;
   installments: number;
@@ -79,7 +80,7 @@ const PaymentsModule = () => {
     try {
       const { data, error } = await supabase
         .from('loans')
-        .select('id, remaining_amount, total_amount, installments, clients(name)')
+        .select('id, remaining_amount, total_amount, installments, clients(name, user_id)')
         .eq('status', 'active');
 
       if (error) throw error;
@@ -87,6 +88,7 @@ const PaymentsModule = () => {
       const mapped = (data || []).map((l: any) => ({
         id: l.id,
         client_name: l.clients?.name || 'Desconhecido',
+        user_id: l.clients?.user_id || null,
         remaining_amount: Number(l.remaining_amount),
         total_amount: Number(l.total_amount),
         installments: l.installments,
@@ -125,13 +127,63 @@ const PaymentsModule = () => {
       if (payError) throw payError;
 
       // Atualizar saldo do empréstimo
+      let isFullyPaid = false;
       if (selectedLoan) {
         const newRemaining = Math.max(0, selectedLoan.remaining_amount - amount);
         const updateData: any = { remaining_amount: newRemaining };
         if (newRemaining <= 0) {
-          updateData.status = 'completed';
+          updateData.status = 'paid'; // Set status to paid when fully settled
+          isFullyPaid = true;
         }
         await supabase.from('loans').update(updateData).eq('id', formData.loanId);
+      }
+
+      // ----------------------------------------------------
+      // NOTIFICATIONS
+      // ----------------------------------------------------
+      if (selectedLoan?.user_id) {
+        const notificationsToInsert = [];
+
+        // 1. Notify Client about Payment
+        notificationsToInsert.push({
+          user_id: selectedLoan.user_id,
+          type: 'alert' as const,
+          title: 'Pagamento Recebido 💰',
+          body: `Recebemos o seu pagamento de MZN ${amount.toLocaleString()}. Obrigado!`,
+          from_user_id: user?.id || null,
+          link_url: '/meus-creditos',
+        });
+
+        // 2. Notify Client about Full Payment (if applicable)
+        if (isFullyPaid) {
+          notificationsToInsert.push({
+            user_id: selectedLoan.user_id,
+            type: 'system' as const,
+            title: 'Parabéns! Crédito Quitado 🎉',
+            body: `Você pagou totalmente o seu crédito. Já pode solicitar um novo crédito quando quiser!`,
+            from_user_id: null,
+            link_url: '/meus-creditos',
+          });
+        }
+
+        if (notificationsToInsert.length > 0) {
+          await supabase.from('notifications').insert(notificationsToInsert);
+        }
+      }
+
+      // 3. Notify Admins if Loan is Fully Paid
+      if (isFullyPaid) {
+        const { data: adminUsers } = await supabase.from('user_roles').select('user_id').eq('role', 'gestor');
+        if (adminUsers && adminUsers.length > 0) {
+          const adminNotifications = adminUsers.map((admin: any) => ({
+            user_id: admin.user_id,
+            type: 'system' as const,
+            title: 'Crédito Quitado',
+            body: `O cliente ${selectedLoan?.client_name || 'Desconhecido'} liquidou totalmente o seu crédito.`,
+            from_user_id: null,
+          }));
+          await supabase.from('notifications').insert(adminNotifications);
+        }
       }
 
       toast({ title: 'Sucesso', description: 'Pagamento registrado com sucesso!' });
