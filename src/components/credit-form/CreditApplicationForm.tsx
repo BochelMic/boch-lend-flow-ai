@@ -25,6 +25,10 @@ const FULL_STEPS = [
   { id: 4, title: 'Crédito', icon: CreditCard, color: '#43a047' },
 ];
 
+const sanitizePath = (name: string) => {
+  return name.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+};
+
 // Compress image before upload to prevent "Failed to fetch" from large files
 // Compress image before upload to prevent "Failed to fetch" from large files
 const compressImage = (file: File, maxWidth = 1024, quality = 0.6): Promise<File> => {
@@ -320,13 +324,18 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
     try {
       // Compress image before upload
       const compressed = await compressImage(file);
-      const ext = compressed.name.split('.').pop();
       const userId = user?.id || 'guest';
-      const path = `${userId}/${side}_${Date.now()}.${ext}`;
+      const cleanSide = sanitizePath(side);
+      const timestamp = Date.now();
+      const path = `${userId}/${cleanSide}_${timestamp}.jpg`;
 
-      const { error } = await supabase.storage.from('chat-files').upload(path, compressed, {
-        contentType: compressed.type,
-        upsert: true
+      // Log for debugging (only in console)
+      console.log(`[Upload] Resilient upload trial: ${path}, Type: ${compressed.type}, Size: ${compressed.size}`);
+
+      const { data: uploadData, error } = await supabase.storage.from('chat-files').upload(path, compressed, {
+        contentType: compressed.type || 'image/jpeg',
+        upsert: true,
+        cacheControl: '3600'
       });
       if (error) {
         console.warn(`Upload ${side} failed:`, error.message, error);
@@ -336,8 +345,10 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
           errorMsg = "A foto é demasiado grande (>5MB). Tente tirar outra foto ou reduzir o tamanho.";
         } else if (error.message.includes('storage/quota-exceeded')) {
           errorMsg = "Limite de armazenamento atingido.";
+        } else if (error.message === 'Failed to fetch') {
+          errorMsg = "Erro de conexão ou certificado SSL no telemóvel. Tente usar Chrome ou Safari.";
         } else {
-          errorMsg = `Erro: ${error.message}`;
+          errorMsg = `Erro servidor: ${error.message}`;
         }
 
         toast({
@@ -348,7 +359,12 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         return null;
       }
 
+      // Ensure we get a valid URL
       const { data } = supabase.storage.from('chat-files').getPublicUrl(path);
+      if (!data?.publicUrl) {
+        throw new Error("Não foi possível gerar a URL pública");
+      }
+
       return data.publicUrl;
     } catch (err) {
       console.warn(`Upload ${side} error:`, err);
@@ -841,9 +857,20 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                         </button>
                       </div>
                     ) : (
-                      <p className="text-[10px] text-gray-400 mt-1">{uploadingFront ? 'A enviar...' : 'Clique para selecionar'}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{uploadingFront ? 'A enviar...' : 'Clique para selecionar ou tirar foto'}</p>
                     )}
-                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => { if (e.target.files?.[0]) handleDocFrontUpload(e.target.files[0]); }} className="hidden" id="doc-front" disabled={uploadingFront} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleDocFrontUpload(file);
+                      }}
+                      className="hidden"
+                      id="doc-front"
+                      disabled={uploadingFront}
+                    />
                   </div>
 
                   <div
@@ -865,9 +892,20 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                         </button>
                       </div>
                     ) : (
-                      <p className="text-[10px] text-gray-400 mt-1">{uploadingBack ? 'A enviar...' : 'Clique para selecionar'}</p>
+                      <p className="text-[10px] text-gray-400 mt-1">{uploadingBack ? 'A enviar...' : 'Clique para selecionar ou tirar foto'}</p>
                     )}
-                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => { if (e.target.files?.[0]) handleDocBackUpload(e.target.files[0]); }} className="hidden" id="doc-back" disabled={uploadingBack} />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleDocBackUpload(file);
+                      }}
+                      className="hidden"
+                      id="doc-back"
+                      disabled={uploadingBack}
+                    />
                   </div>
                 </div>
                 <FieldError field="docFront" />
