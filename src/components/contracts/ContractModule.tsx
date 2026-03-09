@@ -171,9 +171,31 @@ const ContractModule = () => {
 
             const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(path);
 
-            // Fetch existing PDF
-            const pdfUrl = selectedContract.contract_url || "/contrato-bochel.pdf";
-            const existingPdfBytes = await fetch(pdfUrl).then(res => res.arrayBuffer());
+            // Fetch existing PDF (ALWAYS get the original unsigned blueprint, never a previously signed one)
+            let pdfUrl = "/contrato-bochel.pdf"; // Default fallback
+
+            // The original admin uploaded PDF is always saved as exactly "{contract.id}.pdf" in the contracts bucket.
+            // If selectedContract.contract_url contains 'signatures', it means it's an already signed version
+            // which we DO NOT want to use as a base for a re-sign.
+            if (selectedContract.contract_url && !selectedContract.contract_url.includes('/signatures/')) {
+                pdfUrl = selectedContract.contract_url;
+            } else if (selectedContract.status === 'signed') {
+                // If it was signed, get the original unsigned one explicitly
+                const { data: originalUrl } = supabase.storage.from('contracts').getPublicUrl(`${selectedContract.id}.pdf`);
+                // Check if it exists by doing a quick HEAD request, if not fallback to default
+                try {
+                    const check = await fetch(originalUrl.publicUrl, { method: 'HEAD' });
+                    if (check.ok) pdfUrl = originalUrl.publicUrl;
+                } catch (e) { /* ignore and use default */ }
+            } else if (selectedContract.contract_url) {
+                pdfUrl = selectedContract.contract_url;
+            }
+
+            // Append timestamp to bypass browser cache
+            const cacheBuster = `?t=${new Date().getTime()}`;
+            const resUrl = pdfUrl.includes('?') ? `${pdfUrl}&t=${new Date().getTime()}` : `${pdfUrl}${cacheBuster}`;
+
+            const existingPdfBytes = await fetch(resUrl).then(res => res.arrayBuffer());
             const pdfDoc = await PDFDocument.load(existingPdfBytes);
 
             const sigBytes = await blob.arrayBuffer();
