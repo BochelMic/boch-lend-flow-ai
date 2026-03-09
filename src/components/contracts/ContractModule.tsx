@@ -254,15 +254,18 @@ const ContractModule = () => {
 
     const signContract = async () => {
         if (!selectedContract || !user) return;
+
         if (!signatureImage) {
             toast({ title: 'Aviso', description: 'Por favor, desenhe a sua assinatura primeiro.', variant: 'destructive' });
             return;
         }
+
         if (!agreedToTerms) {
-            toast({ title: 'Aviso', description: 'Deve concordar com os termos para continuar.', variant: 'destructive' });
+            // No mobile, toasts podem não ser vistos, então usamos feedback visual no botão
             return;
         }
 
+        console.log("[Sign] Starting sign process...");
         setSaving(true);
         toast({ title: 'A processar...', description: 'A aplicar a assinatura no documento.' });
 
@@ -633,25 +636,43 @@ const ContractModule = () => {
                                         asChild
                                         variant="outline"
                                         onClick={() => { setSignatureImage(null); setAgreedToTerms(false); }}
-                                        className="w-full sm:w-1/3 h-14 text-gray-600 border-gray-300 cursor-pointer"
+                                        className="w-full sm:w-1/3 h-14 text-gray-600 border-gray-300 cursor-pointer touch-manipulation"
                                     >
                                         <button type="button">Limpar e Redesenhar</button>
                                     </Button>
-                                    <Button
-                                        onClick={(e) => {
-                                            console.log("[Sign] Finalize button clicked");
-                                            signContract();
-                                        }}
-                                        disabled={saving}
-                                        className={cn(
-                                            "w-full sm:w-2/3 h-14 text-white font-bold text-lg shadow-lg transition-all",
-                                            saving ? "bg-gray-400" : "bg-[#1a3a5c] hover:bg-[#122a44]"
+
+                                    <div className="w-full sm:w-2/3 flex flex-col gap-2">
+                                        {!agreedToTerms && !saving && (
+                                            <p className="text-[10px] text-red-500 font-bold animate-pulse text-center">
+                                                * Marque a caixa acima para ativar o botão
+                                            </p>
                                         )}
-                                        type="button"
-                                    >
-                                        {saving ? <RefreshCw className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle className="h-5 w-5 mr-2" />}
-                                        {saving ? 'A Guardar...' : 'Finalizar Assinatura'}
-                                    </Button>
+                                        <Button
+                                            asChild
+                                            disabled={saving}
+                                            className={cn(
+                                                "h-14 text-white font-bold text-lg shadow-lg transition-all w-full touch-manipulation",
+                                                saving ? "bg-gray-400" : (!agreedToTerms ? "bg-blue-300 opacity-60" : "bg-[#1a3a5c] hover:bg-[#122a44]")
+                                            )}
+                                        >
+                                            <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    console.log("[Sign] Finalize clicked - State:", { agreedToTerms, saving });
+                                                    if (!agreedToTerms) {
+                                                        toast({ title: 'Atenção', description: 'Marque a caixa de termos primeiro.', variant: 'destructive' });
+                                                        return;
+                                                    }
+                                                    signContract();
+                                                }}
+                                            >
+                                                {saving ? <RefreshCw className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle className="h-5 w-5 mr-2" />}
+                                                {saving ? 'A Guardar...' : 'Finalizar Assinatura'}
+                                            </button>
+                                        </Button>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
