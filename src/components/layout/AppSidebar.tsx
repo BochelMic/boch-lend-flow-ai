@@ -130,6 +130,7 @@ export function AppSidebar() {
         { name: 'Contratos', href: '/gestor/contratos', icon: PenLine, permission: 'all' },
         { name: 'Faturas/Recibos', href: '/gestor/faturas', icon: Receipt, permission: 'all' },
         chatItem,
+        { name: 'Administração', href: '/gestor/admin', icon: Shield, permission: 'all' },
         { name: 'Subsistemas', href: '/gestor/subsistemas', icon: Shield, permission: 'all' },
         { name: 'Configurações', href: '/gestor/settings', icon: Settings, permission: 'all' },
       ];

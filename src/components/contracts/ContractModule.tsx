@@ -58,6 +58,7 @@ const ContractModule = () => {
     const [signatureImage, setSignatureImage] = useState<string | null>(null);
     const [sigPos, setSigPos] = useState({ x: 50, y: 50 }); // Draggable position
     const [inkColor, setInkColor] = useState('#0000a0'); // Default to Bic Blue
+    const draggableRef = useRef<HTMLDivElement>(null);
 
     const [basePdfUrl, setBasePdfUrl] = useState<string>("/contrato-bochel.pdf");
     const [resolvingPdf, setResolvingPdf] = useState(false);
@@ -73,13 +74,10 @@ const ContractModule = () => {
             if (currentUrl && !currentUrl.includes('/signatures/')) {
                 url = currentUrl;
             } else {
+                // If no signed contract URL yet, use the generated public URL for the template or default
                 const customUrl = supabase.storage.from('contracts').getPublicUrl(`${selectedContract.id}.pdf`).data.publicUrl;
-                try {
-                    const res = await fetch(customUrl, { method: 'HEAD' });
-                    if (res.ok) {
-                        url = customUrl;
-                    }
-                } catch (e) { }
+                // Removed HEAD check that causes 400 errors in console
+                url = customUrl;
             }
 
             setBasePdfUrl(url);
@@ -458,8 +456,16 @@ const ContractModule = () => {
                                     )}
 
                                     {/* Draggable Signature */}
-                                    <Draggable position={sigPos} onDrag={handleDrag} bounds="parent">
-                                        <div className="draggable-signature absolute top-0 left-0 cursor-move border-2 border-dashed border-[#d37c22] bg-white/40 p-1 rounded z-50 shadow-sm touch-none transition-colors hover:bg-white/60">
+                                    <Draggable
+                                        nodeRef={draggableRef}
+                                        position={sigPos}
+                                        onDrag={handleDrag}
+                                        bounds="parent"
+                                    >
+                                        <div
+                                            ref={draggableRef}
+                                            className="draggable-signature absolute top-0 left-0 cursor-move border-2 border-dashed border-[#d37c22] bg-white/40 p-1 rounded z-50 shadow-sm touch-none transition-colors hover:bg-white/60"
+                                        >
                                             <div className="absolute -top-3 -right-3 bg-[#d37c22] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow">Arraste-me</div>
                                             <img src={signatureImage!} alt="Sua Assinatura" style={{ height: '60px', opacity: 0.95 }} draggable={false} className="touch-none pointer-events-none" />
                                         </div>
