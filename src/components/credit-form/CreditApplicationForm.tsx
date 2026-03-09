@@ -78,6 +78,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
     requestedAmount: '', creditPurpose: '', receiveDate: '',
     guaranteeType: '', guaranteeMode: '',
     observations: '', truthDeclaration: false,
+    docFrontUrl: '', docBackUrl: '',
   };
 
   const [currentStep, setCurrentStep] = useState(() => {
@@ -92,6 +93,8 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   const [checkingStatus, setCheckingStatus] = useState(true);
   const [docFront, setDocFront] = useState<File | null>(null);
   const [docBack, setDocBack] = useState<File | null>(null);
+  const [uploadingFront, setUploadingFront] = useState(false);
+  const [uploadingBack, setUploadingBack] = useState(false);
   const { user } = useAuth();
 
   // Prevent checkUserStatus from re-running on auth token refresh
@@ -274,6 +277,12 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       if (!form.guaranteeType) newErrors.guaranteeType = 'Selecione a garantia';
       if (!form.guaranteeMode) newErrors.guaranteeMode = 'Selecione o modo';
       if (!form.truthDeclaration) newErrors.truthDeclaration = 'Deve concordar';
+
+      // Document requirements for first-time clients
+      if (!isSimplifiedForm) {
+        if (!form.docFrontUrl) newErrors.docFront = 'Foto da frente é obrigatória';
+        if (!form.docBackUrl) newErrors.docBack = 'Foto do verso é obrigatória';
+      }
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -284,23 +293,46 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   const prevStep = () => setCurrentStep(prev => Math.max(prev - 1, 1));
 
   const uploadDocImage = async (file: File, side: string): Promise<string | null> => {
-    if (!user) return null;
     try {
       // Compress image before upload
       const compressed = await compressImage(file);
       const ext = compressed.name.split('.').pop();
-      const path = `${user.id}/${side}_${Date.now()}.${ext}`;
+      const userId = user?.id || 'guest';
+      const path = `${userId}/${side}_${Date.now()}.${ext}`;
+
       const { error } = await supabase.storage.from('chat-files').upload(path, compressed);
       if (error) {
         console.warn(`Upload ${side} failed:`, error.message);
+        toast({ title: "Erro no upload", description: `Não foi possível enviar a foto ${side}.`, variant: "destructive" });
         return null;
       }
+
       const { data } = supabase.storage.from('chat-files').getPublicUrl(path);
       return data.publicUrl;
     } catch (err) {
       console.warn(`Upload ${side} error:`, err);
       return null;
     }
+  };
+
+  const handleDocFrontUpload = async (file: File) => {
+    setUploadingFront(true);
+    const url = await uploadDocImage(file, 'frente');
+    if (url) {
+      updateField('docFrontUrl', url);
+      setDocFront(file);
+    }
+    setUploadingFront(false);
+  };
+
+  const handleDocBackUpload = async (file: File) => {
+    setUploadingBack(true);
+    const url = await uploadDocImage(file, 'verso');
+    if (url) {
+      updateField('docBackUrl', url);
+      setDocBack(file);
+    }
+    setUploadingBack(false);
   };
 
   const handleSubmit = async () => {
@@ -313,14 +345,6 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
     try {
       const address = `${form.neighborhood}, ${form.district}, ${form.province}`;
-
-      // Upload doc images (completely non-blocking — failures don't affect submission)
-      let frontUrl: string | null = null;
-      let backUrl: string | null = null;
-      if (!isSimplifiedForm) {
-        try { if (docFront) frontUrl = await uploadDocImage(docFront, 'frente'); } catch { }
-        try { if (docBack) backUrl = await uploadDocImage(docBack, 'verso'); } catch { }
-      }
 
       // Try to create/update client record (non-blocking)
       if (user) {
@@ -369,8 +393,8 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         guarantee_type: form.guaranteeType || null,
         guarantee_mode: form.guaranteeMode || null,
         observations: form.observations || null,
-        doc_front_url: frontUrl,
-        doc_back_url: backUrl,
+        doc_front_url: form.docFrontUrl,
+        doc_back_url: form.docBackUrl,
       };
 
       // Try up to 2 times
@@ -755,21 +779,58 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
               {/* Doc Upload */}
               <div>
-                <Label className="text-sm font-medium">Documento de Identidade (Frente e Verso)</Label>
+                <Label className="text-sm font-medium">Documento de Identidade (Frente e Verso) *</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
-                  <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer hover:border-[#1b5e20]/40 ${docFront ? 'border-green-300 bg-green-50' : 'border-gray-200'}`} onClick={() => document.getElementById('doc-front')?.click()}>
-                    <Upload className={`h-6 w-6 mx-auto mb-1.5 ${docFront ? 'text-green-600' : 'text-gray-400'}`} />
+                  <div
+                    className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer hover:border-[#1b5e20]/40 ${form.docFrontUrl ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}
+                    onClick={() => !uploadingFront && document.getElementById('doc-front')?.click()}
+                  >
+                    {uploadingFront ? (
+                      <Loader2 className="h-6 w-6 mx-auto mb-1.5 animate-spin text-[#1b5e20]" />
+                    ) : (
+                      <Upload className={`h-6 w-6 mx-auto mb-1.5 ${form.docFrontUrl ? 'text-green-600' : 'text-gray-400'}`} />
+                    )}
                     <p className="text-xs font-medium text-gray-700">📋 Frente do BI</p>
-                    {docFront ? (<div className="mt-1.5 flex items-center justify-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-600" /><span className="text-xs text-green-700 truncate max-w-[150px]">{docFront.name}</span><button onClick={e => { e.stopPropagation(); setDocFront(null); }} className="ml-1 text-gray-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button></div>) : (<p className="text-[10px] text-gray-400 mt-1">Clique para selecionar</p>)}
-                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => { if (e.target.files?.[0]) setDocFront(e.target.files[0]); }} className="hidden" id="doc-front" />
+                    {form.docFrontUrl ? (
+                      <div className="mt-1.5 flex items-center justify-center gap-1">
+                        <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                        <span className="text-xs text-green-700 truncate max-w-[150px]">Enviado</span>
+                        <button onClick={e => { e.stopPropagation(); updateField('docFrontUrl', ''); }} className="ml-1 text-gray-400 hover:text-red-500">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-400 mt-1">{uploadingFront ? 'A enviar...' : 'Clique para selecionar'}</p>
+                    )}
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => { if (e.target.files?.[0]) handleDocFrontUpload(e.target.files[0]); }} className="hidden" id="doc-front" disabled={uploadingFront} />
                   </div>
-                  <div className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer hover:border-[#1b5e20]/40 ${docBack ? 'border-green-300 bg-green-50' : 'border-gray-200'}`} onClick={() => document.getElementById('doc-back')?.click()}>
-                    <Upload className={`h-6 w-6 mx-auto mb-1.5 ${docBack ? 'text-green-600' : 'text-gray-400'}`} />
+
+                  <div
+                    className={`border-2 border-dashed rounded-xl p-4 text-center transition-colors cursor-pointer hover:border-[#1b5e20]/40 ${form.docBackUrl ? 'border-green-300 bg-green-50' : 'border-gray-200'}`}
+                    onClick={() => !uploadingBack && document.getElementById('doc-back')?.click()}
+                  >
+                    {uploadingBack ? (
+                      <Loader2 className="h-6 w-6 mx-auto mb-1.5 animate-spin text-[#1b5e20]" />
+                    ) : (
+                      <Upload className={`h-6 w-6 mx-auto mb-1.5 ${form.docBackUrl ? 'text-green-600' : 'text-gray-400'}`} />
+                    )}
                     <p className="text-xs font-medium text-gray-700">📋 Verso do BI</p>
-                    {docBack ? (<div className="mt-1.5 flex items-center justify-center gap-1"><CheckCircle className="h-3.5 w-3.5 text-green-600" /><span className="text-xs text-green-700 truncate max-w-[150px]">{docBack.name}</span><button onClick={e => { e.stopPropagation(); setDocBack(null); }} className="ml-1 text-gray-400 hover:text-red-500"><X className="h-3.5 w-3.5" /></button></div>) : (<p className="text-[10px] text-gray-400 mt-1">Clique para selecionar</p>)}
-                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => { if (e.target.files?.[0]) setDocBack(e.target.files[0]); }} className="hidden" id="doc-back" />
+                    {form.docBackUrl ? (
+                      <div className="mt-1.5 flex items-center justify-center gap-1">
+                        <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                        <span className="text-xs text-green-700 truncate max-w-[150px]">Enviado</span>
+                        <button onClick={e => { e.stopPropagation(); updateField('docBackUrl', ''); }} className="ml-1 text-gray-400 hover:text-red-500">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-gray-400 mt-1">{uploadingBack ? 'A enviar...' : 'Clique para selecionar'}</p>
+                    )}
+                    <input type="file" accept=".jpg,.jpeg,.png,.pdf" onChange={e => { if (e.target.files?.[0]) handleDocBackUpload(e.target.files[0]); }} className="hidden" id="doc-back" disabled={uploadingBack} />
                   </div>
                 </div>
+                <FieldError field="docFront" />
+                <FieldError field="docBack" />
                 <p className="text-[10px] text-gray-400 mt-1.5">Formatos: JPG, PNG, PDF (máx. 5MB)</p>
               </div>
 
