@@ -46,13 +46,15 @@ const StablePDFViewer = React.memo(({
     pageNumber,
     numPages,
     setNumPages,
-    setPageNumber
+    setPageNumber,
+    containerRef
 }: {
     file: string,
     pageNumber: number,
     numPages: number,
     setNumPages: (n: number) => void,
-    setPageNumber: (n: number) => void
+    setPageNumber: (n: number) => void,
+    containerRef?: React.RefObject<HTMLDivElement>
 }) => {
     const onDocumentLoadSuccess = React.useCallback(({ numPages }: { numPages: number }) => {
         setNumPages(numPages);
@@ -70,13 +72,15 @@ const StablePDFViewer = React.memo(({
                 Erro ao carregar o PDF. Por favor, tente recarregar a página.
             </div>}
         >
-            <Page
-                pageNumber={pageNumber}
-                renderTextLayer={false}
-                renderAnnotationLayer={false}
-                width={Math.min(window.innerWidth - 32, 800)}
-                className="border border-gray-100"
-            />
+            <div ref={containerRef}>
+                <Page
+                    pageNumber={pageNumber}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                    width={Math.min(window.innerWidth - 32, 800)}
+                    className="border border-gray-100"
+                />
+            </div>
         </Document>
     );
 });
@@ -153,6 +157,8 @@ const ContractModule = () => {
     const [numPages, setNumPages] = useState<number>(0);
     const [pageNumber, setPageNumber] = useState(1);
     const pdfWrapperRef = useRef<HTMLDivElement>(null);
+    const pdfPageRef = useRef<HTMLDivElement>(null);
+    const sigImageRef = useRef<HTMLImageElement>(null);
 
     useEffect(() => { if (user) loadContracts(); }, [user]);
 
@@ -247,12 +253,29 @@ const ContractModule = () => {
     };
 
     const signContract = async () => {
-        if (!selectedContract || !user || !signatureImage) return;
+        if (!selectedContract || !user) return;
+        if (!signatureImage) {
+            toast({ title: 'Aviso', description: 'Por favor, desenhe a sua assinatura primeiro.', variant: 'destructive' });
+            return;
+        }
+        if (!agreedToTerms) {
+            toast({ title: 'Aviso', description: 'Deve concordar com os termos para continuar.', variant: 'destructive' });
+            return;
+        }
+
         setSaving(true);
+        toast({ title: 'A processar...', description: 'A aplicar a assinatura no documento.' });
+
         try {
-            // Convert dataurl to blob to upload signature png to storage
-            const resData = await fetch(signatureImage);
-            const blob = await resData.blob();
+            // Convert dataurl to blob directly (more resilient on mobile than fetch)
+            const byteString = atob(signatureImage.split(',')[1]);
+            const mimeString = signatureImage.split(',')[0].split(':')[1].split(';')[0];
+            const ab = new ArrayBuffer(byteString.length);
+            const ia = new Uint8Array(ab);
+            for (let i = 0; i < byteString.length; i++) {
+                ia[i] = byteString.charCodeAt(i);
+            }
+            const blob = new Blob([ab], { type: mimeString });
 
             const timestamp = Date.now();
             const path = `${user.id}/${selectedContract.id}_${timestamp}.png`;
@@ -283,9 +306,9 @@ const ContractModule = () => {
             let finalWidth = pngImage.scale(0.2).width;
             let finalHeight = pngImage.scale(0.2).height;
 
-            // Find actual rendered DOM elements to compute exact visual relative position
-            const pageElement = document.querySelector('.react-pdf__Page') as HTMLElement;
-            const sigImageElement = document.querySelector('.draggable-signature img') as HTMLElement;
+            // Find actual rendered DOM elements using REFS instead of querySelector (more reliable)
+            const pageElement = pdfPageRef.current;
+            const sigImageElement = sigImageRef.current;
 
             if (pageElement && sigImageElement) {
                 const pageRect = pageElement.getBoundingClientRect();
@@ -308,9 +331,10 @@ const ContractModule = () => {
                 pdfY = pdfHeight - pointOffsetY;
 
                 // Calculate the responsive width and height in points
-                const renderedScale = sigScale / 60; // Base was 60px
                 finalWidth = sigRect.width * scaleX;
                 finalHeight = sigRect.height * scaleY;
+            } else {
+                console.warn("[PDF] Ref elements not found, using fallback positions");
             }
 
             targetPage.drawImage(pngImage, {
@@ -550,6 +574,7 @@ const ContractModule = () => {
                                             numPages={numPages}
                                             setNumPages={setNumPages}
                                             setPageNumber={setPageNumber}
+                                            containerRef={pdfPageRef}
                                         />
                                     )}
 
@@ -566,6 +591,7 @@ const ContractModule = () => {
                                         >
                                             <div className="absolute -top-3 -right-3 bg-[#d37c22] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow opacity-0 group-hover:opacity-100 transition-opacity">Arraste-me</div>
                                             <img
+                                                ref={sigImageRef}
                                                 src={signatureImage!}
                                                 alt="Sua Assinatura"
                                                 style={{ height: `${sigScale}px`, opacity: 0.95 }}
@@ -581,30 +607,50 @@ const ContractModule = () => {
 
                         <Card className="border-0 shadow-lg border-t-4 border-t-[#d37c22]">
                             <CardContent className="p-6">
-                                <div className="flex items-start gap-3 bg-amber-50/50 rounded-xl p-4 border border-amber-100">
+                                <div
+                                    className="flex items-start gap-3 bg-amber-50/50 rounded-xl p-4 border border-amber-100 cursor-pointer active:bg-amber-100/50 transition-colors"
+                                    onClick={() => setAgreedToTerms(!agreedToTerms)}
+                                >
                                     <Checkbox
                                         id="terms_agree"
                                         checked={agreedToTerms}
                                         onCheckedChange={(v) => setAgreedToTerms(v === true)}
                                         className="mt-1 h-5 w-5 border-2 data-[state=checked]:bg-[#1a3a5c] data-[state=checked]:border-[#1a3a5c]"
+                                        onClick={(e) => e.stopPropagation()}
                                     />
-                                    <div>
-                                        <label htmlFor="terms_agree" className="text-base font-bold cursor-pointer text-[#1a3a5c]">
-                                            Li e concordo com os termos do contrato *
+                                    <div className="select-none">
+                                        <label htmlFor="terms_agree" className="text-base font-bold cursor-pointer text-[#1a3a5c] block">
+                                            Li e concordo com os termos *
                                         </label>
                                         <p className="text-sm text-gray-600 mt-1 leading-relaxed">
-                                            Declaro que li atentamente todas as cláusulas deste contrato e aceito as condições de forma livre e esclarecida. A minha assinatura digital aposta acima tem validade legal.
+                                            A minha assinatura digital tem validade legal.
                                         </p>
                                     </div>
                                 </div>
 
                                 <div className="flex flex-col sm:flex-row items-center gap-3 mt-6">
-                                    <Button variant="outline" onClick={() => { setSignatureImage(null); setAgreedToTerms(false); }} className="w-full sm:w-1/3 h-14 text-gray-600 border-gray-300">
-                                        Limpar e Redesenhar
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        onClick={() => { setSignatureImage(null); setAgreedToTerms(false); }}
+                                        className="w-full sm:w-1/3 h-14 text-gray-600 border-gray-300 cursor-pointer"
+                                    >
+                                        <button type="button">Limpar e Redesenhar</button>
                                     </Button>
-                                    <Button onClick={signContract} disabled={saving || !agreedToTerms} className="w-full sm:w-2/3 h-14 text-white font-bold text-lg shadow-lg bg-[#1a3a5c] hover:bg-[#122a44] transition-all">
+                                    <Button
+                                        onClick={(e) => {
+                                            console.log("[Sign] Finalize button clicked");
+                                            signContract();
+                                        }}
+                                        disabled={saving}
+                                        className={cn(
+                                            "w-full sm:w-2/3 h-14 text-white font-bold text-lg shadow-lg transition-all",
+                                            saving ? "bg-gray-400" : "bg-[#1a3a5c] hover:bg-[#122a44]"
+                                        )}
+                                        type="button"
+                                    >
                                         {saving ? <RefreshCw className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle className="h-5 w-5 mr-2" />}
-                                        {saving ? 'A Guardar Documento...' : 'Finalizar Assinatura'}
+                                        {saving ? 'A Guardar...' : 'Finalizar Assinatura'}
                                     </Button>
                                 </div>
                             </CardContent>
