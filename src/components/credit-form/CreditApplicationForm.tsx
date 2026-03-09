@@ -26,44 +26,68 @@ const FULL_STEPS = [
 ];
 
 // Compress image before upload to prevent "Failed to fetch" from large files
-const compressImage = (file: File, maxWidth = 1200, quality = 0.7): Promise<File> => {
+// Compress image before upload to prevent "Failed to fetch" from large files
+const compressImage = (file: File, maxWidth = 1024, quality = 0.6): Promise<File> => {
   return new Promise((resolve) => {
-    // If not an image or already small, return as-is
-    if (!file.type.startsWith('image/') || file.size < 500_000) {
+    // If not an image, return as-is
+    if (!file.type.startsWith('image/')) {
       resolve(file);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        let { width, height } = img;
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
-            } else {
-              resolve(file);
-            }
-          },
-          'image/jpeg',
-          quality
-        );
-      };
-      img.onerror = () => resolve(file);
-      img.src = e.target?.result as string;
+
+    // If it's already an image and relatively small (< 600KB), return as-is
+    if (file.size < 600_000) {
+      resolve(file);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      const canvas = document.createElement('canvas');
+      let { width, height } = img;
+
+      // Reduce dimensions if too large for mobile memory
+      if (width > maxWidth) {
+        height = (height * maxWidth) / width;
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+      canvas.toBlob(
+        (blob) => {
+          if (blob) {
+            // Renaming to .jpg for maximum compatibility
+            const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        },
+        'image/jpeg',
+        quality
+      );
     };
-    reader.onerror = () => resolve(file);
-    reader.readAsDataURL(file);
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(file);
+    };
+
+    img.src = objectUrl;
   });
 };
 
@@ -300,10 +324,27 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       const userId = user?.id || 'guest';
       const path = `${userId}/${side}_${Date.now()}.${ext}`;
 
-      const { error } = await supabase.storage.from('chat-files').upload(path, compressed);
+      const { error } = await supabase.storage.from('chat-files').upload(path, compressed, {
+        contentType: compressed.type,
+        upsert: true
+      });
       if (error) {
-        console.warn(`Upload ${side} failed:`, error.message);
-        toast({ title: "Erro no upload", description: `Não foi possível enviar a foto ${side}.`, variant: "destructive" });
+        console.warn(`Upload ${side} failed:`, error.message, error);
+
+        let errorMsg = "Não foi possível enviar a foto.";
+        if (error.message.includes('Payload too large') || (compressed.size > 5 * 1024 * 1024)) {
+          errorMsg = "A foto é demasiado grande (>5MB). Tente tirar outra foto ou reduzir o tamanho.";
+        } else if (error.message.includes('storage/quota-exceeded')) {
+          errorMsg = "Limite de armazenamento atingido.";
+        } else {
+          errorMsg = `Erro: ${error.message}`;
+        }
+
+        toast({
+          title: "Erro no upload",
+          description: errorMsg,
+          variant: "destructive"
+        });
         return null;
       }
 
