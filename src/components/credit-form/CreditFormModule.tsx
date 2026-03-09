@@ -30,7 +30,7 @@ const CreditFormModule = () => {
         .from('clients')
         .select('id, id_number, phone, address')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (client) {
         setHasCompletedProfile(!!(client.id_number && client.phone));

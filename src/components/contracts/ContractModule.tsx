@@ -757,7 +757,7 @@ const ContractModule = () => {
                                                     .from('clients')
                                                     .select('id')
                                                     .eq('user_id', selectedContract.client_id)
-                                                    .single();
+                                                    .maybeSingle();
 
                                                 if (!clientRecord) {
                                                     toast({ title: 'Aviso', description: 'Registo de Cliente não encontrado para este utilizador. Crie um perfil de cliente primeiro.', variant: 'destructive' });

@@ -666,7 +666,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
             const isCompleted = currentStep > step.id;
             const StepIcon = step.icon;
             return (
-              <React.Fragment key={step.id}>
+              <div key={step.id} style={{ display: 'contents' }}>
                 <div className="flex flex-col items-center z-10 relative">
                   <button onClick={() => { if (isCompleted) setCurrentStep(step.id); }}
                     className={`w-11 h-11 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all duration-300 shadow-sm ${isCompleted ? 'bg-[#1b5e20] text-white shadow-md cursor-pointer hover:scale-105' : isActive ? 'bg-white border-2 border-[#1b5e20] text-[#1b5e20] shadow-lg scale-105' : 'bg-gray-100 text-gray-400 border border-gray-200 cursor-default'}`}>
@@ -681,7 +681,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                     </div>
                   </div>
                 )}
-              </React.Fragment>
+              </div>
             );
           })}
         </div>
