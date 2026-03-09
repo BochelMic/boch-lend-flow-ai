@@ -59,5 +59,13 @@ BEGIN
     -- 9. Delete Client records
     DELETE FROM public.clients 
     WHERE id = ANY(client_ids);
+
+    -- 10. Finally Delete Auth Users (requires SECURITY DEFINER)
+    -- This will also trigger cascading deletes in profiles and user_roles 
+    -- if not already deleted by the steps above.
+    IF client_user_ids IS NOT NULL THEN
+        DELETE FROM auth.users 
+        WHERE id = ANY(client_user_ids);
+    END IF;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

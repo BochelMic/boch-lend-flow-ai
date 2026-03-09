@@ -250,37 +250,6 @@ const AdminDashboard = () => {
             </Card>
           </div>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Alertas de Segurança</CardTitle>
-              <CardDescription>
-                Notificações importantes sobre a segurança do sistema
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-yellow-50">
-                  <div>
-                    <p className="font-medium">Acesso Não Autorizado</p>
-                    <p className="text-sm text-gray-600">
-                      Tentativa de acesso detectada em 15/03/2024
-                    </p>
-                  </div>
-                  <AlertTriangle className="h-6 w-6 text-yellow-600" />
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-red-50">
-                  <div>
-                    <p className="font-medium">Vulnerabilidade Encontrada</p>
-                    <p className="text-sm text-gray-600">
-                      Risco de segurança identificado no módulo de pagamentos
-                    </p>
-                  </div>
-                  <Shield className="h-6 w-6 text-red-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="clients" className="space-y-6">

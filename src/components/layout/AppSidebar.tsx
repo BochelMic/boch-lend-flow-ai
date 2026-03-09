@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -55,20 +55,21 @@ export function AppSidebar() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   // Fetch avatar on mount if we have a user
-  useState(() => {
+  useEffect(() => {
     if (user?.id) {
       supabase
         .from('profiles')
-        .select('avatar_url')
+        .select('*') // Using * to be safe against missing avatar_url column
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle() // Safer than single()
         .then(({ data }) => {
-          if (data?.avatar_url) {
-            setProfilePhoto(data.avatar_url);
+          if (data && (data as any).avatar_url) {
+            setProfilePhoto((data as any).avatar_url);
           }
-        });
+        })
+        .catch(err => console.error("[Sidebar] Error fetching profile:", err));
     }
-  });
+  }, [user?.id]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

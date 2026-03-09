@@ -38,7 +38,7 @@ export const useClientAccess = () => {
         .from('clients')
         .select('id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (!clientRecord) {
         // Cliente sem registro, acesso bloqueado

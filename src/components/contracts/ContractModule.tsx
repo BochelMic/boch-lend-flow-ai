@@ -37,6 +37,47 @@ interface Contract {
     created_at: string;
 }
 
+// Optimized PDF Viewer to avoid flicker or disappearance during state updates (like dragging)
+const StablePDFViewer = React.memo(({
+    file,
+    pageNumber,
+    numPages,
+    setNumPages,
+    setPageNumber
+}: {
+    file: string,
+    pageNumber: number,
+    numPages: number,
+    setNumPages: (n: number) => void,
+    setPageNumber: (n: number) => void
+}) => {
+    const onDocumentLoadSuccess = React.useCallback(({ numPages }: { numPages: number }) => {
+        setNumPages(numPages);
+        // Only set page if we don't have one yet or if it exceeds new bounds
+        setPageNumber(prev => Math.min(prev || numPages, numPages));
+    }, [setNumPages, setPageNumber]);
+
+    return (
+        <Document
+            file={file}
+            onLoadSuccess={onDocumentLoadSuccess}
+            loading={<div className="p-12 text-center text-gray-500"><RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" /> A carregar documento...</div>}
+            error={<div className="p-12 text-center text-red-500 bg-red-50 rounded-lg border border-red-100">
+                <AlertTriangle className="h-8 w-8 mx-auto mb-2" />
+                Erro ao carregar o PDF. Por favor, tente recarregar a página.
+            </div>}
+        >
+            <Page
+                pageNumber={pageNumber}
+                renderTextLayer={false}
+                renderAnnotationLayer={false}
+                width={Math.min(window.innerWidth - 32, 800)}
+                className="border border-gray-100"
+            />
+        </Document>
+    );
+});
+
 const ContractModule = () => {
     const { user } = useAuth();
     const { toast } = useToast();
@@ -71,15 +112,32 @@ const ContractModule = () => {
             let url = "/contrato-bochel.pdf";
             const currentUrl = selectedContract.contract_url;
 
-            if (currentUrl && !currentUrl.includes('/signatures/')) {
-                url = currentUrl;
+            // Se o contrato é PENDENTE, o contract_url (se existir) é o "original" (customizado pelo admin)
+            if (selectedContract.status === 'pending') {
+                url = currentUrl || "/contrato-bochel.pdf";
             } else {
-                // If no signed contract URL yet, use the generated public URL for the template or default
-                const customUrl = supabase.storage.from('contracts').getPublicUrl(`${selectedContract.id}.pdf`).data.publicUrl;
-                // Removed HEAD check that causes 400 errors in console
-                url = customUrl;
+                // Se já está ASSINADO, o contract_url aponta para o documento assinado. 
+                // Para "Refazer Assinatura", precisamos do documento original (limpo).
+                // Verificamos se existe um PDF personalizado no bucket 'contracts' (salvo como ID.pdf)
+                try {
+                    const { data: originalFiles } = await supabase.storage.from('contracts').list('', {
+                        search: `${selectedContract.id}.pdf`
+                    });
+
+                    if (originalFiles && originalFiles.length > 0) {
+                        const { data } = supabase.storage.from('contracts').getPublicUrl(`${selectedContract.id}.pdf`);
+                        url = data.publicUrl;
+                    } else {
+                        // Se não há PDF personalizado, volta para o modelo base do sistema
+                        url = "/contrato-bochel.pdf";
+                    }
+                } catch (err) {
+                    console.log("[PDF] Erro ao buscar contrato original ou arquivo não existe. Usando padrão.");
+                    url = "/contrato-bochel.pdf";
+                }
             }
 
+            console.log("[PDF] Resolved ORIGINAL BASE for signing:", selectedContract.id, "->", url);
             setBasePdfUrl(url);
             setResolvingPdf(false);
         };
@@ -212,32 +270,30 @@ const ContractModule = () => {
             const sigBytes = await blob.arrayBuffer();
             const pngImage = await pdfDoc.embedPng(sigBytes);
             // Default scale for signature, adjusted for realism
-            const pngDims = pngImage.scale(0.20);
-
             const pages = pdfDoc.getPages();
             const targetPage = pages[pageNumber - 1] || pages[pages.length - 1]; // Embed onto the current viewed page
-
-            // Calculate coordinates
             const { width: pdfWidth, height: pdfHeight } = targetPage.getSize();
 
             let pdfX = 50;
             let pdfY = 50;
+            let finalWidth = pngImage.scale(0.2).width;
+            let finalHeight = pngImage.scale(0.2).height;
 
             // Find actual rendered DOM elements to compute exact visual relative position
             const pageElement = document.querySelector('.react-pdf__Page') as HTMLElement;
-            const sigElement = document.querySelector('.draggable-signature') as HTMLElement;
+            const sigImageElement = document.querySelector('.draggable-signature img') as HTMLElement;
 
-            if (pageElement && sigElement) {
+            if (pageElement && sigImageElement) {
                 const pageRect = pageElement.getBoundingClientRect();
-                const sigRect = sigElement.getBoundingClientRect();
-
-                // Compute exact X/Y offset in pixels from top-left of the page
-                const offsetX = sigRect.left - pageRect.left;
-                const offsetY = sigRect.top - pageRect.top;
+                const sigRect = sigImageElement.getBoundingClientRect();
 
                 // Compute scaling ratio from UI pixels to PDF points
                 const scaleX = pdfWidth / pageRect.width;
                 const scaleY = pdfHeight / pageRect.height;
+
+                // Compute exact X/Y offset in pixels from top-left of the page
+                const offsetX = sigRect.left - pageRect.left;
+                const offsetY = sigRect.top - pageRect.top;
 
                 // Translate UI pixel offset to PDF points offset
                 pdfX = offsetX * scaleX;
@@ -246,13 +302,17 @@ const ContractModule = () => {
                 // We use sigRect.height to position the image so its top matches the dragged top.
                 const pointOffsetY = (offsetY + sigRect.height) * scaleY;
                 pdfY = pdfHeight - pointOffsetY;
+
+                // Calculate the responsive width and height in points
+                finalWidth = sigRect.width * scaleX;
+                finalHeight = sigRect.height * scaleY;
             }
 
             targetPage.drawImage(pngImage, {
                 x: pdfX,
                 y: pdfY,
-                width: pngDims.width,
-                height: pngDims.height,
+                width: finalWidth,
+                height: finalHeight,
             });
 
             // Save PDF physically and upload
@@ -433,6 +493,7 @@ const ContractModule = () => {
                             </div>
 
                             <div className="relative bg-gray-200 p-2 md:p-6 flex justify-center overflow-auto" style={{ minHeight: '60vh' }}>
+                                {/* Optimization: Stable PDF Viewer to prevent disappearance during dragging */}
                                 <div className="relative shadow-2xl bg-white" ref={pdfWrapperRef}>
                                     {resolvingPdf ? (
                                         <div className="p-12 text-center text-gray-500 h-[600px] flex flex-col justify-center items-center">
@@ -440,19 +501,13 @@ const ContractModule = () => {
                                             <span>A preparar documento original...</span>
                                         </div>
                                     ) : (
-                                        <Document
+                                        <StablePDFViewer
                                             file={basePdfUrl}
-                                            onLoadSuccess={({ numPages }) => { setNumPages(numPages); setPageNumber(numPages); }}
-                                            loading={<div className="p-12 text-center text-gray-500"><RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" /> A carregar documento...</div>}
-                                        >
-                                            <Page
-                                                pageNumber={pageNumber}
-                                                renderTextLayer={false}
-                                                renderAnnotationLayer={false}
-                                                width={Math.min(window.innerWidth - 32, 800)}
-                                                className="border border-gray-100"
-                                            />
-                                        </Document>
+                                            pageNumber={pageNumber}
+                                            numPages={numPages}
+                                            setNumPages={setNumPages}
+                                            setPageNumber={setPageNumber}
+                                        />
                                     )}
 
                                     {/* Draggable Signature */}
@@ -555,19 +610,13 @@ const ContractModule = () => {
 
                             <div className="flex justify-center bg-gray-200 p-4 md:p-8 overflow-auto" style={{ maxHeight: '60vh' }}>
                                 <div className="shadow-2xl bg-white">
-                                    <Document
+                                    <StablePDFViewer
                                         file={selectedContract.contract_url || "/contrato-bochel.pdf"}
-                                        onLoadSuccess={({ numPages }) => { setNumPages(numPages); setPageNumber(1); }}
-                                        loading={<div className="p-12 text-center text-gray-500"><RefreshCw className="h-6 w-6 animate-spin mx-auto mb-3" /> A carregar contrato...</div>}
-                                    >
-                                        <Page
-                                            pageNumber={pageNumber}
-                                            renderTextLayer={false}
-                                            renderAnnotationLayer={false}
-                                            width={Math.min(window.innerWidth - 32, 800)}
-                                            className="border border-gray-100"
-                                        />
-                                    </Document>
+                                        pageNumber={pageNumber}
+                                        numPages={numPages}
+                                        setNumPages={setNumPages}
+                                        setPageNumber={setPageNumber}
+                                    />
                                 </div>
                             </div>
                         </div>
