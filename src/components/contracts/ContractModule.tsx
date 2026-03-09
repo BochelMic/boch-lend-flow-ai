@@ -59,6 +59,36 @@ const ContractModule = () => {
     const [sigPos, setSigPos] = useState({ x: 50, y: 50 }); // Draggable position
     const [inkColor, setInkColor] = useState('#0000a0'); // Default to Bic Blue
 
+    const [basePdfUrl, setBasePdfUrl] = useState<string>("/contrato-bochel.pdf");
+    const [resolvingPdf, setResolvingPdf] = useState(false);
+
+    useEffect(() => {
+        const resolveBaseUrl = async () => {
+            if (!selectedContract) return;
+            setResolvingPdf(true);
+
+            let url = "/contrato-bochel.pdf";
+            const currentUrl = selectedContract.contract_url;
+
+            if (currentUrl && !currentUrl.includes('/signatures/')) {
+                url = currentUrl;
+            } else {
+                const customUrl = supabase.storage.from('contracts').getPublicUrl(`${selectedContract.id}.pdf`).data.publicUrl;
+                try {
+                    const res = await fetch(customUrl, { method: 'HEAD' });
+                    if (res.ok) {
+                        url = customUrl;
+                    }
+                } catch (e) { }
+            }
+
+            setBasePdfUrl(url);
+            setResolvingPdf(false);
+        };
+
+        resolveBaseUrl();
+    }, [selectedContract]);
+
     // PDF Viewer State
     const [numPages, setNumPages] = useState<number>(0);
     const [pageNumber, setPageNumber] = useState(1);
@@ -172,24 +202,7 @@ const ContractModule = () => {
             const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(path);
 
             // Fetch existing PDF (ALWAYS get the original unsigned blueprint, never a previously signed one)
-            let pdfUrl = "/contrato-bochel.pdf"; // Default fallback
-
-            // The original admin uploaded PDF is always saved as exactly "{contract.id}.pdf" in the contracts bucket.
-            // If selectedContract.contract_url contains 'signatures', it means it's an already signed version
-            // which we DO NOT want to use as a base for a re-sign.
-            if (selectedContract.contract_url && !selectedContract.contract_url.includes('/signatures/')) {
-                pdfUrl = selectedContract.contract_url;
-            } else if (selectedContract.status === 'signed') {
-                // If it was signed, get the original unsigned one explicitly
-                const { data: originalUrl } = supabase.storage.from('contracts').getPublicUrl(`${selectedContract.id}.pdf`);
-                // Check if it exists by doing a quick HEAD request, if not fallback to default
-                try {
-                    const check = await fetch(originalUrl.publicUrl, { method: 'HEAD' });
-                    if (check.ok) pdfUrl = originalUrl.publicUrl;
-                } catch (e) { /* ignore and use default */ }
-            } else if (selectedContract.contract_url) {
-                pdfUrl = selectedContract.contract_url;
-            }
+            const pdfUrl = basePdfUrl;
 
             // Append timestamp to bypass browser cache
             const cacheBuster = `?t=${new Date().getTime()}`;
@@ -423,19 +436,26 @@ const ContractModule = () => {
 
                             <div className="relative bg-gray-200 p-2 md:p-6 flex justify-center overflow-auto" style={{ minHeight: '60vh' }}>
                                 <div className="relative shadow-2xl bg-white" ref={pdfWrapperRef}>
-                                    <Document
-                                        file={selectedContract?.contract_url || "/contrato-bochel.pdf"}
-                                        onLoadSuccess={({ numPages }) => { setNumPages(numPages); setPageNumber(numPages); }}
-                                        loading={<div className="p-12 text-center text-gray-500"><RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" /> A carregar documento...</div>}
-                                    >
-                                        <Page
-                                            pageNumber={pageNumber}
-                                            renderTextLayer={false}
-                                            renderAnnotationLayer={false}
-                                            width={Math.min(window.innerWidth - 32, 800)}
-                                            className="border border-gray-100"
-                                        />
-                                    </Document>
+                                    {resolvingPdf ? (
+                                        <div className="p-12 text-center text-gray-500 h-[600px] flex flex-col justify-center items-center">
+                                            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" />
+                                            <span>A preparar documento original...</span>
+                                        </div>
+                                    ) : (
+                                        <Document
+                                            file={basePdfUrl}
+                                            onLoadSuccess={({ numPages }) => { setNumPages(numPages); setPageNumber(numPages); }}
+                                            loading={<div className="p-12 text-center text-gray-500"><RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4" /> A carregar documento...</div>}
+                                        >
+                                            <Page
+                                                pageNumber={pageNumber}
+                                                renderTextLayer={false}
+                                                renderAnnotationLayer={false}
+                                                width={Math.min(window.innerWidth - 32, 800)}
+                                                className="border border-gray-100"
+                                            />
+                                        </Document>
+                                    )}
 
                                     {/* Draggable Signature */}
                                     <Draggable position={sigPos} onDrag={handleDrag} bounds="parent">
