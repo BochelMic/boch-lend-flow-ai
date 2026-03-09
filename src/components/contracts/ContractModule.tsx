@@ -182,26 +182,40 @@ const ContractModule = () => {
             const pngDims = pngImage.scale(0.20);
 
             const pages = pdfDoc.getPages();
-            const lastPage = pages[pages.length - 1]; // Embed onto the last page
+            const targetPage = pages[pageNumber - 1] || pages[pages.length - 1]; // Embed onto the current viewed page
 
             // Calculate coordinates
-            // Assuming the PDF viewer renders at native react-pdf scale roughly equal to PDF points
-            const { width, height } = lastPage.getSize();
-            // Optional: ratio if we know the display rect width vs PDF rect width
-            let scaleRatio = 1;
-            if (pdfWrapperRef.current) {
-                const uiWidth = pdfWrapperRef.current.getBoundingClientRect().width;
-                scaleRatio = width / uiWidth;
+            const { width: pdfWidth, height: pdfHeight } = targetPage.getSize();
+
+            let pdfX = 50;
+            let pdfY = 50;
+
+            // Find actual rendered DOM elements to compute exact visual relative position
+            const pageElement = document.querySelector('.react-pdf__Page') as HTMLElement;
+            const sigElement = document.querySelector('.draggable-signature') as HTMLElement;
+
+            if (pageElement && sigElement) {
+                const pageRect = pageElement.getBoundingClientRect();
+                const sigRect = sigElement.getBoundingClientRect();
+
+                // Compute exact X/Y offset in pixels from top-left of the page
+                const offsetX = sigRect.left - pageRect.left;
+                const offsetY = sigRect.top - pageRect.top;
+
+                // Compute scaling ratio from UI pixels to PDF points
+                const scaleX = pdfWidth / pageRect.width;
+                const scaleY = pdfHeight / pageRect.height;
+
+                // Translate UI pixel offset to PDF points offset
+                pdfX = offsetX * scaleX;
+
+                // For Y: UI (0=top), PDF (0=bottom). 
+                // We use sigRect.height to position the image so its top matches the dragged top.
+                const pointOffsetY = (offsetY + sigRect.height) * scaleY;
+                pdfY = pdfHeight - pointOffsetY;
             }
 
-            // UI coordinates translation
-            // pdf-lib Y starts differently from bottom-left (0,0)
-            const pdfX = sigPos.x * scaleRatio;
-            // pdfY must subtract the height of the signature so it doesn't draw above cursor
-            const uiSigHeight = 60; // approximate signature div height in px
-            const pdfY = height - ((sigPos.y + uiSigHeight) * scaleRatio);
-
-            lastPage.drawImage(pngImage, {
+            targetPage.drawImage(pngImage, {
                 x: pdfX,
                 y: pdfY,
                 width: pngDims.width,
@@ -403,7 +417,7 @@ const ContractModule = () => {
 
                                     {/* Draggable Signature */}
                                     <Draggable position={sigPos} onDrag={handleDrag} bounds="parent">
-                                        <div className="absolute top-0 left-0 cursor-move border-2 border-dashed border-[#d37c22] bg-white/40 p-1 rounded z-50 shadow-sm touch-none transition-colors hover:bg-white/60">
+                                        <div className="draggable-signature absolute top-0 left-0 cursor-move border-2 border-dashed border-[#d37c22] bg-white/40 p-1 rounded z-50 shadow-sm touch-none transition-colors hover:bg-white/60">
                                             <div className="absolute -top-3 -right-3 bg-[#d37c22] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow">Arraste-me</div>
                                             <img src={signatureImage!} alt="Sua Assinatura" style={{ height: '60px', opacity: 0.95 }} draggable={false} className="touch-none pointer-events-none" />
                                         </div>
