@@ -22,8 +22,9 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     FileText, PenLine, Check, Download, RefreshCw,
-    ChevronLeft, Eraser, CheckCircle, Clock, AlertTriangle, User, ChevronRight
+    ChevronLeft, Eraser, CheckCircle, Clock, AlertTriangle, User, ChevronRight, Maximize2
 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 
 interface Contract {
     id: string;
@@ -98,6 +99,7 @@ const ContractModule = () => {
     const [hasSignature, setHasSignature] = useState(false);
     const [signatureImage, setSignatureImage] = useState<string | null>(null);
     const [sigPos, setSigPos] = useState({ x: 50, y: 50 }); // Draggable position
+    const [sigScale, setSigScale] = useState(60); // Signature height in pixels
     const [inkColor, setInkColor] = useState('#0000a0'); // Default to Bic Blue
     const draggableRef = useRef<HTMLDivElement>(null);
 
@@ -304,6 +306,7 @@ const ContractModule = () => {
                 pdfY = pdfHeight - pointOffsetY;
 
                 // Calculate the responsive width and height in points
+                const renderedScale = sigScale / 60; // Base was 60px
                 finalWidth = sigRect.width * scaleX;
                 finalHeight = sigRect.height * scaleY;
             }
@@ -519,13 +522,38 @@ const ContractModule = () => {
                                     >
                                         <div
                                             ref={draggableRef}
-                                            className="draggable-signature absolute top-0 left-0 cursor-move border-2 border-dashed border-[#d37c22] bg-white/40 p-1 rounded z-50 shadow-sm touch-none transition-colors hover:bg-white/60"
+                                            className="draggable-signature absolute top-0 left-0 cursor-move border-2 border-dashed border-[#d37c22] bg-white/40 p-1 rounded z-50 shadow-sm touch-none transition-all hover:bg-white/60 group"
                                         >
-                                            <div className="absolute -top-3 -right-3 bg-[#d37c22] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow">Arraste-me</div>
-                                            <img src={signatureImage!} alt="Sua Assinatura" style={{ height: '60px', opacity: 0.95 }} draggable={false} className="touch-none pointer-events-none" />
+                                            <div className="absolute -top-3 -right-3 bg-[#d37c22] text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold shadow opacity-0 group-hover:opacity-100 transition-opacity">Arraste-me</div>
+                                            <img
+                                                src={signatureImage!}
+                                                alt="Sua Assinatura"
+                                                style={{ height: `${sigScale}px`, opacity: 0.95 }}
+                                                draggable={false}
+                                                className="touch-none pointer-events-none w-auto max-w-none"
+                                            />
                                         </div>
                                     </Draggable>
                                 </div>
+                            </div>
+
+                            {/* Scaling Control */}
+                            <div className="p-4 bg-white border-t border-b flex items-center gap-6">
+                                <div className="flex items-center gap-2 text-[#1a3a5c]">
+                                    <Maximize2 className="h-4 w-4" />
+                                    <span className="text-sm font-bold whitespace-nowrap">Tamanho:</span>
+                                </div>
+                                <Slider
+                                    defaultValue={[sigScale]}
+                                    max={150}
+                                    min={30}
+                                    step={1}
+                                    onValueChange={(vals) => setSigScale(vals[0])}
+                                    className="flex-1"
+                                />
+                                <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded text-gray-600 min-w-[40px] text-center">
+                                    {Math.round((sigScale / 60) * 100)}%
+                                </span>
                             </div>
                         </Card>
 
