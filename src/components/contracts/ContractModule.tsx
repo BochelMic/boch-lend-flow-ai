@@ -22,7 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     FileText, PenLine, Check, Download, RefreshCw,
-    ChevronLeft, Eraser, CheckCircle, Clock, AlertTriangle
+    ChevronLeft, Eraser, CheckCircle, Clock, AlertTriangle, User, ChevronRight
 } from 'lucide-react';
 
 interface Contract {
@@ -209,14 +209,20 @@ const ContractModule = () => {
             });
 
             // Save PDF physically and upload
+            // We upload to the "signatures" bucket because we know the user has RLS policies allowing inserts here under their user.id
             const finalPdfBytes = await pdfDoc.save();
-            const signedPdfBlob = new Blob([finalPdfBytes], { type: 'application/pdf' });
+            const pdfPath = `${user.id}/signed_${selectedContract.id}_${timestamp}.pdf`;
 
-            const pdfPath = `signed_${selectedContract.id}_${timestamp}.pdf`;
-            const { error: pdfUploadErr } = await supabase.storage.from('contracts').upload(pdfPath, signedPdfBlob, { upsert: true });
+            const { error: pdfUploadErr } = await supabase.storage
+                .from('signatures')
+                .upload(pdfPath, finalPdfBytes, {
+                    contentType: 'application/pdf',
+                    upsert: true
+                });
+
             if (pdfUploadErr) throw pdfUploadErr;
 
-            const { data: pdfUrlData } = supabase.storage.from('contracts').getPublicUrl(pdfPath);
+            const { data: pdfUrlData } = supabase.storage.from('signatures').getPublicUrl(pdfPath);
 
             // Update DB with both signature image URL and the new interactive final PDF
             const { error } = await supabase.from('contracts').update({
@@ -249,7 +255,13 @@ const ContractModule = () => {
             setShowSigning(false);
             setSignatureImage(null);
             setAgreedToTerms(false);
-            setSelectedContract(null);
+            setSelectedContract({
+                ...selectedContract,
+                signature_url: urlData.publicUrl,
+                contract_url: pdfUrlData.publicUrl,
+                status: 'signed',
+                signed_at: new Date().toISOString()
+            });
             loadContracts();
         } catch (e: any) {
             toast({ title: 'Erro', description: e.message || 'Erro ao assinar.', variant: 'destructive' });
@@ -514,6 +526,27 @@ const ContractModule = () => {
                                     >
                                         <PenLine className="h-5 w-5 mr-3" /> Iniciar Assinatura Digital
                                     </Button>
+                                </div>
+                            )}
+
+                            {/* Client Success Feedback */}
+                            {!isAdmin && selectedContract.status === 'signed' && (
+                                <div className="border-2 border-green-100 rounded-2xl p-6 bg-green-50/50 text-center space-y-4">
+                                    <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-in zoom-in duration-300">
+                                        <CheckCircle className="h-8 w-8" />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-green-900">Contrato Assinado com Sucesso!</h3>
+                                    <p className="text-sm text-green-800 max-w-md mx-auto">
+                                        A sua assinatura legal foi aplicada. O documento foi guardado e a nossa equipa já foi notificada para confirmar o processo.
+                                    </p>
+                                    <Button onClick={() => handleDownloadPdf(selectedContract)} className="bg-green-700 hover:bg-green-800 text-white font-bold h-12 px-8 shadow-md mt-4">
+                                        <Download className="h-5 w-5 mr-2" /> Baixar Cópia do Contrato
+                                    </Button>
+                                    <div className="pt-2">
+                                        <Button variant="ghost" onClick={() => setSelectedContract(null)} className="text-gray-600 hover:bg-green-100">
+                                            Voltar à Minha Conta
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
 
