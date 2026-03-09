@@ -862,7 +862,6 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                     <input
                       type="file"
                       accept="image/*"
-                      capture="environment"
                       onChange={e => {
                         const file = e.target.files?.[0];
                         if (file) handleDocFrontUpload(file);
@@ -897,7 +896,6 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                     <input
                       type="file"
                       accept="image/*"
-                      capture="environment"
                       onChange={e => {
                         const file = e.target.files?.[0];
                         if (file) handleDocBackUpload(file);
