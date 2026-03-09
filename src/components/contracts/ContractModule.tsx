@@ -556,7 +556,10 @@ const ContractModule = () => {
                                     <Button onClick={() => handleDownloadPdf(selectedContract)} className="bg-green-700 hover:bg-green-800 text-white font-bold h-12 px-8 shadow-md mt-4">
                                         <Download className="h-5 w-5 mr-2" /> Baixar Cópia do Contrato
                                     </Button>
-                                    <div className="pt-2">
+                                    <div className="flex flex-col gap-2 pt-2">
+                                        <Button variant="outline" onClick={() => { setShowSigning(true); initCanvas(); setAgreedToTerms(false); }} className="border-green-200 text-green-700 hover:bg-green-50">
+                                            <PenLine className="h-4 w-4 mr-2" /> Refazer Assinatura (Teste de Posição)
+                                        </Button>
                                         <Button variant="ghost" onClick={() => setSelectedContract(null)} className="text-gray-600 hover:bg-green-100">
                                             Voltar à Minha Conta
                                         </Button>
