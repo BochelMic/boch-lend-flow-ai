@@ -512,54 +512,63 @@ const ContractModule = () => {
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-gray-50 border-b flex flex-col md:flex-row gap-4 items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.max(p - 1, 1))} disabled={pageNumber <= 1}>
+                            <div className="p-3 bg-gray-100 border-b space-y-3">
+                                {/* Navigation Row */}
+                                <div className="flex items-center justify-between gap-2">
+                                    <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.max(p - 1, 1))} disabled={pageNumber <= 1} className="h-10 px-4">
                                         <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
                                     </Button>
-                                    <span className="text-sm font-semibold text-gray-700 bg-white px-3 py-1 rounded-full shadow-sm min-w-[100px] text-center">
-                                        Pág {pageNumber} / {numPages || '--'}
-                                    </span>
-                                    <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.min(p + 1, numPages))} disabled={pageNumber >= numPages}>
+                                    <div className="bg-white px-4 py-1.5 rounded-full shadow-sm text-sm font-bold text-gray-700 border">
+                                        Pág {pageNumber} de {numPages || '--'}
+                                    </div>
+                                    <Button size="sm" variant="outline" onClick={() => setPageNumber(p => Math.min(p + 1, numPages))} disabled={pageNumber >= numPages} className="h-10 px-4">
                                         Próxima <ChevronRight className="h-4 w-4 ml-1" />
                                     </Button>
                                 </div>
 
-                                <div className="flex items-center gap-3 w-full md:w-auto bg-white p-2 rounded-lg border shadow-sm">
-                                    <div className="flex items-center gap-1.5 text-[#1a3a5c] mr-2">
+                                {/* Scaling Row - Always visible and separated */}
+                                <div className="bg-white p-3 rounded-xl border-2 border-blue-100 shadow-sm flex items-center gap-3 select-none">
+                                    <div className="flex items-center gap-2 text-[#1a3a5c] min-w-[80px]">
                                         <Maximize2 className="h-4 w-4" />
-                                        <span className="text-xs font-bold uppercase tracking-tight">Escala</span>
+                                        <span className="text-[10px] font-black uppercase tracking-tighter">Assinatura</span>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 rounded-md hover:bg-gray-100"
-                                        onClick={() => setSigScale(prev => Math.max(10, prev - 5))}
-                                    >
-                                        <Minus className="h-3 w-3" />
-                                    </Button>
-                                    <div className="w-24 md:w-32">
-                                        <Slider
-                                            value={[sigScale]}
-                                            max={200}
-                                            min={10}
-                                            step={1}
-                                            onValueChange={(vals) => setSigScale(vals[0])}
-                                            className="cursor-pointer"
-                                        />
+
+                                    <div className="flex-1 flex items-center gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            size="icon"
+                                            className="h-8 w-8 rounded-full border shadow-sm shrink-0"
+                                            onClick={() => setSigScale(prev => Math.max(10, prev - 5))}
+                                        >
+                                            <Minus className="h-3 w-3" />
+                                        </Button>
+
+                                        <div className="flex-1 px-1">
+                                            <Slider
+                                                value={[sigScale]}
+                                                max={200}
+                                                min={10}
+                                                step={1}
+                                                onValueChange={(vals) => setSigScale(vals[0])}
+                                                className="cursor-pointer"
+                                            />
+                                        </div>
+
+                                        <Button
+                                            variant="secondary"
+                                            size="icon"
+                                            className="h-8 w-8 rounded-full border shadow-sm shrink-0"
+                                            onClick={() => setSigScale(prev => Math.min(200, prev + 10))}
+                                        >
+                                            <Plus className="h-3 w-3" />
+                                        </Button>
                                     </div>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-7 w-7 rounded-md hover:bg-gray-100"
-                                        onClick={() => setSigScale(prev => Math.min(200, prev + 10))}
-                                    >
-                                        <Plus className="h-3 w-3" />
-                                    </Button>
-                                    <span className="text-[10px] font-mono font-bold bg-[#1a3a5c] text-white px-2 py-1 rounded ml-1 min-w-[45px] text-center">
+
+                                    <div className="bg-[#1a3a5c] text-white text-[10px] font-bold px-2 py-1 rounded min-w-[45px] text-center shadow-inner">
                                         {Math.round((sigScale / 60) * 100)}%
-                                    </span>
+                                    </div>
                                 </div>
+                                <div className="text-[8px] text-gray-300 text-right opacity-50 px-1 italic">v2.1-mobile-fix</div>
                             </div>
 
                             <div className="relative bg-gray-200 p-2 md:p-6 flex justify-center overflow-auto" style={{ minHeight: '60vh' }}>
