@@ -606,8 +606,8 @@ const ContractModule = () => {
                                             key={n}
                                             onClick={() => setLoanInstallments(n)}
                                             className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${loanInstallments === n
-                                                    ? 'bg-[#0b3a20] text-white shadow-md'
-                                                    : 'bg-white border border-gray-200 text-gray-600 hover:border-[#0b3a20]'
+                                                ? 'bg-[#0b3a20] text-white shadow-md'
+                                                : 'bg-white border border-gray-200 text-gray-600 hover:border-[#0b3a20]'
                                                 }`}
                                         >
                                             {n}x
@@ -618,7 +618,7 @@ const ContractModule = () => {
                                     <p className="text-xs text-gray-500">Prazo total: {loanInstallments * 30} dias ({loanInstallments} meses)</p>
                                 )}
                             </div>
-                        )}}
+                        )}
                     </CardContent>
                 </Card>
             </div>
