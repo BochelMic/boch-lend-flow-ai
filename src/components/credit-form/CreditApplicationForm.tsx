@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,48 @@ const FULL_STEPS = [
   { id: 3, title: 'Profissional', icon: Briefcase, color: '#388e3c' },
   { id: 4, title: 'Crédito', icon: CreditCard, color: '#43a047' },
 ];
+
+// Compress image before upload to prevent "Failed to fetch" from large files
+const compressImage = (file: File, maxWidth = 1200, quality = 0.7): Promise<File> => {
+  return new Promise((resolve) => {
+    // If not an image or already small, return as-is
+    if (!file.type.startsWith('image/') || file.size < 500_000) {
+      resolve(file);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }));
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+};
 
 const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationFormProps) => {
   // Initial form state constant
@@ -52,6 +94,9 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   const [docBack, setDocBack] = useState<File | null>(null);
   const { user } = useAuth();
 
+  // Prevent checkUserStatus from re-running on auth token refresh
+  const hasCheckedRef = useRef(false);
+
   // Business rules state
   const [isBlocked, setIsBlocked] = useState(false);
   const [blockReason, setBlockReason] = useState('');
@@ -79,38 +124,71 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Check existing credit requests on mount
+  // Check existing credit requests on mount (only once)
   useEffect(() => {
     if (!user?.id || isPublicAccess) {
       setCheckingStatus(false);
       return;
     }
+    // Only run once — prevents re-check on TOKEN_REFRESHED events
+    if (hasCheckedRef.current) return;
+    hasCheckedRef.current = true;
     checkUserStatus();
   }, [user?.id]);
 
   const checkUserStatus = async () => {
     try {
-      // 1. Check for active requests (pending or approved)
-      const { data: activeRequests } = await supabase
+      // 1. Check for pending requests (always block)
+      const { data: pendingRequests } = await supabase
         .from('credit_requests')
-        .select('id, status, amount, created_at')
+        .select('id, status')
         .eq('user_id', user!.id)
-        .in('status', ['pending', 'approved'])
+        .eq('status', 'pending')
         .limit(1);
 
-      if (activeRequests && activeRequests.length > 0) {
-        const active = activeRequests[0];
+      if (pendingRequests && pendingRequests.length > 0) {
         setIsBlocked(true);
-        if (active.status === 'pending') {
-          setBlockReason('Já tem um pedido de crédito pendente em análise. Aguarde a decisão antes de fazer um novo pedido.');
-        } else {
-          setBlockReason('Já tem um crédito aprovado activo. Deve quitar a dívida antes de solicitar um novo crédito.');
-        }
+        setBlockReason('Já tem um pedido de crédito pendente em análise. Aguarde a decisão antes de fazer um novo pedido.');
         setCheckingStatus(false);
         return;
       }
 
-      // 2. Check if user has previous request data (for simplified form)
+      // 2. Check for approved requests — only block if the loan is still active (not fully paid)
+      const { data: approvedRequests } = await supabase
+        .from('credit_requests')
+        .select('id, status')
+        .eq('user_id', user!.id)
+        .eq('status', 'approved')
+        .limit(1);
+
+      if (approvedRequests && approvedRequests.length > 0) {
+        // Check if user has an active loan with remaining balance
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id')
+          .eq('user_id', user!.id)
+          .maybeSingle();
+
+        if (clientData) {
+          const { data: activeLoans } = await supabase
+            .from('loans')
+            .select('id, remaining_amount, status')
+            .eq('client_id', clientData.id)
+            .gt('remaining_amount', 0)
+            .not('status', 'eq', 'paid')
+            .limit(1);
+
+          if (activeLoans && activeLoans.length > 0) {
+            setIsBlocked(true);
+            setBlockReason('Já tem um crédito aprovado activo. Deve quitar a dívida antes de solicitar um novo crédito.');
+            setCheckingStatus(false);
+            return;
+          }
+        }
+        // If no active loan found (fully paid), allow new request
+      }
+
+      // 3. Check if user has previous request data (for simplified form)
       const { data: previousRequests } = await supabase
         .from('credit_requests')
         .select('*')
@@ -208,13 +286,21 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   const uploadDocImage = async (file: File, side: string): Promise<string | null> => {
     if (!user) return null;
     try {
-      const ext = file.name.split('.').pop();
+      // Compress image before upload
+      const compressed = await compressImage(file);
+      const ext = compressed.name.split('.').pop();
       const path = `${user.id}/${side}_${Date.now()}.${ext}`;
-      const { error } = await supabase.storage.from('chat-files').upload(path, file);
-      if (error) return null;
+      const { error } = await supabase.storage.from('chat-files').upload(path, compressed);
+      if (error) {
+        console.warn(`Upload ${side} failed:`, error.message);
+        return null;
+      }
       const { data } = supabase.storage.from('chat-files').getPublicUrl(path);
       return data.publicUrl;
-    } catch { return null; }
+    } catch (err) {
+      console.warn(`Upload ${side} error:`, err);
+      return null;
+    }
   };
 
   const handleSubmit = async () => {
@@ -228,7 +314,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
     try {
       const address = `${form.neighborhood}, ${form.district}, ${form.province}`;
 
-      // Upload doc images (non-blocking)
+      // Upload doc images (completely non-blocking — failures don't affect submission)
       let frontUrl: string | null = null;
       let backUrl: string | null = null;
       if (!isSimplifiedForm) {
@@ -236,7 +322,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         try { if (docBack) backUrl = await uploadDocImage(docBack, 'verso'); } catch { }
       }
 
-      // Try to create/update client record
+      // Try to create/update client record (non-blocking)
       if (user) {
         try {
           const { data: existingClient } = await supabase
@@ -251,7 +337,8 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         } catch { }
       }
 
-      const { error } = await supabase.from('credit_requests').insert({
+      // Submit credit request with retry
+      const requestData = {
         client_name: form.fullName,
         client_email: form.email || null,
         client_phone: form.phone,
@@ -284,9 +371,26 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         observations: form.observations || null,
         doc_front_url: frontUrl,
         doc_back_url: backUrl,
-      });
+      };
 
-      if (error) throw error;
+      // Try up to 2 times
+      let lastError: any = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const { error } = await supabase.from('credit_requests').insert(requestData);
+          if (error) throw error;
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+          if (attempt === 0) {
+            // Wait 1s before retry
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+      }
+
+      if (lastError) throw lastError;
 
       // Clear localStorage after successful submission
       localStorage.removeItem('bochel_credit_form_data');
@@ -295,7 +399,10 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       setIsSubmitted(true);
       toast({ title: "Pedido enviado com sucesso!", description: "Será analisado em menos de 24h úteis." });
     } catch (error: any) {
-      toast({ title: "Erro ao enviar", description: error.message || "Tente novamente.", variant: "destructive" });
+      const message = error?.message?.includes('Failed to fetch')
+        ? 'Erro de conexão. Verifique a internet e tente novamente.'
+        : error?.message || 'Tente novamente.';
+      toast({ title: "Erro ao enviar", description: message, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
