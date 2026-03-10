@@ -107,6 +107,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
     guaranteeType: '', guaranteeMode: '',
     observations: '', truthDeclaration: false,
     docFrontUrl: '', docBackUrl: '',
+    guaranteePhotos: [] as string[],
   };
 
   const [currentStep, setCurrentStep] = useState(() => {
@@ -123,6 +124,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   const [docBack, setDocBack] = useState<File | null>(null);
   const [uploadingFront, setUploadingFront] = useState(false);
   const [uploadingBack, setUploadingBack] = useState(false);
+  const [uploadingGuarantee, setUploadingGuarantee] = useState(false);
   const { user } = useAuth();
 
   // Prevent checkUserStatus from re-running on auth token refresh
@@ -252,6 +254,9 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
           companyName: prev.company_name || '',
           workDuration: prev.work_duration || '',
           monthlyIncome: prev.monthly_income || '',
+          guaranteeType: prev.guarantee_type || '',
+          guaranteeMode: prev.guarantee_mode || '',
+          guaranteePhotos: prev.guarantee_photos || [],
         }));
       }
     } catch (error) {
@@ -269,6 +274,9 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   // Validation — simplified form only validates credit fields
   const validateSimplified = (): boolean => {
     const newErrors: Record<string, string> = {};
+    if (!form.occupation) newErrors.occupation = 'Selecione a ocupação';
+    if (!form.companyName.trim()) newErrors.companyName = 'Nome da empresa é obrigatório';
+    if (!form.monthlyIncome.trim()) newErrors.monthlyIncome = 'Rendimento é obrigatório';
     if (!form.requestedAmount.trim()) newErrors.requestedAmount = 'Valor é obrigatório';
     if (!form.creditPurpose) newErrors.creditPurpose = 'Selecione a finalidade';
     if (!form.receiveDate) newErrors.receiveDate = 'Data é obrigatória';
@@ -392,6 +400,25 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
     setUploadingBack(false);
   };
 
+  const handleGuaranteePhotoUpload = async (file: File) => {
+    if (form.guaranteePhotos.length >= 4) {
+      toast({ title: "Limite atingido", description: "Pode enviar no máximo 4 fotos.", variant: "destructive" });
+      return;
+    }
+    setUploadingGuarantee(true);
+    const url = await uploadDocImage(file, `garantia_${form.guaranteePhotos.length + 1}`);
+    if (url) {
+      updateField('guaranteePhotos', [...form.guaranteePhotos, url]);
+    }
+    setUploadingGuarantee(false);
+  };
+
+  const removeGuaranteePhoto = (index: number) => {
+    const newPhotos = [...form.guaranteePhotos];
+    newPhotos.splice(index, 1);
+    updateField('guaranteePhotos', newPhotos);
+  };
+
   const handleSubmit = async () => {
     if (isSimplifiedForm) {
       if (!validateSimplified()) return;
@@ -452,6 +479,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         observations: form.observations || null,
         doc_front_url: form.docFrontUrl,
         doc_back_url: form.docBackUrl,
+        guarantee_photos: form.guaranteePhotos,
       };
 
       // Try up to 2 times
@@ -625,6 +653,31 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
+                <Label className="text-sm font-medium">Ocupação Principal *</Label>
+                <Select value={form.occupation} onValueChange={v => updateField('occupation', v)}>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="empregado_formal">Empregado Formal</SelectItem>
+                    <SelectItem value="conta_propria">Conta Própria</SelectItem>
+                    <SelectItem value="informal">Informal</SelectItem>
+                    <SelectItem value="aposentado">Aposentado</SelectItem>
+                    <SelectItem value="estudante">Estudante</SelectItem>
+                    <SelectItem value="desempregado">Desempregado</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError field="occupation" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Empresa / Atividade *</Label>
+                <Input value={form.companyName} onChange={e => updateField('companyName', e.target.value)} placeholder="Nome da empresa ou atividade" className="mt-1.5" />
+                <FieldError field="companyName" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Rendimento Mensal (MZN) *</Label>
+                <Input type="number" value={form.monthlyIncome} onChange={e => updateField('monthlyIncome', e.target.value)} placeholder="Ex: 25000" className="mt-1.5" />
+                <FieldError field="monthlyIncome" />
+              </div>
+              <div>
                 <Label className="text-sm font-medium">Valor Solicitado (MZN) *</Label>
                 <Input type="number" value={form.requestedAmount} onChange={e => updateField('requestedAmount', e.target.value)} placeholder="Ex: 50000" className="mt-1.5" />
                 <FieldError field="requestedAmount" />
@@ -680,6 +733,54 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                 </Select>
                 <FieldError field="guaranteeMode" />
               </div>
+            </div>
+
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <Label className="text-sm font-medium">Fotos dos Bens de Garantia (Opcional, máx 4)</Label>
+                <span className="text-xs text-gray-500">{form.guaranteePhotos.length}/4</span>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {form.guaranteePhotos.map((photo, idx) => (
+                  <div key={idx} className="relative aspect-square border rounded-xl overflow-hidden bg-gray-50 group">
+                    <img src={photo} alt={`Garantia ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => removeGuaranteePhoto(idx)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                {form.guaranteePhotos.length < 4 && (
+                  <div
+                    className="aspect-square border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#1b5e20]/40 transition-colors bg-white"
+                    onClick={() => !uploadingGuarantee && document.getElementById('guarantee-photo-simple')?.click()}
+                  >
+                    {uploadingGuarantee ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-[#1b5e20]" />
+                    ) : (
+                      <>
+                        <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                        <span className="text-[10px] text-gray-500 font-medium px-2">Adicionar Foto</span>
+                      </>
+                    )}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => {
+                        const file = e.target.files?.[0];
+                        if (file) handleGuaranteePhotoUpload(file);
+                      }}
+                      className="hidden"
+                      id="guarantee-photo-simple"
+                      disabled={uploadingGuarantee}
+                    />
+                  </div>
+                )}
+              </div>
+              <p className="text-[10px] text-gray-400 mt-1.5">Formatos: JPG, PNG (máx. 5MB cada)</p>
             </div>
 
             <div>
@@ -833,6 +934,54 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                   <Select value={form.guaranteeMode} onValueChange={v => updateField('guaranteeMode', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="antecipado">Antecipado</SelectItem><SelectItem value="postecipado">Postecipado</SelectItem></SelectContent></Select><FieldError field="guaranteeMode" /></div>
               </div>
               <div><Label className="text-sm font-medium">Observações (opcional)</Label><Textarea value={form.observations} onChange={e => updateField('observations', e.target.value)} placeholder="Informações adicionais..." className="mt-1.5" rows={3} /></div>
+
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <Label className="text-sm font-medium">Fotos dos Bens de Garantia (Opcional, máx 4)</Label>
+                  <span className="text-xs text-gray-500">{form.guaranteePhotos.length}/4</span>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {form.guaranteePhotos.map((photo, idx) => (
+                    <div key={idx} className="relative aspect-square border rounded-xl overflow-hidden bg-gray-50 group">
+                      <img src={photo} alt={`Garantia ${idx + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeGuaranteePhoto(idx)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                  {form.guaranteePhotos.length < 4 && (
+                    <div
+                      className="aspect-square border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#1b5e20]/40 transition-colors bg-white"
+                      onClick={() => !uploadingGuarantee && document.getElementById('guarantee-photo-full')?.click()}
+                    >
+                      {uploadingGuarantee ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-[#1b5e20]" />
+                      ) : (
+                        <>
+                          <Upload className="h-6 w-6 text-gray-400 mb-1" />
+                          <span className="text-[10px] text-gray-500 font-medium px-2">Adicionar Foto</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) handleGuaranteePhotoUpload(file);
+                        }}
+                        className="hidden"
+                        id="guarantee-photo-full"
+                        disabled={uploadingGuarantee}
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-400 mt-1.5">Formatos: JPG, PNG (máx. 5MB cada)</p>
+              </div>
 
               {/* Doc Upload */}
               <div>

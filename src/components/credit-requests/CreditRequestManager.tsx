@@ -51,6 +51,7 @@ export interface CreditRequest {
   observations?: string | null;
   doc_front_url?: string | null;
   doc_back_url?: string | null;
+  guarantee_photos?: string[] | null;
 }
 
 const LABELS: Record<string, string> = {
@@ -302,6 +303,27 @@ const CreditRequestManager = () => {
                       <img src={r.doc_back_url} alt="Verso" className="w-full max-h-[250px] object-contain bg-white p-2" />
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Guarantee Photos */}
+            {r.guarantee_photos && r.guarantee_photos.length > 0 && (
+              <div>
+                <h3 className="text-sm font-bold text-[#1a3a5c] mb-3 flex items-center gap-2"><ImageIcon className="h-4 w-4" /> Fotos dos Bens de Garantia</h3>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {r.guarantee_photos.map((photo, idx) => (
+                    <div key={idx} className="border rounded-xl overflow-hidden aspect-square">
+                      <div className="bg-gray-100 px-3 py-1.5 flex items-center justify-between">
+                        <span className="text-[10px] font-medium text-gray-600">Garantia {idx + 1}</span>
+                        <a href={photo} target="_blank" rel="noopener noreferrer"
+                          className="text-xs text-blue-600 flex items-center gap-0.5 hover:underline">
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                      <img src={photo} alt={`Garantia ${idx + 1}`} className="w-full h-full object-cover" />
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

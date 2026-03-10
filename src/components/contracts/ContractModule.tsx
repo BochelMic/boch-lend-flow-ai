@@ -37,6 +37,7 @@ interface Contract {
     contract_url?: string | null;
     status: string;
     signed_at: string | null;
+    needs_resignature?: boolean;
     created_at: string;
 }
 
@@ -369,6 +370,7 @@ const ContractModule = () => {
                 contract_url: pdfUrlData.publicUrl,
                 status: 'signed',
                 signed_at: new Date().toISOString(),
+                needs_resignature: false,
                 updated_at: new Date().toISOString(),
             }).eq('id', selectedContract.id);
             if (error) throw error;
@@ -399,7 +401,8 @@ const ContractModule = () => {
                 signature_url: urlData.publicUrl,
                 contract_url: pdfUrlData.publicUrl,
                 status: 'signed',
-                signed_at: new Date().toISOString()
+                signed_at: new Date().toISOString(),
+                needs_resignature: false
             });
             loadContracts();
         } catch (e: any) {
@@ -780,12 +783,29 @@ const ContractModule = () => {
                                         <Download className="h-5 w-5 mr-2" /> Baixar Cópia do Contrato
                                     </Button>
                                     <div className="flex flex-col gap-2 pt-2">
-                                        <Button variant="outline" onClick={() => { setShowSigning(true); initCanvas(); setAgreedToTerms(false); }} className="border-green-200 text-green-700 hover:bg-green-50">
-                                            <PenLine className="h-4 w-4 mr-2" /> Refazer Assinatura (Teste de Posição)
-                                        </Button>
-                                        <Button variant="ghost" onClick={() => setSelectedContract(null)} className="text-gray-600 hover:bg-green-100">
-                                            Voltar à Minha Conta
-                                        </Button>
+                                        {selectedContract.needs_resignature ? (
+                                            <div className="bg-red-50 border border-red-100 p-4 rounded-xl mb-2 flex items-center gap-3 animate-pulse">
+                                                <AlertTriangle className="h-5 w-5 text-red-600 shrink-0" />
+                                                <div className="text-left">
+                                                    <p className="text-sm font-bold text-red-900">Assinatura inválida</p>
+                                                    <p className="text-xs text-red-700">Por favor, volte a assinar o documento.</p>
+                                                </div>
+                                            </div>
+                                        ) : null}
+
+                                        {(!selectedContract.needs_resignature) ? (
+                                            <Button variant="ghost" onClick={() => setSelectedContract(null)} className="text-gray-600 hover:bg-green-100">
+                                                Voltar à Minha Conta
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                variant="destructive"
+                                                onClick={() => { setShowSigning(true); initCanvas(); setAgreedToTerms(false); }}
+                                                className="bg-red-600 hover:bg-red-700 text-white font-bold h-12 shadow-md"
+                                            >
+                                                <PenLine className="h-5 w-5 mr-2" /> Volte a Assinar
+                                            </Button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -933,6 +953,60 @@ const ContractModule = () => {
                                         {saving ? <RefreshCw className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle className="h-5 w-5 mr-2" />}
                                         {saving ? 'A Processar Injeção...' : 'Aprovar Final e Injetar Saldo'}
                                     </Button>
+
+                                    <div className="pt-4 mt-4 border-t border-green-100 flex flex-col gap-3">
+                                        <div className="flex items-center gap-2 text-amber-700 px-1">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            <span className="text-xs font-bold uppercase tracking-wider">Controlo de Qualidade</span>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            onClick={async () => {
+                                                console.log("[Contract] Request Re-signature clicked for ID:", selectedContract.id);
+                                                setSaving(true);
+                                                try {
+                                                    const { data, error } = await supabase
+                                                        .from('contracts')
+                                                        .update({
+                                                            needs_resignature: true,
+                                                            updated_at: new Date().toISOString()
+                                                        })
+                                                        .eq('id', selectedContract.id)
+                                                        .select();
+
+                                                    if (error) {
+                                                        console.error("[Contract] Update error:", error);
+                                                        throw error;
+                                                    }
+
+                                                    console.log("[Contract] Update success:", data);
+
+                                                    toast({
+                                                        title: 'Solicitação Enviada',
+                                                        description: 'O cliente será notificado para assinar novamente.'
+                                                    });
+
+                                                    setSelectedContract({ ...selectedContract, needs_resignature: true });
+                                                    loadContracts();
+                                                } catch (err: any) {
+                                                    console.error("[Contract] Caught error:", err);
+                                                    toast({
+                                                        title: 'Erro de Banco de Dados',
+                                                        description: 'Certifique-se que aplicou o ficheiro SQL da migração no Supabase. Erro: ' + (err.message || 'Erro desconhecido'),
+                                                        variant: 'destructive'
+                                                    });
+                                                } finally {
+                                                    setSaving(false);
+                                                }
+                                            }}
+                                            className="w-full border-amber-200 text-amber-700 hover:bg-amber-50 h-12 font-bold"
+                                            disabled={saving || selectedContract.needs_resignature}
+                                        >
+                                            <RefreshCw className={cn("h-4 w-4 mr-2", saving && "animate-spin")} />
+                                            {selectedContract.needs_resignature ? 'Re-assinatura já solicitada' : 'Solicitar Re-assinatura'}
+                                        </Button>
+                                        <p className="text-[10px] text-gray-400 text-center italic">Use esta opção se a assinatura estiver ilegível ou incorreta.</p>
+                                    </div>
                                 </div>
                             )}
                         </div>
