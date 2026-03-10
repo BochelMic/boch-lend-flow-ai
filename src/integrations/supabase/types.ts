@@ -53,6 +53,7 @@ export type Database = {
           observations: string | null
           doc_front_url: string | null
           doc_back_url: string | null
+          guarantee_photos: string[] | null
         }
         Insert: {
           id?: string
@@ -92,6 +93,7 @@ export type Database = {
           observations?: string | null
           doc_front_url?: string | null
           doc_back_url?: string | null
+          guarantee_photos?: string[] | null
         }
         Update: {
           id?: string
@@ -131,6 +133,7 @@ export type Database = {
           observations?: string | null
           doc_front_url?: string | null
           doc_back_url?: string | null
+          guarantee_photos?: string[] | null
         }
         Relationships: []
       }
