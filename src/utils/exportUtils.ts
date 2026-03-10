@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+﻿import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
 // Security: Helper to prevent XSS in HTML outputs
@@ -42,11 +42,11 @@ export const exportToExcel = (reportData: ReportData, filename: string) => {
 
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
-    // Formatação básica
+    // FormataÃ§Ã£o bÃ¡sica
     const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
     ws['!cols'] = reportData.headers.map(() => ({ width: 15 }));
 
-    XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
+    XLSX.utils.book_append_sheet(wb, ws, 'RelatÃ³rio');
 
     // Salvar arquivo
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -117,6 +117,46 @@ export interface ReceiptData {
   logoUrl?: string;
 }
 
+export interface CreditRequestExportData {
+  number: string;
+  date: string;
+  clientName: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  clientDocument?: string;
+  clientNuit?: string;
+  clientAddress?: string;
+  birthDate?: string;
+  gender?: string;
+  residenceType?: string;
+
+  occupation?: string;
+  companyName?: string;
+  workDuration?: string;
+  monthlyIncome?: string;
+
+  amount: number;
+  purpose?: string;
+  duration?: string;
+  receiveDate?: string;
+  guaranteeType?: string;
+  guaranteeMode?: string;
+  observations?: string;
+
+  status: string;
+
+  guaranteePhotos?: string[];
+  docFrontUrl?: string;
+  docBackUrl?: string;
+
+  companyNameInfo: string;
+  companyEmailInfo?: string;
+  companyPhoneInfo?: string;
+  companyNuitInfo?: string;
+  companyAddressInfo?: string;
+  logoUrl?: string;
+}
+
 const pdfBaseStyles = `
   @page { margin: 0; size: A4; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -165,7 +205,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   for (let i = 1; i <= installments; i++) {
     const isLast = i === installments;
     const val = isLast ? totalAmount - installmentValue * (installments - 1) : installmentValue;
-    installmentRows += `<tr><td>${i}ª Parcela</td><td>—</td><td style="text-align:right">MZN ${val.toLocaleString()}</td></tr>`;
+    installmentRows += `<tr><td>${i}Âª Parcela</td><td>â€”</td><td style="text-align:right">MZN ${val.toLocaleString()}</td></tr>`;
   }
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fatura ${s(invoiceData.number)}</title>
@@ -179,18 +219,18 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
       ${invoiceData.companyNuit ? 'NUIT: ' + s(invoiceData.companyNuit) + '<br/>' : ''}
       ${invoiceData.companyEmail ? s(invoiceData.companyEmail) + '<br/>' : ''}
       ${invoiceData.companyPhone ? 'Tel: ' + s(invoiceData.companyPhone) + '<br/>' : ''}
-      ${s(invoiceData.companyAddress || 'Maputo, Moçambique')}
+      ${s(invoiceData.companyAddress || 'Maputo, MoÃ§ambique')}
     </div>
   </div>
 
-  <div class="doc-title">Fatura de Concessão de Crédito</div>
+  <div class="doc-title">Fatura de ConcessÃ£o de CrÃ©dito</div>
 
   <div class="info-grid">
     <div class="info-box">
       <h3>Dados do Documento</h3>
-      <div class="info-row"><span class="label">Nº Fatura</span><span class="value">${s(invoiceData.number)}</span></div>
-      <div class="info-row"><span class="label">Data de Emissão</span><span class="value">${s(invoiceData.date)}</span></div>
-      <div class="info-row"><span class="label">Nº Parcelas</span><span class="value">${installments}</span></div>
+      <div class="info-row"><span class="label">NÂº Fatura</span><span class="value">${s(invoiceData.number)}</span></div>
+      <div class="info-row"><span class="label">Data de EmissÃ£o</span><span class="value">${s(invoiceData.date)}</span></div>
+      <div class="info-row"><span class="label">NÂº Parcelas</span><span class="value">${installments}</span></div>
       ${invoiceData.duration ? `<div class="info-row"><span class="label">Prazo</span><span class="value">${s(invoiceData.duration)}</span></div>` : ''}
     </div>
     <div class="info-box">
@@ -199,15 +239,15 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
       ${invoiceData.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(invoiceData.clientDocument)}</span></div>` : ''}
       ${invoiceData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(invoiceData.clientNuit)}</span></div>` : ''}
       ${invoiceData.clientPhone ? `<div class="info-row"><span class="label">Telefone</span><span class="value">${s(invoiceData.clientPhone)}</span></div>` : ''}
-      ${invoiceData.clientAddress ? `<div class="info-row"><span class="label">Endereço</span><span class="value">${s(invoiceData.clientAddress)}</span></div>` : ''}
+      ${invoiceData.clientAddress ? `<div class="info-row"><span class="label">EndereÃ§o</span><span class="value">${s(invoiceData.clientAddress)}</span></div>` : ''}
     </div>
   </div>
 
   <div class="table-section">
     <table>
-      <thead><tr><th>Descrição</th><th>Taxa</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
+      <thead><tr><th>DescriÃ§Ã£o</th><th>Taxa</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
-        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : '—'}</td><td style="text-align:right">MZN ${invoiceData.amount.toLocaleString()}</td></tr>
+        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : 'â€”'}</td><td style="text-align:right">MZN ${invoiceData.amount.toLocaleString()}</td></tr>
         ${invoiceData.interestRate ? `<tr><td>Juros (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">MZN ${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
         <tr class="total-row"><td colspan="2">TOTAL A PAGAR</td><td style="text-align:right">MZN ${totalAmount.toLocaleString()}</td></tr>
       </tbody>
@@ -224,7 +264,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   ` : ''}
 
   <div class="amount-section">
-    <div class="amount-label">Valor Total do Crédito</div>
+    <div class="amount-label">Valor Total do CrÃ©dito</div>
     <div class="amount-highlight">MZN ${totalAmount.toLocaleString()}</div>
   </div>
 
@@ -236,8 +276,8 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   <div class="footer">
     <p class="footer-text">
       Documento gerado automaticamente pelo sistema ${s(invoiceData.companyName)}.<br/>
-      Este documento serve como comprovativo de concessão de crédito.<br/>
-      Data de impressão: ${new Date().toLocaleDateString('pt-MZ')}
+      Este documento serve como comprovativo de concessÃ£o de crÃ©dito.<br/>
+      Data de impressÃ£o: ${new Date().toLocaleDateString('pt-MZ')}
     </p>
   </div>
 </div></body></html>`;
@@ -245,7 +285,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
 
 export const generateReceiptHTML = (receiptData: ReceiptData) => {
   const s = sanitizeHtml;
-  const methodLabel: Record<string, string> = { cash: 'Dinheiro', transfer: 'Transferência Bancária', mpesa: 'M-Pesa', emola: 'e-Mola', bank_transfer: 'Transferência Bancária', check: 'Cheque' };
+  const methodLabel: Record<string, string> = { cash: 'Dinheiro', transfer: 'TransferÃªncia BancÃ¡ria', mpesa: 'M-Pesa', emola: 'e-Mola', bank_transfer: 'TransferÃªncia BancÃ¡ria', check: 'Cheque' };
   const method = methodLabel[receiptData.paymentMethod || 'cash'] || receiptData.paymentMethod || 'Dinheiro';
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo ${s(receiptData.number)}</title>
@@ -263,7 +303,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
       ${receiptData.companyNuit ? 'NUIT: ' + s(receiptData.companyNuit) + '<br/>' : ''}
       ${receiptData.companyEmail ? s(receiptData.companyEmail) + '<br/>' : ''}
       ${receiptData.companyPhone ? 'Tel: ' + s(receiptData.companyPhone) + '<br/>' : ''}
-      ${s(receiptData.companyAddress || 'Maputo, Moçambique')}
+      ${s(receiptData.companyAddress || 'Maputo, MoÃ§ambique')}
     </div>
   </div>
 
@@ -272,9 +312,9 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
   <div class="info-grid">
     <div class="info-box">
       <h3>Dados do Recibo</h3>
-      <div class="info-row"><span class="label">Nº Recibo</span><span class="value">${s(receiptData.number)}</span></div>
+      <div class="info-row"><span class="label">NÂº Recibo</span><span class="value">${s(receiptData.number)}</span></div>
       <div class="info-row"><span class="label">Data</span><span class="value">${s(receiptData.date)}</span></div>
-      <div class="info-row"><span class="label">Método</span><span class="value">${s(method)}</span></div>
+      <div class="info-row"><span class="label">MÃ©todo</span><span class="value">${s(method)}</span></div>
       ${receiptData.installmentNumber ? `<div class="info-row"><span class="label">Parcela</span><span class="value">${s(receiptData.installmentNumber)}</span></div>` : ''}
     </div>
     <div class="info-box">
@@ -283,16 +323,16 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
       ${receiptData.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(receiptData.clientDocument)}</span></div>` : ''}
       ${receiptData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(receiptData.clientNuit)}</span></div>` : ''}
       ${receiptData.clientPhone ? `<div class="info-row"><span class="label">Telefone</span><span class="value">${s(receiptData.clientPhone)}</span></div>` : ''}
-      ${receiptData.clientAddress ? `<div class="info-row"><span class="label">Endereço</span><span class="value">${s(receiptData.clientAddress)}</span></div>` : ''}
+      ${receiptData.clientAddress ? `<div class="info-row"><span class="label">EndereÃ§o</span><span class="value">${s(receiptData.clientAddress)}</span></div>` : ''}
     </div>
   </div>
 
   <div class="table-section">
     <table>
-      <thead><tr><th>Descrição</th><th>Método</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
+      <thead><tr><th>DescriÃ§Ã£o</th><th>MÃ©todo</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
         <tr><td>${s(receiptData.description)}</td><td>${s(method)}</td><td style="text-align:right">MZN ${receiptData.amount.toLocaleString()}</td></tr>
-        ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#64748b">Saldo restante após este pagamento</td><td style="text-align:right;color:#64748b">MZN ${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
+        ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#64748b">Saldo restante apÃ³s este pagamento</td><td style="text-align:right;color:#64748b">MZN ${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
       </tbody>
     </table>
   </div>
@@ -304,7 +344,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
 
   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0;font-size:12px;color:#334155;line-height:1.7">
     Recebemos de <strong>${s(receiptData.clientName)}</strong> a quantia de <strong>MZN ${receiptData.amount.toLocaleString()}</strong>
-    (${s(receiptData.description)}), paga através de <strong>${s(method)}</strong>.
+    (${s(receiptData.description)}), paga atravÃ©s de <strong>${s(method)}</strong>.
   </div>
 
   <div class="signature-area">
@@ -316,15 +356,164 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
     <p class="footer-text">
       Documento gerado automaticamente pelo sistema ${s(receiptData.companyName)}.<br/>
       Este recibo serve como comprovativo de pagamento.<br/>
-      Data de impressão: ${new Date().toLocaleDateString('pt-MZ')}
+      Data de impressÃ£o: ${new Date().toLocaleDateString('pt-MZ')}
     </p>
   </div>
 </div></body></html>`;
 };
 
+export const generateCreditRequestHTML = (data: CreditRequestExportData) => {
+  const s = sanitizeHtml;
+
+  const statusColor = data.status === 'approved' ? '#16a34a'
+    : data.status === 'rejected' ? '#dc2626'
+      : '#d97706';
+  const statusText = data.status === 'approved' ? 'APROVADO'
+    : data.status === 'rejected' ? 'REJEITADO'
+      : 'PENDENTE';
+
+  let photosHtml = '';
+  if (data.guaranteePhotos && data.guaranteePhotos.length > 0) {
+    photosHtml = `
+      <div style="page-break-before: always; padding-top: 40px;">
+        <div class="doc-title">Anexos - Bens de Garantia</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+          ${data.guaranteePhotos.map((photo, i) => `
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #f8fafc; text-align: center;">
+              <div style="margin-bottom: 8px; font-weight: bold; font-size: 12px; color: #0b3a20;">Anexo ${i + 1}</div>
+              <img src="${photo}" style="max-width: 100%; height: 250px; object-fit: cover; border-radius: 4px;" />
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  let docsHtml = '';
+  if (data.docFrontUrl || data.docBackUrl) {
+    docsHtml = `
+      <div style="page-break-before: always; padding-top: 40px;">
+        <div class="doc-title">Anexos - Documentos</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px;">
+          ${data.docFrontUrl ? `
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #f8fafc; text-align: center;">
+              <div style="margin-bottom: 8px; font-weight: bold; font-size: 12px; color: #0b3a20;">Frente do Documento</div>
+              <img src="${data.docFrontUrl}" style="max-width: 100%; height: 250px; object-fit: contain; border-radius: 4px;" />
+            </div>
+          ` : ''}
+          ${data.docBackUrl ? `
+            <div style="border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; background: #f8fafc; text-align: center;">
+              <div style="margin-bottom: 8px; font-weight: bold; font-size: 12px; color: #0b3a20;">Verso do Documento</div>
+              <img src="${data.docBackUrl}" style="max-width: 100%; height: 250px; object-fit: contain; border-radius: 4px;" />
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Pedido ${s(data.number)}</title>
+<style>${pdfBaseStyles}
+  .status-badge { display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: bold; color: white; background-color: ${statusColor}; margin-left: 10px; vertical-align: middle; }
+</style></head><body><div class="page">
+  <div class="header">
+    <div class="header-left">
+      <img src="${data.logoUrl || '/logo-bochel.png'}" alt="Logo" onerror="this.style.display='none'" />
+    </div>
+    <div class="company-info">
+      <strong style="font-size:14px;color:#0b3a20">${s(data.companyNameInfo)}</strong><br/>
+      ${data.companyNuitInfo ? 'NUIT: ' + s(data.companyNuitInfo) + '<br/>' : ''}
+      ${data.companyEmailInfo ? s(data.companyEmailInfo) + '<br/>' : ''}
+      ${data.companyPhoneInfo ? 'Tel: ' + s(data.companyPhoneInfo) + '<br/>' : ''}
+      ${s(data.companyAddressInfo || 'Maputo, MoÃ§ambique')}
+    </div>
+  </div>
+
+  <div class="doc-title" style="text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
+    <span>DossiÃª de Pedido de CrÃ©dito</span>
+    <span class="status-badge">${statusText}</span>
+  </div>
+
+  <div class="info-grid" style="grid-template-columns: 1fr;">
+    <div class="info-box">
+      <div style="display: flex; justify-content: space-between;">
+        <div><span class="label">NÂº Pedido:</span> <span class="value">${s(data.number)}</span></div>
+        <div><span class="label">Data do Pedido:</span> <span class="value">${s(data.date)}</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="info-grid">
+    <div class="info-box">
+      <h3>1. Dados Pessoais</h3>
+      <div class="info-row"><span class="label">Nome Completo</span><span class="value">${s(data.clientName)}</span></div>
+      ${data.birthDate ? `<div class="info-row"><span class="label">Data Nasc.</span><span class="value">${s(data.birthDate)}</span></div>` : ''}
+      ${data.gender ? `<div class="info-row"><span class="label">Sexo</span><span class="value">${s(data.gender)}</span></div>` : ''}
+      ${data.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(data.clientDocument)}</span></div>` : ''}
+      ${data.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(data.clientNuit)}</span></div>` : ''}
+      ${data.clientPhone ? `<div class="info-row"><span class="label">Telefone</span><span class="value">${s(data.clientPhone)}</span></div>` : ''}
+      ${data.clientEmail ? `<div class="info-row"><span class="label">Email</span><span class="value">${s(data.clientEmail)}</span></div>` : ''}
+    </div>
+    
+    <div class="info-box">
+      <h3>2. EndereÃ§o</h3>
+      ${data.clientAddress ? `<div class="info-row"><span class="label">Morada</span><span class="value" style="text-align: right; max-width: 60%;">${s(data.clientAddress)}</span></div>` : ''}
+      ${data.residenceType ? `<div class="info-row"><span class="label">Tipo ResidÃªncia</span><span class="value">${s(data.residenceType)}</span></div>` : ''}
+
+      <h3 style="margin-top: 15px;">3. Perfil Profissional</h3>
+      ${data.occupation ? `<div class="info-row"><span class="label">OcupaÃ§Ã£o</span><span class="value">${s(data.occupation)}</span></div>` : ''}
+      ${data.companyName ? `<div class="info-row"><span class="label">Empresa/Ativ.</span><span class="value">${s(data.companyName)}</span></div>` : ''}
+      ${data.workDuration ? `<div class="info-row"><span class="label">Tempo Trabal.</span><span class="value">${s(data.workDuration)}</span></div>` : ''}
+      ${data.monthlyIncome ? `<div class="info-row"><span class="label">Rendimento</span><span class="value">MZN ${s(data.monthlyIncome)}</span></div>` : ''}
+    </div>
+  </div>
+
+  <div class="info-grid" style="grid-template-columns: 1fr;">
+    <div class="info-box">
+      <h3>4. InformaÃ§Ãµes do CrÃ©dito Solicitado</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+        <div>
+          <div class="info-row"><span class="label">Valor Solicitado</span><span class="value" style="color: #0b3a20; font-size: 16px;">MZN ${data.amount.toLocaleString()}</span></div>
+          ${data.duration ? `<div class="info-row"><span class="label">Prazo</span><span class="value">${s(data.duration)}</span></div>` : ''}
+          ${data.purpose ? `<div class="info-row"><span class="label">Finalidade</span><span class="value">${s(data.purpose)}</span></div>` : ''}
+          ${data.receiveDate ? `<div class="info-row"><span class="label">Data Desejada</span><span class="value">${s(data.receiveDate)}</span></div>` : ''}
+        </div>
+        <div>
+          ${data.guaranteeType ? `<div class="info-row"><span class="label">Garantia</span><span class="value">${s(data.guaranteeType)}</span></div>` : ''}
+          ${data.guaranteeMode ? `<div class="info-row"><span class="label">Modo</span><span class="value">${s(data.guaranteeMode)}</span></div>` : ''}
+        </div>
+      </div>
+      ${data.observations ? `
+        <div style="margin-top: 15px; background: #fffbeb; padding: 10px; border-radius: 6px; border: 1px solid #fde68a;">
+          <div style="font-size: 10px; color: #b45309; text-transform: uppercase; margin-bottom: 4px; font-weight: bold;">ObservaÃ§Ãµes do Cliente</div>
+          <div style="font-size: 12px; color: #78350f;">${s(data.observations)}</div>
+        </div>
+      ` : ''}
+    </div>
+  </div>
+
+  <div class="signature-area">
+    <div class="sig-box"><div class="sig-line">Assinatura do Cliente</div></div>
+    <div class="sig-box"><div class="sig-line">Analista de CrÃ©dito</div></div>
+  </div>
+
+  <div class="footer">
+    <p class="footer-text">
+      Documento confidencial gerado automaticamente pelo sistema ${s(data.companyNameInfo)}.<br/>
+      Data de impressÃ£o: ${new Date().toLocaleDateString('pt-MZ', { hour: '2-digit', minute: '2-digit' })}
+    </p>
+  </div>
+</div>
+
+${photosHtml}
+${docsHtml}
+
+</body></html>`;
+};
+
 export const printDocument = (htmlContent: string) => {
   try {
-    console.log('Iniciando impressão...');
+    console.log('Iniciando impressÃ£o...');
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       // Security: Safely write to the new window bypassing naive regex scanners,
@@ -339,7 +528,7 @@ export const printDocument = (htmlContent: string) => {
         printWindow.print();
       }, 250);
     } else {
-      console.error('Não foi possível abrir janela de impressão');
+      console.error('NÃ£o foi possÃ­vel abrir janela de impressÃ£o');
       return false;
     }
     return true;
@@ -353,7 +542,7 @@ export const downloadDocument = (htmlContent: string, filename: string) => {
   try {
     console.log('Iniciando download...', filename);
     const blob = new Blob([htmlContent], { type: 'text/html' });
-    saveAs(blob, `${filename}.html`);
+    saveAs(blob, `${ filename }.html`);
     return true;
   } catch (error) {
     console.error('Erro ao baixar documento:', error);

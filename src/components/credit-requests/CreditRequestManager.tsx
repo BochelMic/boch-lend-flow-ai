@@ -9,8 +9,9 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   CheckCircle, XCircle, Clock, User, DollarSign, Calendar,
   MessageSquare, Phone, MapPin, ChevronLeft, Briefcase,
-  Shield, Home, FileText, Image as ImageIcon, ExternalLink, Mail
+  Shield, Home, FileText, Image as ImageIcon, ExternalLink, Mail, Printer, Download
 } from 'lucide-react';
+import { generateCreditRequestPdf } from '../../utils/creditRequestPdf';
 
 export interface CreditRequest {
   id: string;
@@ -77,13 +78,19 @@ const CreditRequestManager = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const [companySettings, setCompanySettings] = useState<any>(null);
+
   useEffect(() => { load(); }, []);
 
   const load = async () => {
     try {
-      const { data, error } = await supabase.from('credit_requests').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      setRequests(data || []);
+      const [requestsRes, settingsRes] = await Promise.all([
+        supabase.from('credit_requests').select('*').order('created_at', { ascending: false }),
+        supabase.from('system_settings').select('company_name, email, phone, nuit, address').limit(1).single()
+      ]);
+      if (requestsRes.error) throw requestsRes.error;
+      setRequests(requestsRes.data || []);
+      if (settingsRes.data) setCompanySettings(settingsRes.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
   };
@@ -174,11 +181,65 @@ const CreditRequestManager = () => {
   // Detail View
   if (selected) {
     const r = selected;
+
+    const handleExportPdf = async (request: CreditRequest) => {
+      toast({ title: 'A gerar PDF...', description: 'Aguarde enquanto o documento e preparado.' });
+      try {
+        await generateCreditRequestPdf({
+          id: 'PED-' + request.id.substring(0, 8).toUpperCase(),
+          date: new Date(request.created_at).toLocaleDateString('pt-MZ'),
+          status: request.status,
+          clientName: request.client_name,
+          birthDate: request.birth_date || undefined,
+          gender: label(request.gender) || undefined,
+          documentType: label(request.document_type) || undefined,
+          documentNumber: request.document_number || undefined,
+          nuit: request.nuit || undefined,
+          phone: request.client_phone || undefined,
+          email: request.client_email || undefined,
+          neighborhood: request.neighborhood || undefined,
+          district: request.district || undefined,
+          province: request.province || undefined,
+          residenceType: label(request.residence_type) || undefined,
+          occupation: label(request.occupation) || undefined,
+          companyName: request.company_name || undefined,
+          workDuration: request.work_duration || undefined,
+          monthlyIncome: request.monthly_income || undefined,
+          amount: request.amount,
+          purpose: label(request.credit_purpose || request.purpose) || undefined,
+          receiveDate: request.receive_date || undefined,
+          guaranteeType: label(request.guarantee_type) || undefined,
+          guaranteeMode: label(request.guarantee_mode) || undefined,
+          observations: request.observations || undefined,
+          docFrontUrl: request.doc_front_url || undefined,
+          docBackUrl: request.doc_back_url || undefined,
+          guaranteePhotos: request.guarantee_photos || undefined,
+          company: {
+            name: companySettings?.company_name || 'BOCHEL MICROCREDITO',
+            email: companySettings?.email || undefined,
+            phone: companySettings?.phone || undefined,
+            nuit: companySettings?.nuit || undefined,
+            address: companySettings?.address || 'Maputo, Mocambique',
+          }
+        });
+        toast({ title: 'PDF Baixado!', description: 'O documento foi salvo com sucesso.' });
+      } catch (err) {
+        console.error('PDF generation error:', err);
+        toast({ title: 'Erro', description: 'Falha ao gerar o PDF.', variant: 'destructive' });
+      }
+    };
+
     return (
       <div className="container mx-auto p-4 md:p-6 space-y-4 max-w-4xl">
-        <Button variant="ghost" onClick={() => { setSelected(null); setReviewMsg(''); }}>
-          <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
-        </Button>
+        <div className="flex justify-between items-center">
+          <Button variant="ghost" onClick={() => { setSelected(null); setReviewMsg(''); }}>
+            <ChevronLeft className="h-4 w-4 mr-1" /> Voltar
+          </Button>
+
+          <Button onClick={() => handleExportPdf(r)} variant="outline" className="gap-2 text-[#0b3a20] border-[#0b3a20] hover:bg-[#0b3a20] hover:text-white transition-colors">
+            <Download className="h-4 w-4" /> Baixar PDF
+          </Button>
+        </div>
 
         <Card className="border-0 shadow-lg">
           <CardContent className="p-6 space-y-6">
