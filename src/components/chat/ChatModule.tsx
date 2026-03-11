@@ -7,6 +7,7 @@ import {
   Send, MessageCircle, Search, ChevronLeft, Check, CheckCheck,
   Smile, Paperclip, X, FileText, Download
 } from 'lucide-react';
+import { notifyEvent } from '@/utils/notifyEvent';
 
 interface Message {
   id: string;
@@ -283,6 +284,19 @@ const ChatModule = () => {
         if (prev.some(m => m.id === data.id)) return prev;
         return [...prev, data as Message];
       });
+
+      // Send notification to receiver
+      try {
+        await notifyEvent('CHAT_MESSAGE', {
+          userId: selectedContact.id,
+          fromUserId: user.id,
+          clientName: user.name || 'Admin',
+          rejectReason: fileData ? `📎 Enviou um ficheiro: ${fileData.name}` : text
+        });
+      } catch (notifyErr) {
+        console.warn('[ChatModule] Notify error:', notifyErr);
+      }
+
       loadContacts();
     } else if (error) {
       setNewMessage(text); // Restore message on error
@@ -474,7 +488,7 @@ const ChatModule = () => {
                     const isMine = msg.sender_id === user?.id;
                     const showDate = i === 0 || formatDate(messages[i - 1].created_at) !== formatDate(msg.created_at);
                     return (
-                      <React.Fragment key={msg.id}>
+                      <div key={msg.id} className="contents">
                         {showDate && (
                           <div className="flex justify-center my-3">
                             <span className="text-[11px] bg-white/80 text-gray-600 px-4 py-1 rounded-full font-medium shadow-sm">{formatDate(msg.created_at)}</span>
@@ -505,7 +519,7 @@ const ChatModule = () => {
                             </div>
                           </div>
                         </div>
-                      </React.Fragment>
+                      </div>
                     );
                   })}
                   <div ref={messagesEndRef} />

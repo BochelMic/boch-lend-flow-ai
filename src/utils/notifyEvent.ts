@@ -9,7 +9,8 @@ type NotifyEventType =
     | 'LOAN_INJECTED'
     | 'PAYMENT_RECEIVED'
     | 'LOAN_PAID_OFF'
-    | 'AGENT_REQUEST_UPDATE';
+    | 'AGENT_REQUEST_UPDATE'
+    | 'CHAT_MESSAGE';
 
 interface NotifyParams {
     clientName?: string;
@@ -26,8 +27,15 @@ interface NotifyParams {
 const fmt = (v: number) => v.toLocaleString('pt-MZ', { minimumFractionDigits: 0 });
 
 async function getAllGestorIds(): Promise<string[]> {
-    const { data } = await supabase.from('user_roles').select('user_id').eq('role', 'gestor');
-    return (data || []).map((r: any) => r.user_id);
+    console.log('[notifyEvent] Fetching gestor IDs via RPC...');
+    const { data, error } = await supabase.rpc('get_gestors_for_notification');
+    if (error) {
+        console.error('[notifyEvent] Error fetching gestors:', error);
+        return [];
+    }
+    const ids = (data || []).map((r: any) => r.user_id);
+    console.log('[notifyEvent] Found gestors to notify:', ids);
+    return ids;
 }
 
 async function insertNotifications(entries: Array<{
@@ -38,9 +46,17 @@ async function insertNotifications(entries: Array<{
     from_user_id?: string | null;
     link_url?: string;
 }>) {
-    if (entries.length === 0) return;
+    if (entries.length === 0) {
+        console.warn('[notifyEvent] No entries to insert.');
+        return;
+    }
+    console.log('[notifyEvent] Attempting to insert:', entries);
     const { error } = await supabase.from('notifications').insert(entries);
-    if (error) console.warn('[notifyEvent] Insert error:', error);
+    if (error) {
+        console.error('[notifyEvent] FAILED to insert notifications:', error);
+    } else {
+        console.log('[notifyEvent] ✅ Success: Notifications inserted and should be live.');
+    }
 }
 
 export async function notifyEvent(event: NotifyEventType, params: NotifyParams) {
@@ -187,6 +203,24 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                     body: `O pedido de ${params.clientName} (MZN ${fmt(params.amount || 0)}) foi ${actionLabel}.`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/credit-requests',
+                }]);
+                break;
+            }
+
+            // ── Chat message received ──
+            case 'CHAT_MESSAGE': {
+                console.log('[notifyEvent] Processing CHAT_MESSAGE. Target:', params.userId, 'From:', params.fromUserId);
+                if (!params.userId) {
+                    console.error('[notifyEvent] ABORTED: No target userId for CHAT_MESSAGE.');
+                    break;
+                }
+                await insertNotifications([{
+                    user_id: params.userId,
+                    type: 'chat',
+                    title: `💬 Mensagem de ${params.clientName || 'Utilizador'}`,
+                    body: params.rejectReason || 'Nova mensagem recebida no chat.',
+                    from_user_id: params.fromUserId || null,
+                    link_url: '/chat',
                 }]);
                 break;
             }

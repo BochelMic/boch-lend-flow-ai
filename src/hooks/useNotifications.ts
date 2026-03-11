@@ -40,11 +40,19 @@ export function useNotifications(userId?: string) {
   }, [userId]);
 
   useEffect(() => {
+    if (!userId) {
+      console.log('[useNotifications] No userId provided, skipping subscription.');
+      return;
+    }
+
     refresh();
 
-    // Subscribe to realtime notifications
+    // Use a unique name but don't re-create it unless userId actually changes
+    const channelName = `notifs_${userId}`;
+    console.log(`[Realtime] Initializing channel: ${channelName}`);
+
     const channel = supabase
-      .channel('user-notifications')
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -53,14 +61,21 @@ export function useNotifications(userId?: string) {
           table: 'notifications',
           filter: `user_id=eq.${userId}`,
         },
-        () => {
+        (payload) => {
+          console.log('[Realtime] Message received!', payload.new);
           playNotificationSound();
           refresh();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[Realtime] Status for ${channelName}:`, status);
+        if (status === 'CHANNEL_ERROR') {
+          console.error(`[Realtime] FAILED to connect. Check SQL publications and RLS. (User: ${userId})`);
+        }
+      });
 
     return () => {
+      console.log(`[Realtime] Cleaning up channel ${channelName}`);
       supabase.removeChannel(channel);
     };
   }, [refresh, userId]);

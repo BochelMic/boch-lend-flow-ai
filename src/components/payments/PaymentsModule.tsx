@@ -42,6 +42,7 @@ const PaymentsModule = () => {
   const [activeLoans, setActiveLoans] = useState<ActiveLoan[]>([]);
   const [loading, setLoading] = useState(true);
   const [todayTotal, setTodayTotal] = useState(0);
+  const [companySettings, setCompanySettings] = useState<any>(null);
 
   // Success Dialog State
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
@@ -55,7 +56,17 @@ const PaymentsModule = () => {
   useEffect(() => {
     loadPayments();
     loadActiveLoans();
+    loadSettings();
   }, []);
+
+  const loadSettings = async () => {
+    try {
+      const { data } = await supabase.from('system_settings').select('*').limit(1).single();
+      if (data) setCompanySettings(data);
+    } catch (error) {
+      console.error('Error loading settings:', error);
+    }
+  };
 
   const loadPayments = async () => {
     try {
@@ -213,7 +224,11 @@ const PaymentsModule = () => {
       amount: Number(payment.amount),
       paymentMethod: payment.payment_method || 'cash',
       description: payment.notes || 'Pagamento de prestação de microcrédito',
-      companyName: 'BOCHEL MICROCREDITO',
+      companyName: companySettings?.company_name || 'BOCHEL MICROCREDITO',
+      companyEmail: companySettings?.email,
+      companyPhone: companySettings?.phone,
+      companyNuit: companySettings?.nuit,
+      companyAddress: companySettings?.address,
     });
     downloadDocumentAsPdf(html, `Recibo_${(payment.loan_client_name || 'Pagamento').replace(/\s+/g, '_')}_${payment.id.slice(0, 6)}`);
     toast({ title: 'Recibo Gerado', description: 'O recibo está sendo baixado em PDF.' });

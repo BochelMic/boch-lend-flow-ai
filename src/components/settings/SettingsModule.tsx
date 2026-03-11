@@ -14,6 +14,8 @@ interface SystemSettings {
   company_name: string;
   email: string;
   phone: string;
+  nuit?: string;
+  address?: string;
   default_interest_rate: number;
   max_loan_amount: number;
   min_loan_amount: number;
@@ -31,6 +33,8 @@ const SettingsModule = () => {
     company_name: 'BOCHEL MICROCREDITO',
     email: 'admin@bochel.mz',
     phone: '',
+    nuit: '',
+    address: '',
     default_interest_rate: 30,
     max_loan_amount: 100000,
     min_loan_amount: 5000,
@@ -60,6 +64,8 @@ const SettingsModule = () => {
           company_name: data.company_name || 'BOCHEL MICROCREDITO',
           email: data.email || '',
           phone: data.phone || '',
+          nuit: data.nuit || '',
+          address: data.address || '',
           default_interest_rate: data.default_interest_rate ?? 30,
           max_loan_amount: data.max_loan_amount ?? 100000,
           min_loan_amount: data.min_loan_amount ?? 5000,
@@ -83,6 +89,8 @@ const SettingsModule = () => {
         company_name: settings.company_name,
         email: settings.email,
         phone: settings.phone,
+        nuit: settings.nuit,
+        address: settings.address,
         default_interest_rate: settings.default_interest_rate,
         max_loan_amount: settings.max_loan_amount,
         min_loan_amount: settings.min_loan_amount,
@@ -173,7 +181,7 @@ const SettingsModule = () => {
                 onChange={(e) => setSettings({ ...settings, email: e.target.value })}
               />
             </div>
-            <div className="space-y-2 md:col-span-2">
+            <div className="space-y-2">
               <Label htmlFor="phone">Telefone de Contacto</Label>
               <Input
                 id="phone"
@@ -181,6 +189,24 @@ const SettingsModule = () => {
                 placeholder="+258 84 000 0000"
                 value={settings.phone}
                 onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="nuit">NUIT da Empresa</Label>
+              <Input
+                id="nuit"
+                placeholder="123456789"
+                value={settings.nuit}
+                onChange={(e) => setSettings({ ...settings, nuit: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label htmlFor="address">Localização / Morada Física</Label>
+              <Input
+                id="address"
+                placeholder="Ex: Av. Eduardo Mondlane, Maputo"
+                value={settings.address}
+                onChange={(e) => setSettings({ ...settings, address: e.target.value })}
               />
             </div>
           </div>

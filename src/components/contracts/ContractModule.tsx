@@ -982,9 +982,15 @@ const ContractModule = () => {
 
                                                     // Notify the client that re-signature is required
                                                     try {
+                                                        console.log("[Contract] Sending RESIGN_REQUESTED to userId:", selectedContract.client_id);
+                                                        if (!selectedContract.client_id) {
+                                                            console.warn("[Contract] Cannot notify: client_id is missing");
+                                                            return;
+                                                        }
                                                         await notifyEvent('RESIGN_REQUESTED', {
                                                             userId: selectedContract.client_id,
-                                                            fromUserId: user?.id || null
+                                                            fromUserId: user?.id || null,
+                                                            clientName: selectedContract.client_name
                                                         });
                                                     } catch (notifyErr) {
                                                         console.warn("Error sending RESIGN_REQUESTED notification:", notifyErr);
