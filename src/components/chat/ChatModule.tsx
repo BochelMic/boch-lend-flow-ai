@@ -29,6 +29,7 @@ interface Contact {
   lastTime?: string;
   unreadCount: number;
   online?: boolean;
+  agentLabel?: string | null;
 }
 
 const EMOJI_LIST = [
@@ -166,12 +167,52 @@ const ChatModule = () => {
           allowedUserIds.add(uid);
         }
       }
+    } else if (user.role === 'cliente') {
+      // Clients: see only gestor(s) + their assigned agent (if created by one)
+      allowedUserIds = new Set<string>();
+
+      // Always add all gestors (admin)
+      for (const [uid, role] of roleMap) {
+        if (role === 'gestor') allowedUserIds.add(uid);
+      }
+
+      // Check if this client was created by an agent
+      const { data: clientRecord } = await supabase
+        .from('clients')
+        .select('agent_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (clientRecord?.agent_id) {
+        allowedUserIds.add(clientRecord.agent_id);
+      }
     } else {
-      // Gestor sees agentes + clientes, Cliente sees gestor + agente
-      const allowed = user.role === 'gestor' ? ['agente', 'cliente'] : ['gestor', 'agente'];
+      // Gestor sees everyone (agentes + clientes)
+      const allowed = ['agente', 'cliente'];
       allowedUserIds = new Set(
         [...roleMap.entries()].filter(([, role]) => allowed.includes(role)).map(([uid]) => uid)
       );
+    }
+
+    // For gestor: build a map of client user_id -> agent name
+    let agentLabelMap = new Map<string, string>();
+    if (user.role === 'gestor') {
+      const { data: clientsWithAgent } = await supabase
+        .from('clients')
+        .select('user_id, agent_id')
+        .not('agent_id', 'is', null)
+        .not('user_id', 'is', null);
+
+      if (clientsWithAgent && clientsWithAgent.length > 0) {
+        const agentIds = [...new Set(clientsWithAgent.map(c => c.agent_id).filter(Boolean))];
+        const agentProfiles = profiles.filter(p => agentIds.includes(p.user_id));
+        const agentNameMap = new Map(agentProfiles.map(p => [p.user_id, p.name]));
+        for (const c of clientsWithAgent) {
+          if (c.user_id && c.agent_id && agentNameMap.has(c.agent_id)) {
+            agentLabelMap.set(c.user_id, agentNameMap.get(c.agent_id)!);
+          }
+        }
+      }
     }
 
     const [{ data: unread }, { data: allMsgs }] = await Promise.all([
@@ -198,6 +239,7 @@ const ChatModule = () => {
         lastMessage: lastMsgMap.get(p.user_id)?.content,
         lastTime: lastMsgMap.get(p.user_id)?.time,
         unreadCount: unreadMap.get(p.user_id) || 0,
+        agentLabel: agentLabelMap.get(p.user_id) || null,
       }))
       .sort((a, b) => {
         if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
@@ -374,12 +416,17 @@ const ChatModule = () => {
                           {contact.lastTime && <span className="text-[10px] text-white/40 flex-shrink-0 ml-2">{formatDate(contact.lastTime)}</span>}
                         </div>
                         <div className="flex items-center justify-between mt-0.5">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white"
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full text-white flex-shrink-0"
                               style={{ backgroundColor: getConversationColor(user?.role || 'cliente', contact.role) }}>
                               {getRoleLabel(contact.role)}
                             </span>
-                            {contact.lastMessage && <span className="text-xs text-white/30 truncate max-w-[100px]">{contact.lastMessage}</span>}
+                            {contact.agentLabel && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/80 text-white flex-shrink-0 truncate max-w-[80px]" title={`Agente: ${contact.agentLabel}`}>
+                                AG: {contact.agentLabel}
+                              </span>
+                            )}
+                            {contact.lastMessage && <span className="text-xs text-white/30 truncate max-w-[80px]">{contact.lastMessage}</span>}
                           </div>
                           {contact.unreadCount > 0 && (
                             <span className="w-5 h-5 rounded-full bg-green-500 text-white text-[10px] font-bold flex items-center justify-center flex-shrink-0">

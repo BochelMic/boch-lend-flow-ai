@@ -3,13 +3,15 @@ import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
-import { useAuth } from '../../hooks/useAuth';
-import { useToast } from '../../hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useToast } from '@/hooks/use-toast';
+import { notifyEvent } from '@/utils/notifyEvent';
 import { supabase } from '@/integrations/supabase/client';
 import {
   CheckCircle, XCircle, Clock, User, DollarSign, Calendar,
   MessageSquare, Phone, MapPin, ChevronLeft, Briefcase,
-  Shield, Home, FileText, Image as ImageIcon, ExternalLink, Mail, Printer, Download
+  Shield, Home, FileText, Image as ImageIcon, ExternalLink, Mail, Printer, Download,
+  Wallet, Loader2
 } from 'lucide-react';
 import { generateCreditRequestPdf } from '../../utils/creditRequestPdf';
 
@@ -79,8 +81,37 @@ const CreditRequestManager = () => {
   const { toast } = useToast();
 
   const [companySettings, setCompanySettings] = useState<any>(null);
+  const [contractStatus, setContractStatus] = useState<string | null>(null);
+  const [loanAlreadyExists, setLoanAlreadyExists] = useState(false);
 
   useEffect(() => { load(); }, []);
+
+  // Check contract status and existing loan when viewing an approved request
+  useEffect(() => {
+    if (selected && selected.status === 'approved') {
+      supabase.from('contracts').select('status').eq('credit_request_id', selected.id).limit(1)
+        .then(({ data }) => setContractStatus(data && data.length > 0 ? data[0].status : null));
+
+      // Check if a loan was already injected for this request
+      (async () => {
+        if (!selected.user_id) { setLoanAlreadyExists(false); return; }
+        const { data: client } = await supabase.from('clients').select('id').eq('user_id', selected.user_id).limit(1);
+        if (client && client.length > 0) {
+          const { data: loans } = await supabase.from('loans').select('id')
+            .eq('client_id', client[0].id).eq('amount', selected.amount)
+            .neq('status', 'paid').neq('status', 'completed').limit(1);
+          setLoanAlreadyExists(!!(loans && loans.length > 0));
+        } else {
+          setLoanAlreadyExists(false);
+        }
+      })();
+    } else {
+      setContractStatus(null);
+      setLoanAlreadyExists(false);
+    }
+  }, [selected]);
+
+  const [injecting, setInjecting] = useState(false);
 
   const load = async () => {
     try {
@@ -93,6 +124,155 @@ const CreditRequestManager = () => {
       if (settingsRes.data) setCompanySettings(settingsRes.data);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
+  };
+
+  const handleInjectLoan = async (request: CreditRequest) => {
+    if (!request.user_id) {
+      toast({ title: 'Erro', description: 'Este pedido não tem um utilizador associado.', variant: 'destructive' });
+      return;
+    }
+    setInjecting(true);
+    try {
+      // 1. Find or create client record
+      let clientId: string | null = null;
+      console.log('[INJECT] Step 1: Looking for client with user_id:', request.user_id);
+
+      const { data: existingClient, error: clientLookupErr } = await supabase
+        .from('clients').select('id').eq('user_id', request.user_id).limit(1);
+
+      if (clientLookupErr) {
+        console.error('[INJECT] Error looking up client by user_id:', clientLookupErr);
+        throw new Error(`Erro ao buscar cliente: ${clientLookupErr.message}`);
+      }
+
+      if (existingClient && existingClient.length > 0) {
+        clientId = existingClient[0].id;
+        console.log('[INJECT] Found existing client by user_id:', clientId);
+      } else {
+        if (request.client_phone) {
+          const { data: byPhone, error: phoneErr } = await supabase
+            .from('clients').select('id').eq('phone', request.client_phone).limit(1);
+          if (phoneErr) console.warn('[INJECT] Error looking up by phone:', phoneErr);
+          if (byPhone && byPhone.length > 0) {
+            clientId = byPhone[0].id;
+            console.log('[INJECT] Found client by phone:', clientId);
+          }
+        }
+        if (!clientId && request.client_name) {
+          const { data: byName, error: nameErr } = await supabase
+            .from('clients').select('id').ilike('name', request.client_name).limit(1);
+          if (nameErr) console.warn('[INJECT] Error looking up by name:', nameErr);
+          if (byName && byName.length > 0) {
+            clientId = byName[0].id;
+            console.log('[INJECT] Found client by name:', clientId);
+          }
+        }
+        if (!clientId) {
+          console.log('[INJECT] Creating new client...');
+          const { data: newClient, error: clientErr } = await supabase.from('clients').insert({
+            name: request.client_name, phone: request.client_phone, email: request.client_email,
+            address: request.client_address, user_id: request.user_id, agent_id: request.agent_id, status: 'active',
+          }).select('id').single();
+          if (clientErr) {
+            console.error('[INJECT] Error creating client:', clientErr);
+            throw new Error(`Erro ao criar cliente: ${clientErr.message}`);
+          }
+          clientId = newClient.id;
+          console.log('[INJECT] Created new client:', clientId);
+        } else {
+          await supabase.from('clients').update({ user_id: request.user_id }).eq('id', clientId).is('user_id', null);
+        }
+      }
+
+      if (!clientId) {
+        throw new Error('Não foi possível encontrar ou criar o registo do cliente.');
+      }
+
+      // 2. Check for existing active loan
+      console.log('[INJECT] Step 2: Checking for existing active loans for client:', clientId);
+      const { data: existingLoan, error: loanCheckErr } = await supabase.from('loans').select('id')
+        .eq('client_id', clientId).eq('amount', request.amount)
+        .neq('status', 'paid').neq('status', 'completed').limit(1);
+
+      if (loanCheckErr) {
+        console.error('[INJECT] Error checking existing loans:', loanCheckErr);
+        throw new Error(`Erro ao verificar empréstimos existentes: ${loanCheckErr.message}`);
+      }
+
+      if (existingLoan && existingLoan.length > 0) {
+        console.warn('[INJECT] ⚠️ Duplicate loan found! Existing loan ID:', existingLoan[0].id, 'for client:', clientId, 'amount:', request.amount);
+        toast({ title: '⚠️ Empréstimo já existe', description: `Já existe um empréstimo activo (ID: ${existingLoan[0].id.substring(0, 8)}) para ${request.client_name} com o valor MZN ${request.amount.toLocaleString()}. Não é possível criar duplicado.`, variant: 'destructive' });
+        setInjecting(false);
+        return;
+      }
+
+      // 3. Create loan (30 days, 1.5% daily late penalty)
+      console.log('[INJECT] Step 3: Creating loan for client:', clientId, 'amount:', request.amount);
+      const startDate = new Date();
+      const endDate = new Date();
+      endDate.setDate(endDate.getDate() + 30);
+
+      const interestRate = 30;
+      const loanPayload = {
+        client_id: clientId,
+        agent_id: request.agent_id || null,
+        amount: request.amount,
+        interest_rate: interestRate,
+        installments: 1,
+        total_amount: request.amount * 1.3,
+        remaining_amount: request.amount * 1.3,
+        status: 'active',
+        start_date: startDate.toISOString(),
+        end_date: endDate.toISOString(),
+      };
+      console.log('[INJECT] Loan payload:', loanPayload);
+
+      const { error: loanErr } = await supabase.from('loans').insert(loanPayload);
+      if (loanErr) {
+        console.error('[INJECT] Error creating loan:', loanErr);
+        throw new Error(`Erro ao criar empréstimo: ${loanErr.message}`);
+      }
+
+      console.log('[INJECT] Step 4: Loan created successfully. Updating request status to completed...');
+
+      // Update credit request status to completed so the button disappears
+      const { error: reqUpdateErr } = await supabase.from('credit_requests')
+        .update({ status: 'completed' })
+        .eq('id', request.id);
+
+      if (reqUpdateErr) {
+        console.warn('[INJECT] Error updating credit request status to completed:', reqUpdateErr);
+      }
+
+      console.log('[INJECT] Step 5: Sending notification...');
+
+      // 4. Notify client and agent
+      await notifyEvent('LOAN_INJECTED', {
+        userId: request.user_id,
+        amount: request.amount,
+        fromUserId: user?.id || null,
+      });
+
+      if (request.agent_id) {
+        await notifyEvent('AGENT_REQUEST_UPDATE', {
+          agentUserId: request.agent_id,
+          action: 'approved',
+          clientName: request.client_name,
+          amount: request.amount,
+          fromUserId: user?.id || null,
+        });
+      }
+
+      console.log('[INJECT] ✅ All steps completed successfully!');
+      toast({ title: '✅ Saldo Injectado!', description: `MZN ${request.amount.toLocaleString()} creditados a ${request.client_name}. Prazo: 30 dias.` });
+      setSelected(null);
+      load();
+    } catch (e: any) {
+      console.error('[INJECT] ❌ FULL ERROR:', e);
+      toast({ title: 'Erro ao injectar saldo', description: e.message || 'Erro desconhecido. Verifique a consola.', variant: 'destructive' });
+    } finally {
+      setInjecting(false);
+    }
   };
 
   const handleAction = async (id: string, action: 'approved' | 'rejected') => {
@@ -130,23 +310,24 @@ const CreditRequestManager = () => {
 
       toast({ title: action === 'approved' ? 'Pedido Aprovado e Contrato Gerado' : 'Pedido Rejeitado' });
 
-      // Notify the client about the decision
+      // Notify the client (and agent) about the decision
       if (request.user_id) {
-        try {
-          const notifData = {
-            user_id: request.user_id,
-            type: 'alert' as const,
-            title: action === 'approved' ? 'Pedido de Crédito Aprovado! ✅' : 'Pedido de Crédito Rejeitado',
-            body: action === 'approved'
-              ? `O seu pedido de MZN ${request.amount.toLocaleString()} foi aprovado! Um contrato foi gerado para assinatura.`
-              : `O seu pedido de MZN ${request.amount.toLocaleString()} foi rejeitado. Motivo: ${reviewMsg || 'Sem motivo especificado.'}`,
-            from_user_id: user?.id || null,
-            link_url: action === 'approved' ? '/contratos' : '/credito',
-          };
-          await supabase.from('notifications').insert(notifData);
-        } catch (notifyErr) {
-          console.warn('Notification error:', notifyErr);
-        }
+        await notifyEvent(action === 'approved' ? 'CREDIT_APPROVED' : 'CREDIT_REJECTED', {
+          userId: request.user_id,
+          amount: request.amount,
+          rejectReason: reviewMsg,
+          fromUserId: user?.id || null,
+        });
+      }
+
+      if (request.agent_id) {
+        await notifyEvent('AGENT_REQUEST_UPDATE', {
+          agentUserId: request.agent_id,
+          action: action,
+          clientName: request.client_name,
+          amount: request.amount,
+          fromUserId: user?.id || null,
+        });
       }
 
       setSelected(null); setReviewMsg(''); load();
@@ -398,7 +579,7 @@ const CreditRequestManager = () => {
               </div>
             )}
 
-            {/* Admin Actions */}
+            {/* Admin Actions — Pending */}
             {isGestor && r.status === 'pending' && (
               <div className="border-t pt-5 space-y-4">
                 <div>
@@ -411,6 +592,63 @@ const CreditRequestManager = () => {
                   </Button>
                   <Button onClick={() => handleAction(r.id, 'rejected')} variant="destructive" className="flex-1 h-12 font-bold shadow-md">
                     <XCircle className="w-4 h-4 mr-2" /> Rejeitar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Info: Loan already injected */}
+            {isGestor && r.status === 'approved' && contractStatus === 'signed' && loanAlreadyExists && (
+              <div className="border-t pt-5">
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 text-center space-y-2">
+                  <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
+                  <h3 className="font-bold text-green-800">Saldo Já Injectado</h3>
+                  <p className="text-sm text-gray-600">O empréstimo de MZN {(Number(r.amount) * 1.3).toLocaleString()} (com 30% juros) já foi creditado na conta deste cliente.</p>
+                </div>
+              </div>
+            )}
+
+            {/* Admin Actions — Approved: Inject Loan (only after contract is signed AND no loan exists yet) */}
+            {isGestor && r.status === 'approved' && contractStatus === 'signed' && !loanAlreadyExists && (
+              <div className="border-t pt-5 space-y-4">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center">
+                      <Wallet className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-green-800">Injectar Saldo ao Cliente</h3>
+                      <p className="text-xs text-green-600">Aprovar crédito e gerar dívida na conta do cliente</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 text-center">
+                    <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
+                      <p className="text-[10px] text-gray-500 uppercase font-bold">Capital</p>
+                      <p className="font-bold text-gray-800">MZN {Number(r.amount).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
+                      <p className="text-[10px] text-gray-500 uppercase font-bold">Juros (30%)</p>
+                      <p className="font-bold text-orange-600">MZN {(Number(r.amount) * 0.3).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
+                      <p className="text-[10px] text-gray-500 uppercase font-bold">Dívida a Receber</p>
+                      <p className="font-black text-green-700">MZN {(Number(r.amount) * 1.3).toLocaleString()}</p>
+                    </div>
+                    <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
+                      <p className="text-[10px] text-gray-500 uppercase font-bold">Prazo / Mora</p>
+                      <p className="font-bold text-blue-700">30d / 1.5%<span className="text-[10px]">dia</span></p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleInjectLoan(r)}
+                    disabled={injecting}
+                    className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-bold text-base shadow-lg"
+                  >
+                    {injecting ? (
+                      <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> A Processar...</>
+                    ) : (
+                      <><Wallet className="h-5 w-5 mr-2" /> Injectar MZN {Number(r.amount).toLocaleString()}</>
+                    )}
                   </Button>
                 </div>
               </div>

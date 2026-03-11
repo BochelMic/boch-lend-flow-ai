@@ -9,10 +9,13 @@ import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
 import {
   CheckCircle, Send, User, MapPin, Briefcase, CreditCard,
-  ChevronRight, ChevronLeft, Upload, X, Loader2, AlertTriangle, Clock, Ban
+  ChevronRight, ChevronLeft, Upload, X, Loader2, AlertTriangle, Clock, Ban, DollarSign
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { FormSettings } from './FormSettings';
+import FormIntro from './FormIntro';
 import { useAuth } from '@/hooks/useAuth';
+import { notifyEvent } from '@/utils/notifyEvent';
 
 interface CreditApplicationFormProps {
   isPublicAccess?: boolean;
@@ -186,7 +189,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         return;
       }
 
-      // 2. Check for approved requests — only block if the loan is still active (not fully paid)
+      // 2. Check for approved credit requests
       const { data: approvedRequests } = await supabase
         .from('credit_requests')
         .select('id, status')
@@ -194,31 +197,75 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         .eq('status', 'approved')
         .limit(1);
 
-      if (approvedRequests && approvedRequests.length > 0) {
-        // Check if user has an active loan with remaining balance
-        const { data: clientData } = await supabase
-          .from('clients')
-          .select('id')
+      // 3. ROBUST CLIENT LOOKUP
+      let clientId: string | null = null;
+
+      // Strategy A: match by user_id
+      const { data: clientByUserId } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('user_id', user!.id)
+        .limit(1);
+
+      if (clientByUserId && clientByUserId.length > 0) {
+        clientId = clientByUserId[0].id;
+      }
+
+      // If not found, try matching via credit request data
+      if (!clientId) {
+        const { data: userRequests } = await supabase
+          .from('credit_requests')
+          .select('client_name, client_phone, client_email')
           .eq('user_id', user!.id)
-          .maybeSingle();
+          .order('created_at', { ascending: false })
+          .limit(1);
 
-        if (clientData) {
-          const { data: activeLoans } = await supabase
-            .from('loans')
-            .select('id, remaining_amount, status')
-            .eq('client_id', clientData.id)
-            .gt('remaining_amount', 0)
-            .not('status', 'eq', 'paid')
-            .limit(1);
+        if (userRequests && userRequests.length > 0) {
+          const req = userRequests[0];
 
-          if (activeLoans && activeLoans.length > 0) {
-            setIsBlocked(true);
-            setBlockReason('Já tem um crédito aprovado activo. Deve quitar a dívida antes de solicitar um novo crédito.');
-            setCheckingStatus(false);
-            return;
+          if (!clientId && req.client_phone) {
+            const { data: byPhone } = await supabase.from('clients').select('id').eq('phone', req.client_phone).limit(1);
+            if (byPhone && byPhone.length > 0) clientId = byPhone[0].id;
+          }
+          if (!clientId && req.client_email) {
+            const { data: byEmail } = await supabase.from('clients').select('id').ilike('email', req.client_email).limit(1);
+            if (byEmail && byEmail.length > 0) clientId = byEmail[0].id;
+          }
+          if (!clientId && req.client_name) {
+            const { data: byName } = await supabase.from('clients').select('id').ilike('name', req.client_name).limit(1);
+            if (byName && byName.length > 0) clientId = byName[0].id;
+          }
+          if (!clientId && req.client_phone) {
+            const digits = req.client_phone.replace(/\D/g, '').slice(-9);
+            if (digits.length >= 9) {
+              const { data: byPartial } = await supabase.from('clients').select('id').ilike('phone', '%' + digits);
+              if (byPartial && byPartial.length > 0) clientId = byPartial[0].id;
+            }
           }
         }
-        // If no active loan found (fully paid), allow new request
+      }
+
+      // 4. If there's an approved request, BLOCK unless the loan is fully paid
+      if (approvedRequests && approvedRequests.length > 0) {
+        let loanFullyPaid = false;
+
+        if (clientId) {
+          const { data: paidLoans } = await supabase
+            .from('loans')
+            .select('id')
+            .eq('client_id', clientId)
+            .in('status', ['paid', 'completed'])
+            .limit(1);
+
+          loanFullyPaid = (paidLoans && paidLoans.length > 0);
+        }
+
+        if (!loanFullyPaid) {
+          setIsBlocked(true);
+          setBlockReason('Ja tem um credito aprovado. Deve quitar a divida antes de solicitar novo credito.');
+          setCheckingStatus(false);
+          return;
+        }
       }
 
       // 3. Check if user has previous request data (for simplified form)
@@ -505,25 +552,13 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       localStorage.removeItem('bochel_credit_form_data');
       localStorage.removeItem('bochel_credit_form_step');
 
-      // Notify all admins (gestores) about the new credit request
+      // 4. Send notifications using the new helper
       try {
-        const { data: adminUsers } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'gestor');
-
-        if (adminUsers && adminUsers.length > 0) {
-          const amount = parseFloat(form.requestedAmount);
-          const notifications = adminUsers.map((admin: any) => ({
-            user_id: admin.user_id,
-            type: 'alert',
-            title: 'Novo Pedido de Crédito',
-            body: `${form.fullName} solicitou um crédito de MZN ${amount.toLocaleString()}.`,
-            from_user_id: user?.id || null,
-            link_url: '/credit-requests',
-          }));
-          await supabase.from('notifications').insert(notifications);
-        }
+        await notifyEvent('NEW_CREDIT_REQUEST', {
+          clientName: form.fullName,
+          amount: parseFloat(form.requestedAmount),
+          fromUserId: user?.id || null,
+        });
       } catch (notifyErr) {
         console.warn('Notification error (non-blocking):', notifyErr);
       }
@@ -735,6 +770,20 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
               </div>
             </div>
 
+            {Number(form.requestedAmount) > 0 && (
+              <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4">
+                <h3 className="text-[#166534] font-semibold text-sm mb-3 flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" /> Resumo do Empréstimo Esperado
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div><p className="text-[#166534]/70">Capital</p><p className="font-bold text-[#166534]">MZN {Number(form.requestedAmount).toLocaleString()}</p></div>
+                  <div><p className="text-[#166534]/70">Juros (30%)</p><p className="font-bold text-[#166534]">MZN {(Number(form.requestedAmount) * 0.3).toLocaleString()}</p></div>
+                  <div><p className="text-[#166534]/70">Prazo</p><p className="font-bold text-[#166534]">30 Dias</p></div>
+                  <div><p className="text-[#166534]/70">Total a Pagar</p><p className="font-black text-[#166534]">MZN {(Number(form.requestedAmount) * 1.3).toLocaleString()}</p></div>
+                </div>
+              </div>
+            )}
+
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-sm font-medium">Fotos dos Bens de Garantia (Opcional, máx 4)</Label>
@@ -933,6 +982,21 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                 <div><Label className="text-sm font-medium">Modo de Garantia *</Label>
                   <Select value={form.guaranteeMode} onValueChange={v => updateField('guaranteeMode', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="antecipado">Antecipado</SelectItem><SelectItem value="postecipado">Postecipado</SelectItem></SelectContent></Select><FieldError field="guaranteeMode" /></div>
               </div>
+
+              {Number(form.requestedAmount) > 0 && (
+                <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4">
+                  <h3 className="text-[#166534] font-semibold text-sm mb-3 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" /> Resumo do Empréstimo Esperado
+                  </h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div><p className="text-[#166534]/70">Capital</p><p className="font-bold text-[#166534]">MZN {Number(form.requestedAmount).toLocaleString()}</p></div>
+                    <div><p className="text-[#166534]/70">Juros (30%)</p><p className="font-bold text-[#166534]">MZN {(Number(form.requestedAmount) * 0.3).toLocaleString()}</p></div>
+                    <div><p className="text-[#166534]/70">Prazo</p><p className="font-bold text-[#166534]">30 Dias</p></div>
+                    <div><p className="text-[#166534]/70">Total a Pagar</p><p className="font-black text-[#166534]">MZN {(Number(form.requestedAmount) * 1.3).toLocaleString()}</p></div>
+                  </div>
+                </div>
+              )}
+
               <div><Label className="text-sm font-medium">Observações (opcional)</Label><Textarea value={form.observations} onChange={e => updateField('observations', e.target.value)} placeholder="Informações adicionais..." className="mt-1.5" rows={3} /></div>
 
               <div>

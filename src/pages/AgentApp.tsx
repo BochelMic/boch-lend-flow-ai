@@ -9,6 +9,7 @@ import CollectionsModule from '../components/collections/CollectionsModule';
 import PaymentsModule from '../components/payments/PaymentsModule';
 import CreditSimulatorModule from '../components/credit-simulator/CreditSimulatorModule';
 import CreditFormModule from '../components/credit-form/CreditFormModule';
+import CashFlowModule from '../components/cashflow/CashFlowModule';
 import ChatModule from '../components/chat/ChatModule';
 import ContractModule from '../components/contracts/ContractModule';
 import Layout from '../components/layout/Layout';
@@ -46,6 +47,7 @@ const AgentApp = () => {
         <Route path="/pagamentos/*" element={<PaymentsModule />} />
         <Route path="/credit-simulator/*" element={<CreditSimulatorModule />} />
         <Route path="/credit-form/*" element={<CreditFormModule />} />
+        <Route path="/cashflow/*" element={<CashFlowModule />} />
         <Route path="/chat/*" element={<ChatModule />} />
         <Route path="/contratos/*" element={<ContractModule />} />
         <Route path="*" element={<Navigate to="/agente/dashboard" replace />} />

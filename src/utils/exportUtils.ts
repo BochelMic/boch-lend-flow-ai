@@ -1,5 +1,7 @@
 ﻿import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 // Security: Helper to prevent XSS in HTML outputs
 const sanitizeHtml = (unsafe: string | number) => {
@@ -538,11 +540,60 @@ export const printDocument = (htmlContent: string) => {
   }
 };
 
+export const downloadDocumentAsPdf = async (htmlContent: string, filename: string) => {
+  try {
+    console.log('Gerando PDF...', filename);
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.left = '-9999px';
+    container.style.top = '0';
+    container.style.width = '800px';
+    container.style.backgroundColor = '#ffffff';
+    container.innerHTML = htmlContent;
+    document.body.appendChild(container);
+
+    const images = Array.from(container.querySelectorAll('img'));
+    await Promise.all(images.map(img => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+    }));
+
+    const element = container.querySelector('.page') as HTMLElement || container;
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    pdf.save(`${filename}.pdf`);
+
+    document.body.removeChild(container);
+    return true;
+  } catch (error) {
+    console.error('Erro ao gerar PDF:', error);
+    return false;
+  }
+};
+
 export const downloadDocument = (htmlContent: string, filename: string) => {
   try {
     console.log('Iniciando download...', filename);
     const blob = new Blob([htmlContent], { type: 'text/html' });
-    saveAs(blob, `${ filename }.html`);
+    saveAs(blob, `${filename}.html`);
     return true;
   } catch (error) {
     console.error('Erro ao baixar documento:', error);

@@ -5,11 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DollarSign, Receipt, Clock, CheckCircle, Printer } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DollarSign, Receipt, Clock, CheckCircle, Printer, Check } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generateReceiptHTML, printDocument } from '../../utils/exportUtils';
+import { generateReceiptHTML, downloadDocumentAsPdf } from '../../utils/exportUtils';
+import { notifyEvent } from '@/utils/notifyEvent';
 
 interface Payment {
   id: string;
@@ -20,12 +22,14 @@ interface Payment {
   notes: string | null;
   created_at: string;
   loan_client_name?: string;
+  client_data?: any;
 }
 
 interface ActiveLoan {
   id: string;
   client_name: string;
   user_id: string | null;
+  client_data?: any;
   remaining_amount: number;
   total_amount: number;
   installments: number;
@@ -38,6 +42,10 @@ const PaymentsModule = () => {
   const [activeLoans, setActiveLoans] = useState<ActiveLoan[]>([]);
   const [loading, setLoading] = useState(true);
   const [todayTotal, setTodayTotal] = useState(0);
+
+  // Success Dialog State
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [lastSavedPayment, setLastSavedPayment] = useState<Payment | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -53,7 +61,7 @@ const PaymentsModule = () => {
     try {
       const { data, error } = await supabase
         .from('payments')
-        .select('*, loans(clients(name))')
+        .select('*, loans(clients(*))')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -62,6 +70,7 @@ const PaymentsModule = () => {
       const mapped = (data || []).map((p: any) => ({
         ...p,
         loan_client_name: p.loans?.clients?.name || 'Desconhecido',
+        client_data: p.loans?.clients || null,
       }));
       setPayments(mapped);
 
@@ -80,7 +89,7 @@ const PaymentsModule = () => {
     try {
       const { data, error } = await supabase
         .from('loans')
-        .select('id, remaining_amount, total_amount, installments, clients(name, user_id)')
+        .select('id, remaining_amount, total_amount, installments, clients(*)')
         .eq('status', 'active');
 
       if (error) throw error;
@@ -89,6 +98,7 @@ const PaymentsModule = () => {
         id: l.id,
         client_name: l.clients?.name || 'Desconhecido',
         user_id: l.clients?.user_id || null,
+        client_data: l.clients || null,
         remaining_amount: Number(l.remaining_amount),
         total_amount: Number(l.total_amount),
         installments: l.installments,
@@ -123,8 +133,15 @@ const PaymentsModule = () => {
         paymentData.received_by = user.id;
       }
 
-      const { error: payError } = await supabase.from('payments').insert(paymentData);
+      const { data: payData, error: payError } = await supabase.from('payments').insert(paymentData).select().single();
       if (payError) throw payError;
+
+      // Prepare payment object for the receipt
+      const savedPaymentObj: Payment = {
+        ...payData,
+        loan_client_name: selectedLoan?.client_name || 'Desconhecido',
+        client_data: selectedLoan?.client_data || null,
+      };
 
       // Atualizar saldo do empréstimo
       let isFullyPaid = false;
@@ -142,54 +159,33 @@ const PaymentsModule = () => {
       // NOTIFICATIONS
       // ----------------------------------------------------
       if (selectedLoan?.user_id) {
-        const notificationsToInsert = [];
-
         // 1. Notify Client about Payment
-        notificationsToInsert.push({
-          user_id: selectedLoan.user_id,
-          type: 'alert' as const,
-          title: 'Pagamento Recebido 💰',
-          body: `Recebemos o seu pagamento de MZN ${amount.toLocaleString()}. Obrigado!`,
-          from_user_id: user?.id || null,
-          link_url: '/meus-creditos',
+        await notifyEvent('PAYMENT_RECEIVED', {
+          userId: selectedLoan.user_id,
+          amount: amount,
+          remainingAmount: newRemaining,
+          fromUserId: user?.id || null
         });
 
-        // 2. Notify Client about Full Payment (if applicable)
+        // 2. Notify Client and Admins about Full Payment (if applicable)
         if (isFullyPaid) {
-          notificationsToInsert.push({
-            user_id: selectedLoan.user_id,
-            type: 'system' as const,
-            title: 'Parabéns! Crédito Quitado 🎉',
-            body: `Você pagou totalmente o seu crédito. Já pode solicitar um novo crédito quando quiser!`,
-            from_user_id: null,
-            link_url: '/meus-creditos',
+          await notifyEvent('LOAN_PAID_OFF', {
+            userId: selectedLoan.user_id,
+            clientName: selectedLoan.client_name,
+            amount: selectedLoan.amount
           });
-        }
-
-        if (notificationsToInsert.length > 0) {
-          await supabase.from('notifications').insert(notificationsToInsert);
-        }
-      }
-
-      // 3. Notify Admins if Loan is Fully Paid
-      if (isFullyPaid) {
-        const { data: adminUsers } = await supabase.from('user_roles').select('user_id').eq('role', 'gestor');
-        if (adminUsers && adminUsers.length > 0) {
-          const adminNotifications = adminUsers.map((admin: any) => ({
-            user_id: admin.user_id,
-            type: 'system' as const,
-            title: 'Crédito Quitado',
-            body: `O cliente ${selectedLoan?.client_name || 'Desconhecido'} liquidou totalmente o seu crédito.`,
-            from_user_id: null,
-          }));
-          await supabase.from('notifications').insert(adminNotifications);
         }
       }
 
       toast({ title: 'Sucesso', description: 'Pagamento registrado com sucesso!' });
       setFormData({ loanId: '', amount: '', method: 'cash', date: new Date().toISOString().split('T')[0], notes: '' });
+
+      // Assinar para recarregar as tabelas e mostrar o alerta com botão do recibo
       loadPayments();
       loadActiveLoans();
+
+      setLastSavedPayment(savedPaymentObj);
+      setShowSuccessDialog(true);
     } catch (error: any) {
       console.error('Error registering payment:', error);
       toast({ title: 'Erro', description: error.message || 'Erro ao registrar pagamento.', variant: 'destructive' });
@@ -205,17 +201,22 @@ const PaymentsModule = () => {
   };
 
   const handlePrintReceipt = (payment: Payment) => {
+    const cData = payment.client_data || {};
     const html = generateReceiptHTML({
       number: `REC-${payment.id.slice(0, 8).toUpperCase()}`,
       date: payment.payment_date,
       clientName: payment.loan_client_name || 'Cliente',
+      clientPhone: cData.phone,
+      clientDocument: cData.document_type ? `${cData.document_type}: ${cData.document_number}` : undefined,
+      clientNuit: cData.nuit,
+      clientAddress: [cData.neighborhood, cData.district, cData.province].filter(Boolean).join(', ') || undefined,
       amount: Number(payment.amount),
       paymentMethod: payment.payment_method || 'cash',
       description: payment.notes || 'Pagamento de prestação de microcrédito',
       companyName: 'BOCHEL MICROCREDITO',
     });
-    printDocument(html);
-    toast({ title: 'Recibo Gerado', description: 'O recibo foi enviado para impressão/PDF.' });
+    downloadDocumentAsPdf(html, `Recibo_${(payment.loan_client_name || 'Pagamento').replace(/\s+/g, '_')}_${payment.id.slice(0, 6)}`);
+    toast({ title: 'Recibo Gerado', description: 'O recibo está sendo baixado em PDF.' });
   };
 
   return (
@@ -401,6 +402,44 @@ const PaymentsModule = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Success / Receipt Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <Check className="h-6 w-6 text-green-600" />
+            </div>
+            <DialogTitle className="text-center text-xl">Pagamento Registrado!</DialogTitle>
+            <DialogDescription className="text-center">
+              O pagamento de {lastSavedPayment ? Number(lastSavedPayment.amount).toLocaleString() : 0} MZN foi salvo com sucesso no sistema.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-3 mt-4">
+            <Button
+              className="w-full h-12 text-md gap-2"
+              onClick={() => {
+                if (lastSavedPayment) {
+                  handlePrintReceipt(lastSavedPayment);
+                  setShowSuccessDialog(false);
+                }
+              }}
+            >
+              <Printer className="h-5 w-5" />
+              Baixar / Imprimir Recibo
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setShowSuccessDialog(false)}
+            >
+              Agora não, apenas fechar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

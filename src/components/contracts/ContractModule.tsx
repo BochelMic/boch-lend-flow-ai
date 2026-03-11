@@ -6,6 +6,7 @@ import { pdfjs, Document, Page } from 'react-pdf';
 import 'react-pdf/dist/Page/AnnotationLayer.css';
 import 'react-pdf/dist/Page/TextLayer.css';
 import Draggable, { DraggableData, DraggableEvent } from 'react-draggable';
+import { notifyEvent } from '@/utils/notifyEvent';
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
     'pdfjs-dist/build/pdf.worker.min.mjs',
@@ -375,19 +376,12 @@ const ContractModule = () => {
             }).eq('id', selectedContract.id);
             if (error) throw error;
 
-            // Notify admins
+            // Notify all admins automatically via shared helper
             try {
-                const { data: adminUsers } = await supabase.from('user_roles').select('user_id').eq('role', 'gestor');
-                if (adminUsers && adminUsers.length > 0) {
-                    const notifications = adminUsers.map((admin: any) => ({
-                        user_id: admin.user_id,
-                        type: 'contract_signed',
-                        title: 'Contrato Assinado',
-                        body: `O cliente ${selectedContract.client_name} acabou de assinar o contrato.`,
-                        from_user_id: user?.id || selectedContract.client_id
-                    }));
-                    await supabase.from('notifications').insert(notifications);
-                }
+                await notifyEvent('CONTRACT_SIGNED', {
+                    clientName: selectedContract.client_name,
+                    fromUserId: user?.id || selectedContract.client_id
+                });
             } catch (notifyErr) {
                 console.error("Erro ao notificar gestores:", notifyErr);
             }
@@ -985,6 +979,16 @@ const ContractModule = () => {
                                                         title: 'Solicitação Enviada',
                                                         description: 'O cliente será notificado para assinar novamente.'
                                                     });
+
+                                                    // Notify the client that re-signature is required
+                                                    try {
+                                                        await notifyEvent('RESIGN_REQUESTED', {
+                                                            userId: selectedContract.client_id,
+                                                            fromUserId: user?.id || null
+                                                        });
+                                                    } catch (notifyErr) {
+                                                        console.warn("Error sending RESIGN_REQUESTED notification:", notifyErr);
+                                                    }
 
                                                     setSelectedContract({ ...selectedContract, needs_resignature: true });
                                                     loadContracts();

@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { FileText, Receipt, Printer, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generateInvoiceHTML, generateReceiptHTML, printDocument } from '../../utils/exportUtils';
+import { generateInvoiceHTML, generateReceiptHTML, downloadDocumentAsPdf } from '../../utils/exportUtils';
 
 interface LoanOption {
   id: string;
@@ -152,8 +152,8 @@ const DocumentGenerator = () => {
       companyNuit: companySettings.nuit,
       companyAddress: companySettings.address,
     });
-    printDocument(html);
-    toast({ title: 'Fatura Gerada', description: 'A fatura foi enviada para impressão/PDF.' });
+    downloadDocumentAsPdf(html, `Fatura_${selectedLoan.clientName.replace(/\s+/g, '_')}_${Date.now()}`);
+    toast({ title: 'Fatura Gerada', description: 'A fatura está sendo baixada em PDF.' });
   };
 
   const generateReceipt = () => {
@@ -180,8 +180,8 @@ const DocumentGenerator = () => {
       companyNuit: companySettings.nuit,
       companyAddress: companySettings.address,
     });
-    printDocument(html);
-    toast({ title: 'Recibo Gerado', description: 'O recibo foi enviado para impressão/PDF.' });
+    downloadDocumentAsPdf(html, `Recibo_${receiptLoan.clientName.replace(/\s+/g, '_')}_${Date.now()}`);
+    toast({ title: 'Recibo Gerado', description: 'O recibo está sendo baixado em PDF.' });
   };
 
   if (loading) {

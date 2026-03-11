@@ -129,6 +129,7 @@ export function AppSidebar() {
         { name: 'Agentes', href: '/gestor/agentes', icon: UserCheck, permission: 'all' },
         { name: 'Relatórios', href: '/gestor/reports', icon: BarChart3, permission: 'all' },
         { name: 'Contratos', href: '/gestor/contratos', icon: PenLine, permission: 'all' },
+        { name: 'Pagamentos', href: '/gestor/pagamentos', icon: CreditCard, permission: 'all' },
         { name: 'Faturas/Recibos', href: '/gestor/faturas', icon: Receipt, permission: 'all' },
         chatItem,
         { name: 'Administração', href: '/gestor/admin', icon: Shield, permission: 'all' },
@@ -143,12 +144,14 @@ export function AppSidebar() {
         { name: 'Clientes', href: '/agente/clientes', icon: Users, permission: 'clientes' },
         { name: 'Empréstimos', href: '/agente/emprestimos', icon: CreditCard, permission: 'emprestimos' },
         { name: 'Cobranças', href: '/agente/cobrancas', icon: Phone, permission: 'cobrancas' },
+        { name: 'Pagamentos', href: '/agente/pagamentos', icon: CreditCard, permission: 'cobrancas' },
         { name: 'Contratos', href: '/agente/contratos', icon: PenLine, permission: 'clientes' },
         chatItem,
       ];
     } else if (user?.role === 'cliente') {
       return [
         { name: 'Minha Conta', href: '/dashboard-cliente', icon: LayoutDashboard, permission: 'conta' },
+        { name: 'Pagamentos', href: '/pagamentos', icon: CreditCard, permission: 'pedidos' },
         { name: 'Histórico', href: '/historico', icon: FileText, permission: 'historico' },
         { name: 'Meus Pedidos', href: '/pedidos', icon: FormInput, permission: 'pedidos' },
         { name: 'Novo Crédito', href: '/credit-form', icon: Calculator, permission: 'pedidos' },

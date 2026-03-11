@@ -9,6 +9,7 @@ import ClientRequestsModule from '../components/client-requests/ClientRequestsMo
 import CreditFormModule from '../components/credit-form/CreditFormModule';
 import ChatModule from '../components/chat/ChatModule';
 import ContractModule from '../components/contracts/ContractModule';
+import ClientPaymentsModule from '../components/client-payments/ClientPaymentsModule';
 import Layout from '../components/layout/Layout';
 import { Loader2 } from 'lucide-react';
 import LandingPage from './LandingPage';
@@ -55,6 +56,7 @@ const ClientApp = () => {
         <Route path="/credit-form/*" element={<CreditFormModule />} />
         <Route path="/chat/*" element={<ChatModule />} />
         <Route path="/contratos/*" element={<ContractModule />} />
+        <Route path="/pagamentos/*" element={<ClientPaymentsModule />} />
         <Route path="*" element={<Navigate to="/dashboard-cliente" replace />} />
       </Routes>
     </Layout>
