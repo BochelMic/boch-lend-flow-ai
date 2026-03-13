@@ -11,20 +11,6 @@ createRoot(document.getElementById("root")!).render(
   </React.StrictMode>
 );
 
-// Clean up any stale service workers silently (no forced reload)
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        await registration.unregister();
-      }
-      const cacheKeys = await caches.keys();
-      for (const key of cacheKeys) {
-        await caches.delete(key);
-      }
-    } catch (err) {
-      console.error('Erro ao limpar SW:', err);
-    }
-  });
-}
+// Basic Service Worker cleanup is now handled by the generic reset mechanism in ErrorBoundary
+// if users experience "white screens", they can use the "Full Reset" button.
+// Standard registration is handled in index.html for faster boot.

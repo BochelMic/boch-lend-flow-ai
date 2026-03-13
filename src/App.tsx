@@ -26,27 +26,31 @@ const queryClient = new QueryClient({
   },
 });
 
+import ErrorBoundary from "./components/common/ErrorBoundary";
+
 // Main App Component - Vercel Deployment Check
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <BrowserRouter>
-        <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#0b3a20]" /></div>}>
-          <Routes>
-            <Route path="/formulario-credito" element={<PublicCreditForm />} />
-            <Route path="/gestor/*" element={<GestorApp />} />
-            <Route path="/agente/*" element={<AgentApp />} />
-            <Route path="/404" element={<NotFound />} />
-            <Route path="/*" element={<ClientApp />} />
-          </Routes>
-        </Suspense>
-        <FloatingWhatsApp />
-      </BrowserRouter>
-      <Toaster />
-      <Sonner />
-      <InstallPWA />
-    </AuthProvider>
-  </QueryClientProvider>
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <Suspense fallback={<div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-[#0b3a20]" /></div>}>
+            <Routes>
+              <Route path="/formulario-credito" element={<PublicCreditForm />} />
+              <Route path="/gestor/*" element={<GestorApp />} />
+              <Route path="/agente/*" element={<AgentApp />} />
+              <Route path="/404" element={<NotFound />} />
+              <Route path="/*" element={<ClientApp />} />
+            </Routes>
+          </Suspense>
+          <FloatingWhatsApp />
+        </BrowserRouter>
+        <Toaster />
+        <Sonner />
+        <InstallPWA />
+      </AuthProvider>
+    </QueryClientProvider>
+  </ErrorBoundary>
 );
 
 export default App;

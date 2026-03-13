@@ -40,59 +40,106 @@ const compressImage = (file: File, maxWidth = 1024, quality = 0.6): Promise<File
       return;
     }
 
-    // If it's already an image and relatively small (< 600KB), return as-is
-    if (file.size < 600_000) {
+    // If it's already an image and relatively small (< 500KB), return as-is
+    if (file.size < 500_000) {
       resolve(file);
       return;
     }
 
     const objectUrl = URL.createObjectURL(file);
-    const img = new Image();
 
-    img.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      const canvas = document.createElement('canvas');
-      let { width, height } = img;
+    // Use createImageBitmap if available (more memory efficient for large S22 Ultra images)
+    if ('createImageBitmap' in window) {
+      createImageBitmap(file)
+        .then((bitmap) => {
+          const canvas = document.createElement('canvas');
+          let { width, height } = bitmap;
 
-      // Reduce dimensions if too large for mobile memory
-      if (width > maxWidth) {
-        height = (height * maxWidth) / width;
-        width = maxWidth;
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        resolve(file);
-        return;
-      }
-
-      ctx.drawImage(img, 0, 0, width, height);
-      canvas.toBlob(
-        (blob) => {
-          if (blob) {
-            // Renaming to .jpg for maximum compatibility
-            const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
-              type: 'image/jpeg',
-              lastModified: Date.now()
-            });
-            resolve(compressedFile);
-          } else {
-            resolve(file);
+          if (width > maxWidth) {
+            height = (height * maxWidth) / width;
+            width = maxWidth;
           }
-        },
-        'image/jpeg',
-        quality
-      );
-    };
 
-    img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(file);
-    };
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            bitmap.close();
+            resolve(file);
+            return;
+          }
 
-    img.src = objectUrl;
+          ctx.drawImage(bitmap, 0, 0, width, height);
+          bitmap.close(); // Immediate cleanup
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve(compressedFile);
+            } else {
+              resolve(file);
+            }
+            URL.revokeObjectURL(objectUrl);
+          }, 'image/jpeg', quality);
+        })
+        .catch(() => {
+          // Fallback to Image() if bitmap fails
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = (h * maxWidth) / w;
+              w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx?.drawImage(img, 0, 0, w, h);
+            canvas.toBlob((blob) => {
+              if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+              else resolve(file);
+              URL.revokeObjectURL(objectUrl);
+              img.src = ""; // Clear memory safely
+            }, 'image/jpeg', quality);
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(file);
+          };
+          img.src = objectUrl;
+        });
+    } else {
+      // Legacy fallback
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+          else resolve(file);
+          img.src = ""; // Clear memory safely
+        }, 'image/jpeg', quality);
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+      img.src = objectUrl;
+    }
   });
 };
 
@@ -112,9 +159,15 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
   };
 
   const [currentStep, setCurrentStep] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('bochel_credit_form_step');
-      return saved ? parseInt(saved, 10) : 1;
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('bochel_credit_form_step');
+        const step = saved ? parseInt(saved, 10) : 1;
+        // Safety: Bound step to [1, 4]
+        return (step >= 1 && step <= 4) ? step : 1;
+      }
+    } catch (e) {
+      console.warn("Storage access denied:", e);
     }
     return 1;
   });
@@ -157,12 +210,21 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
   // Save form data to localStorage on changes
   useEffect(() => {
-    localStorage.setItem('bochel_credit_form_data', JSON.stringify(form));
+    try {
+      localStorage.setItem('bochel_credit_form_data', JSON.stringify(form));
+    } catch (e) {
+      // Might fail if storage is full or restricted
+      console.warn("Could not save form data:", e);
+    }
   }, [form]);
 
   // Save current step to localStorage on changes
   useEffect(() => {
-    localStorage.setItem('bochel_credit_form_step', currentStep.toString());
+    try {
+      localStorage.setItem('bochel_credit_form_step', currentStep.toString());
+    } catch (e) {
+      console.warn("Could not save step:", e);
+    }
   }, [currentStep]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -351,7 +413,12 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       setTimeout(() => {
         const firstErrorEl = document.querySelector('.text-red-500, [data-error]');
         if (firstErrorEl) {
-          firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          try {
+            firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } catch (e) {
+            // Fallback for browsers with limited scroll support
+            if (firstErrorEl.scrollIntoView) firstErrorEl.scrollIntoView(true);
+          }
         }
       }, 50);
     }
@@ -454,7 +521,12 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       setTimeout(() => {
         const firstErrorEl = document.querySelector('.text-red-500, [data-error]');
         if (firstErrorEl) {
-          firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          try {
+            firstErrorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          } catch (e) {
+            // Fallback for browsers with limited scroll support
+            if (firstErrorEl.scrollIntoView) firstErrorEl.scrollIntoView(true);
+          }
         }
       }, 50);
     };
@@ -771,10 +843,10 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                   <DollarSign className="h-4 w-4" /> Resumo do Empréstimo Esperado
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div><p className="text-[#166534]/70">Capital</p><p className="font-bold text-[#166534]">MZN {Number(form.requestedAmount).toLocaleString()}</p></div>
-                  <div><p className="text-[#166534]/70">Juros (30%)</p><p className="font-bold text-[#166534]">MZN {(Number(form.requestedAmount) * 0.3).toLocaleString()}</p></div>
+                  <div><p className="text-[#166534]/70">Capital</p><p className="font-bold text-[#166534]">MZN {(Number(form.requestedAmount) || 0).toLocaleString()}</p></div>
+                  <div><p className="text-[#166534]/70">Juros (30%)</p><p className="font-bold text-[#166534]">MZN {((Number(form.requestedAmount) || 0) * 0.3).toLocaleString()}</p></div>
                   <div><p className="text-[#166534]/70">Prazo</p><p className="font-bold text-[#166534]">30 Dias</p></div>
-                  <div><p className="text-[#166534]/70">Total a Pagar</p><p className="font-black text-[#166534]">MZN {(Number(form.requestedAmount) * 1.3).toLocaleString()}</p></div>
+                  <div><p className="text-[#166534]/70">Total a Pagar</p><p className="font-black text-[#166534]">MZN {((Number(form.requestedAmount) || 0) * 1.3).toLocaleString()}</p></div>
                 </div>
               </div>
             )}
@@ -962,7 +1034,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                     <Select value={form.occupation || undefined} onValueChange={v => updateField('occupation', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="empregado_formal">Empregado Formal</SelectItem><SelectItem value="conta_propria">Conta Própria</SelectItem><SelectItem value="informal">Informal</SelectItem><SelectItem value="aposentado">Aposentado</SelectItem><SelectItem value="estudante">Estudante</SelectItem><SelectItem value="desempregado">Desempregado</SelectItem></SelectContent></Select><FieldError field="occupation" /></div>
                   <div><Label className="text-sm font-medium">Empresa / Atividade *</Label><Input value={form.companyName} onChange={e => updateField('companyName', e.target.value)} placeholder="Nome da empresa ou atividade" className="mt-1.5" /><FieldError field="companyName" /></div>
                   <div><Label className="text-sm font-medium">Tempo de Trabalho *</Label><Input value={form.workDuration} onChange={e => updateField('workDuration', e.target.value)} placeholder="Ex: 2 anos e 6 meses" className="mt-1.5" /><FieldError field="workDuration" /></div>
-                  <div><Label className="text-sm font-medium">Rendimento Mensal (MZN) *</Label><Input type="number" value={form.monthlyIncome} onChange={e => updateField('monthlyIncome', e.target.value)} placeholder="Ex: 25000" className="mt-1.5" /><FieldError field="monthlyIncome" /></div>
+                  <div><Label className="text-sm font-medium">Rendimento Mensal (MZN) *</Label><Input type="number" inputMode="numeric" pattern="[0-9]*" value={form.monthlyIncome} onChange={e => updateField('monthlyIncome', e.target.value)} placeholder="Ex: 25000" className="mt-1.5" /><FieldError field="monthlyIncome" /></div>
                 </div>
               </div>
             )}
@@ -975,7 +1047,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                   <div><h2 className="text-lg font-bold text-gray-900">Informações do Crédito</h2><p className="text-xs text-gray-500">Detalhes do empréstimo</p></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><Label className="text-sm font-medium">Valor Solicitado (MZN) *</Label><Input type="number" value={form.requestedAmount} onChange={e => updateField('requestedAmount', e.target.value)} placeholder="Ex: 50000" className="mt-1.5" /><FieldError field="requestedAmount" /></div>
+                  <div><Label className="text-sm font-medium">Valor Solicitado (MZN) *</Label><Input type="number" inputMode="numeric" pattern="[0-9]*" value={form.requestedAmount} onChange={e => updateField('requestedAmount', e.target.value)} placeholder="Ex: 50000" className="mt-1.5" /><FieldError field="requestedAmount" /></div>
                   <div><Label className="text-sm font-medium">Data para Receber *</Label><Input type="date" value={form.receiveDate} onChange={e => updateField('receiveDate', e.target.value)} className="mt-1.5" /><FieldError field="receiveDate" /></div>
                   <div><Label className="text-sm font-medium">Finalidade do Crédito *</Label>
                     <Select value={form.creditPurpose || undefined} onValueChange={v => updateField('creditPurpose', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="negocio">Negócio</SelectItem><SelectItem value="consumo">Consumo</SelectItem><SelectItem value="saude">Saúde</SelectItem><SelectItem value="educacao">Educação</SelectItem><SelectItem value="emergencia">Emergência</SelectItem><SelectItem value="construcao">Construção/Reforma</SelectItem><SelectItem value="outros">Outros</SelectItem></SelectContent></Select><FieldError field="creditPurpose" /></div>
@@ -996,10 +1068,10 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                       <DollarSign className="h-4 w-4" /> Resumo do Empréstimo Esperado
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div><p className="text-[#166534]/70">Capital</p><p className="font-bold text-[#166534]">MZN {Number(form.requestedAmount).toLocaleString()}</p></div>
-                      <div><p className="text-[#166534]/70">Juros (30%)</p><p className="font-bold text-[#166534]">MZN {(Number(form.requestedAmount) * 0.3).toLocaleString()}</p></div>
+                      <div><p className="text-[#166534]/70">Capital</p><p className="font-bold text-[#166534]">MZN {(Number(form.requestedAmount) || 0).toLocaleString()}</p></div>
+                      <div><p className="text-[#166534]/70">Juros (30%)</p><p className="font-bold text-[#166534]">MZN {((Number(form.requestedAmount) || 0) * 0.3).toLocaleString()}</p></div>
                       <div><p className="text-[#166534]/70">Prazo</p><p className="font-bold text-[#166534]">30 Dias</p></div>
-                      <div><p className="text-[#166534]/70">Total a Pagar</p><p className="font-black text-[#166534]">MZN {(Number(form.requestedAmount) * 1.3).toLocaleString()}</p></div>
+                      <div><p className="text-[#166534]/70">Total a Pagar</p><p className="font-black text-[#166534]">MZN {((Number(form.requestedAmount) || 0) * 1.3).toLocaleString()}</p></div>
                     </div>
                   </div>
                 )}
