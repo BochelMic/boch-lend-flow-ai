@@ -41,8 +41,11 @@ export const NotificationPrompt = ({ userId }: { userId?: string }) => {
                 let subscription = await registration.pushManager.getSubscription();
 
                 if (!subscription) {
-                    const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB-3qOXG_H0V28tY4iVb-70l0';
-                    if (!VAPID_PUBLIC_KEY) return;
+                    const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+                    if (!VAPID_PUBLIC_KEY) {
+                        console.error('[Push] VITE_VAPID_PUBLIC_KEY not found in environment');
+                        return;
+                    }
 
                     const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 

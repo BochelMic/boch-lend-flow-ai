@@ -88,6 +88,7 @@ async function deliverWebPush(supabaseClient: any, userId: string, title: string
     .eq('user_id', userId)
 
   if (subs && subs.length > 0) {
+    console.log(`[Push] Found ${subs.length} active subscriptions for user ${userId}`);
     const vapidData = {
       publicKey: Deno.env.get('VAPID_PUBLIC_KEY') || '',
       privateKey: Deno.env.get('VAPID_PRIVATE_KEY') || '',
@@ -101,12 +102,18 @@ async function deliverWebPush(supabaseClient: any, userId: string, title: string
       for (const sub of subs) {
         const pushSubscription = { endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } }
         try {
-          await webpush.sendNotification(pushSubscription, pushPayload)
+          console.log(`[Push] Dispatching to endpoint: ${sub.endpoint.substring(0, 30)}...`);
+          const response = await webpush.sendNotification(pushSubscription, pushPayload)
+          console.log(`[Push] Delivery Success:`, response.statusCode);
         } catch (e) {
-          console.error('Error sending push:', e.message)
+          console.error('[Push] Delivery Failure:', e.message)
         }
       }
+    } else {
+      console.error("[Push] CRITICAL: VAPID keys missing in Edge Function Secrets!");
     }
+  } else {
+    console.log(`[Push] No active subscriptions found for user ${userId}. Push skipped.`);
   }
 }
 
