@@ -30,7 +30,7 @@ BEGIN
   -- Note: This requires the net extension to be enabled in Supabase
   PERFORM
     net.http_post(
-      url := 'https://' || (SELECT setting FROM pg_settings WHERE name = 'request.host') || '/functions/v1/send-notification',
+      url := 'https://huhyxyqnmszzdrfswwto.supabase.co/functions/v1/send-notification',
       headers := jsonb_build_object(
         'Content-Type', 'application/json',
         'Authorization', 'Bearer ' || (SELECT COALESCE(current_setting('vault.service_role_key', true), ''))

@@ -40,24 +40,47 @@ export const NotificationPrompt = ({ userId }: { userId?: string }) => {
                 const registration = await navigator.serviceWorker.ready;
                 let subscription = await registration.pushManager.getSubscription();
 
-                if (!subscription) {
-                    const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-                    if (!VAPID_PUBLIC_KEY) {
-                        console.error('[Push] VITE_VAPID_PUBLIC_KEY not found in environment');
-                        return;
-                    }
+                const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+                if (!VAPID_PUBLIC_KEY) {
+                    console.error('[Push] VITE_VAPID_PUBLIC_KEY not found in environment');
+                    return;
+                }
 
+                // Force renewal if key changed or subscription is stale
+                const lastUsedKey = localStorage.getItem('last-vapid-key');
+                if (subscription && lastUsedKey !== VAPID_PUBLIC_KEY) {
+                    console.log('[Push] VAPID key mismatch, renewing subscription...');
+                    await subscription.unsubscribe();
+                    subscription = null;
+                }
+
+                if (!subscription) {
                     const convertedVapidKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
 
-                    subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: convertedVapidKey
-                    });
+                    try {
+                        subscription = await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: convertedVapidKey
+                        });
+                        console.log('[Push] New subscription successful');
+                        localStorage.setItem('last-vapid-key', VAPID_PUBLIC_KEY);
+                    } catch (e) {
+                        console.error('[Push] Subscription failed. Retrying with fresh registration...', e);
+                        const currentSub = await registration.pushManager.getSubscription();
+                        if (currentSub) await currentSub.unsubscribe();
+
+                        subscription = await registration.pushManager.subscribe({
+                            userVisibleOnly: true,
+                            applicationServerKey: convertedVapidKey
+                        });
+                        localStorage.setItem('last-vapid-key', VAPID_PUBLIC_KEY);
+                    }
                 }
 
                 if (subscription) {
                     const subJson = subscription.toJSON();
                     if (subJson.endpoint && subJson.keys?.p256dh && subJson.keys?.auth) {
+                        console.log('[Push] Syncing correct subscription with database...');
                         await supabase.from('user_push_subscriptions').upsert({
                             user_id: userId,
                             endpoint: subJson.endpoint,
