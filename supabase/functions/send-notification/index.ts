@@ -21,64 +21,43 @@ serve(async (req) => {
     const payload = await req.json()
     console.log("Webhook Payload received:", JSON.stringify(payload, null, 2));
 
-    // Determine the type of notification based on the payload structure
-    // If it comes from our PostgreSQL HTTP trigger:
+    // 1. If 'push_only' is true, it means the notification is already in the DB (triggered by tr_push_notification)
+    // We just need to send the Web Push.
+    if (payload.push_only) {
+      console.log("[PushOnly] Direct delivery for user:", payload.userId);
+      await deliverWebPush(supabaseClient, payload.userId, payload.title, payload.body, payload.link_url);
+      return new Response(JSON.stringify({ success: true, mode: 'push_only' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // 2. Original Logic: Determine type and handle database insertion + push
     let userId = payload.userId;
     let type = payload.type || 'system';
     let title = payload.title;
     let body = payload.body;
     let link_url = payload.link_url || '/';
-    let event = payload.event;
 
-    // If it comes directly from a Supabase Database Webhook (Insert on credit_requests, loans, etc)
+    // Handle Supabase Database Webhooks (Insert on tables)
     if (payload.type === 'INSERT' && payload.table) {
       if (payload.table === 'credit_requests') {
         const record = payload.record;
-
-        // We need to notify agents/gestores. For simplicity, we fetch all gestores.
-        const { data: gestores } = await supabaseClient
-          .from('profiles')
-          .select('user_id')
-          .eq('role', 'gestor');
+        const { data: gestores } = await supabaseClient.from('profiles').select('user_id').eq('role', 'gestor');
 
         title = 'Novo Pedido de Crédito';
         body = `Um novo pedido de crédito de ${record.amount} MZN foi recebido.`;
         link_url = '/admin/pedidos';
 
-        // Notify all gestores
         if (gestores) {
           for (const g of gestores) {
-            await processNotification(supabaseClient, g.user_id, type, title, body, link_url);
+            await processNotification(supabaseClient, g.user_id, 'alert', title, body, link_url);
           }
         }
         return new Response(JSON.stringify({ success: true, message: 'Notified gestores' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
-      else if (payload.table === 'loans') {
-        // Logic for loan approved
-        const record = payload.record;
-        if (record.status === 'active') {
-          title = 'Empréstimo Aprovado';
-          body = `O seu empréstimo de ${record.amount} MZN foi aprovado.`;
-          link_url = '/';
-          // Notify client
-          await processNotification(supabaseClient, record.client_id, type, title, body, link_url);
-          return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-        }
-      }
-      else if (payload.table === 'chat_messages') {
-        const record = payload.record;
-        title = 'Nova Mensagem';
-        body = `Recebeu uma nova mensagem no chat.`;
-        link_url = '/chat';
-
-        await processNotification(supabaseClient, record.receiver_id, 'chat', title, body, link_url);
-        return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
-      }
+      // ... (other table handlers if needed, but tr_push_notification makes most of them redundant)
     }
 
-    // Direct HTTP call (from the PG Trigger we just wrote)
+    // Handle Direct HTTP calls (legacy or specific triggers)
     if (title && body) {
-      // If userId is missing but we have client_id, resolve user_id from client_id
       if (!userId && payload.client_id) {
         const { data: client } = await supabaseClient.from('clients').select('user_id').eq('id', payload.client_id).single();
         if (client) userId = client.user_id;
@@ -86,14 +65,6 @@ serve(async (req) => {
 
       if (userId) {
         await processNotification(supabaseClient, userId, type, title, body, link_url);
-      } else if (event === 'credit_request_created') {
-        // Notify Gestores
-        const { data: gestores } = await supabaseClient.from('profiles').select('user_id').eq('role', 'gestor');
-        if (gestores) {
-          for (const g of gestores) {
-            await processNotification(supabaseClient, g.user_id, type, title, body, link_url);
-          }
-        }
       }
     }
 
@@ -102,13 +73,42 @@ serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    console.error("Error processing webhook:", error);
+    console.error("Error processing request:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })
   }
 })
+
+async function deliverWebPush(supabaseClient: any, userId: string, title: string, body: string, link_url: string) {
+  const { data: subs } = await supabaseClient
+    .from('user_push_subscriptions')
+    .select('*')
+    .eq('user_id', userId)
+
+  if (subs && subs.length > 0) {
+    const vapidData = {
+      publicKey: Deno.env.get('VAPID_PUBLIC_KEY') || '',
+      privateKey: Deno.env.get('VAPID_PRIVATE_KEY') || '',
+      subject: 'mailto:admin@bochel.co.mz'
+    }
+
+    if (vapidData.publicKey && vapidData.privateKey) {
+      webpush.setVapidDetails(vapidData.subject, vapidData.publicKey, vapidData.privateKey)
+      const pushPayload = JSON.stringify({ title, body, url: link_url || '/' })
+
+      for (const sub of subs) {
+        const pushSubscription = { endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } }
+        try {
+          await webpush.sendNotification(pushSubscription, pushPayload)
+        } catch (e) {
+          console.error('Error sending push:', e.message)
+        }
+      }
+    }
+  }
+}
 
 async function processNotification(supabaseClient: any, userId: string, type: string, title: string, body: string, link_url: string) {
   if (!userId) return;

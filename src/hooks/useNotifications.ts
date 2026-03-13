@@ -40,10 +40,35 @@ export function useNotifications(userId?: string) {
   }, [userId]);
 
   useEffect(() => {
-    if (!userId) {
-      console.log('[useNotifications] No userId provided, skipping subscription.');
-      return;
-    }
+    if (!userId) return;
+
+    // Heartbeat for PWA: refresh when user returns to app/tab
+    const handleFocus = () => {
+      console.log('[Realtime] App focused, refreshing notifications...');
+      refresh();
+    };
+
+    // Unlock audio on first interaction
+    const unlockAudio = () => {
+      console.log('[Audio] User interacted, unlocking notification sounds...');
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContextClass) {
+        const tempCtx = new AudioContextClass();
+        tempCtx.resume().then(() => {
+          console.log('[Audio] Context unlocked');
+          tempCtx.close();
+        });
+      }
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('click', unlockAudio);
+    window.addEventListener('touchstart', unlockAudio);
+
+    // Initial refresh
+    refresh();
 
     // Use a unique suffix for this hook instance to allow multiple subscriptions (Header + MobileHeader)
     const instanceId = Math.random().toString(36).substring(7);
@@ -58,8 +83,6 @@ export function useNotifications(userId?: string) {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          // We remove the server-side filter and filter in the callback 
-          // to bypass the persistent "binding mismatch" error.
         },
         (payload) => {
           const newNotif = payload.new as any;
@@ -84,6 +107,9 @@ export function useNotifications(userId?: string) {
 
     return () => {
       console.log(`[Realtime] Cleaning up channel ${channelName}`);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
       supabase.removeChannel(channel);
     };
   }, [refresh, userId]);

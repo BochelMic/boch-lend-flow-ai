@@ -251,7 +251,7 @@ export default function MobileHeader() {
                                     </div>
                                 </div>
 
-                                <ScrollArea className="max-h-[60vh]">
+                                <ScrollArea className="h-[400px] max-h-[60vh] overflow-y-auto">
                                     {notifications.length === 0 ? (
                                         <div className="py-10 text-center">
                                             <Bell className="h-8 w-8 mx-auto text-gray-200 mb-2" />

@@ -165,7 +165,7 @@ const Header = () => {
               </div>
 
               {/* Lista */}
-              <ScrollArea className="max-h-72">
+              <ScrollArea className="h-[400px] max-h-[60vh] overflow-y-auto">
                 {notifications.length === 0 ? (
                   <div className="py-10 text-center">
                     <Bell className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
