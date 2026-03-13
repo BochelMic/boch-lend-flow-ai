@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import {
@@ -15,12 +14,21 @@ import {
   FileText,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  Eye,
+  EyeOff,
+  PlusCircle,
+  Wallet,
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 import MetricCard from './MetricCard';
 import CashFlowChart from './CashFlowChart';
 import RiskAnalysis from './RiskAnalysis';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+import WalletInjectionModal from '../admin/WalletInjectionModal';
+import { Button } from '../ui/button';
 
 const Dashboard = () => {
   const [stats, setStats] = useState({
@@ -39,6 +47,12 @@ const Dashboard = () => {
     roi: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [showWalletBalance, setShowWalletBalance] = useState(() => {
+    return localStorage.getItem('bochel_show_wallet_balance') !== 'false';
+  });
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [isInjectionModalOpen, setIsInjectionModalOpen] = useState(false);
+  const [walletLedger, setWalletLedger] = useState<any[]>([]);
 
   useEffect(() => {
     loadStats();
@@ -105,11 +119,38 @@ const Dashboard = () => {
         defaultRate: Math.round(defaultRate * 10) / 10,
         roi: Math.round(roi * 10) / 10,
       });
+
+      // Fetch Wallet Balance
+      const { data: walletData } = await supabase
+        .from('company_wallet')
+        .select('balance')
+        .single();
+
+      if (walletData) {
+        setWalletBalance(walletData.balance);
+      }
+
+      // Fetch Recent Ledger
+      const { data: ledgerData } = await supabase
+        .from('wallet_ledger')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (ledgerData) {
+        setWalletLedger(ledgerData);
+      }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleWalletVisibility = () => {
+    const newVal = !showWalletBalance;
+    setShowWalletBalance(newVal);
+    localStorage.setItem('bochel_show_wallet_balance', String(newVal));
   };
 
   const formatCurrency = (value: number) => {
@@ -120,6 +161,107 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {/* Carteira e Ações Rápidas */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
+        <Card className="md:col-span-8 border-0 shadow-large overflow-hidden bg-gradient-to-br from-[#1a3a5c] to-[#0d1d2e] text-white">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center backdrop-blur-md">
+                  <Wallet className="h-7 w-7 text-blue-300" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-white/60 uppercase tracking-widest">Saldo para Empréstimo</p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <h2 className="text-3xl font-black">
+                      {showWalletBalance ? (
+                        walletBalance !== null ? `MZN ${walletBalance.toLocaleString()}` : '...'
+                      ) : (
+                        '••••••••••••'
+                      )}
+                    </h2>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={toggleWalletVisibility}
+                      className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10 rounded-full"
+                    >
+                      {showWalletBalance ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                onClick={() => setIsInjectionModalOpen(true)}
+                className="bg-success hover:bg-success/90 text-white font-bold h-12 px-6 rounded-xl flex items-center gap-2 shadow-lg shadow-success/20 transition-all active:scale-95"
+              >
+                <PlusCircle className="h-5 w-5" />
+                Injectar Saldo
+              </Button>
+            </div>
+
+            {loading ? (
+              <div className="flex gap-4 mt-8">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-12 w-full bg-white/5 rounded-lg animate-pulse" />
+                ))}
+              </div>
+            ) : (
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-white/5 pt-6">
+                <div className="space-y-1">
+                  <p className="text-[10px] text-white/40 uppercase font-black tracking-tighter">Entradas (Mes)</p>
+                  <p className="text-sm font-bold text-success">+ MZN {walletLedger.filter(l => l.transaction_type !== 'disbursement').reduce((s, l) => s + Number(l.amount), 0).toLocaleString()}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-white/40 uppercase font-black tracking-tighter">Saídas (Mes)</p>
+                  <p className="text-sm font-bold text-destructive">- MZN {walletLedger.filter(l => l.transaction_type === 'disbursement').reduce((s, l) => s + Number(l.amount), 0).toLocaleString()}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] text-white/40 uppercase font-black tracking-tighter">Liquidez Pendente</p>
+                  <p className="text-sm font-bold text-info">MZN {(stats.creditRequests * 5000).toLocaleString()} (est.)</p>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Auditoria Rápida */}
+        <Card className="md:col-span-4 border-0 shadow-medium">
+          <CardHeader className="p-4 pb-0">
+            <CardTitle className="text-sm font-bold flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              Auditoria Recente
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="space-y-3">
+              {walletLedger.length > 0 ? (
+                walletLedger.map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <div className={cn(
+                        "w-1.5 h-1.5 rounded-full",
+                        tx.transaction_type === 'disbursement' ? "bg-destructive" : "bg-success"
+                      )} />
+                      <span className="text-muted-foreground">{tx.description}</span>
+                    </div>
+                    <span className={cn(
+                      "font-bold",
+                      tx.transaction_type === 'disbursement' ? "text-destructive" : "text-success"
+                    )}>
+                      {tx.transaction_type === 'disbursement' ? '-' : '+'} {Number(tx.amount).toLocaleString()}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-4 italic">Nenhuma transação registada.</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Métricas principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
         <MetricCard
@@ -368,6 +510,12 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      <WalletInjectionModal
+        isOpen={isInjectionModalOpen}
+        onClose={() => setIsInjectionModalOpen(false)}
+        onSuccess={loadStats}
+      />
     </div>
   );
 };

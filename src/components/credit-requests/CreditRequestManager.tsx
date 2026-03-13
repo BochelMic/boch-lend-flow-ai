@@ -206,43 +206,32 @@ const CreditRequestManager = () => {
         return;
       }
 
-      // 3. Create loan (30 days, 1.5% daily late penalty)
-      console.log('[INJECT] Step 3: Creating loan for client:', clientId, 'amount:', request.amount);
+      // 3. Create loan (Atomic RPC)
+      console.log('[INJECT] Step 3: Calling disburse_loan_with_wallet RPC for client:', clientId, 'amount:', request.amount);
       const startDate = new Date();
       const endDate = new Date();
       endDate.setDate(endDate.getDate() + 30);
 
       const interestRate = 30;
-      const loanPayload = {
-        client_id: clientId,
-        agent_id: request.agent_id || null,
-        amount: request.amount,
-        interest_rate: interestRate,
-        installments: 1,
-        total_amount: request.amount * 1.3,
-        remaining_amount: request.amount * 1.3,
-        status: 'active',
-        start_date: startDate.toISOString(),
-        end_date: endDate.toISOString(),
-      };
-      console.log('[INJECT] Loan payload:', loanPayload);
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('disburse_loan_with_wallet', {
+        p_request_id: request.id,
+        p_user_id: request.user_id,
+        p_client_id: clientId,
+        p_amount: request.amount,
+        p_interest_rate: interestRate,
+        p_installments: 1,
+        p_total_amount: request.amount * 1.3,
+        p_agent_id: request.agent_id || null,
+        p_start_date: startDate.toISOString(),
+        p_end_date: endDate.toISOString()
+      });
 
-      const { error: loanErr } = await supabase.from('loans').insert(loanPayload);
-      if (loanErr) {
-        console.error('[INJECT] Error creating loan:', loanErr);
-        throw new Error(`Erro ao criar empréstimo: ${loanErr.message}`);
+      if (rpcErr) {
+        console.error('[INJECT] RPC Error:', rpcErr);
+        throw new Error(`Erro ao injectar saldo (RPC): ${rpcErr.message}`);
       }
 
-      console.log('[INJECT] Step 4: Loan created successfully. Updating request status to completed...');
-
-      // Update credit request status to completed so the button disappears
-      const { error: reqUpdateErr } = await supabase.from('credit_requests')
-        .update({ status: 'completed' })
-        .eq('id', request.id);
-
-      if (reqUpdateErr) {
-        console.warn('[INJECT] Error updating credit request status to completed:', reqUpdateErr);
-      }
+      console.log('[INJECT] Step 4: Loan created and balance updated atomically!');
 
       console.log('[INJECT] Step 5: Sending notification...');
 

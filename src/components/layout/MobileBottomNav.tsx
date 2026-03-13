@@ -2,6 +2,13 @@ import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FileText, Calculator, MessageCircle, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useState } from 'react';
+import { cn } from '@/lib/utils';
+
+// Import 3D Icons
+import inicioImg from '@/assets/icon 3d/inicio.png';
+import pedidosImg from '@/assets/icon 3d/pedidos.png';
+import clientesImg from '@/assets/icon 3d/clientes.png';
+import chatImg from '@/assets/icon 3d/chat.png';
 
 export default function MobileBottomNav() {
     const location = useLocation();
@@ -14,10 +21,10 @@ export default function MobileBottomNav() {
         if (user?.role === 'cliente') {
             return {
                 main: [
-                    { name: 'Início', href: '/dashboard-cliente', icon: LayoutDashboard },
-                    { name: 'Pedidos', href: '/pedidos', icon: FileText },
+                    { name: 'Início', href: '/dashboard-cliente', icon: LayoutDashboard, image: inicioImg },
+                    { name: 'Pedidos', href: '/pedidos', icon: FileText, image: pedidosImg },
                     { name: 'Crédito', href: '/credit-form', icon: Calculator },
-                    { name: 'Chat', href: '/chat', icon: MessageCircle },
+                    { name: 'Chat', href: '/chat', icon: MessageCircle, image: chatImg },
                 ],
                 more: [
                     { name: 'Histórico', href: '/historico' },
@@ -28,10 +35,10 @@ export default function MobileBottomNav() {
         if (user?.role === 'agente') {
             return {
                 main: [
-                    { name: 'Início', href: `${prefix}/dashboard`, icon: LayoutDashboard },
-                    { name: 'Pedidos', href: `${prefix}/credit-requests`, icon: FileText },
-                    { name: 'Clientes', href: `${prefix}/clientes`, icon: Calculator },
-                    { name: 'Chat', href: `${prefix}/chat`, icon: MessageCircle },
+                    { name: 'Início', href: `${prefix}/dashboard`, icon: LayoutDashboard, image: inicioImg },
+                    { name: 'Pedidos', href: `${prefix}/credit-requests`, icon: FileText, image: pedidosImg },
+                    { name: 'Clientes', href: `${prefix}/clientes`, icon: Calculator, image: clientesImg },
+                    { name: 'Chat', href: `${prefix}/chat`, icon: MessageCircle, image: chatImg },
                 ],
                 more: [
                     { name: 'Novo Pedido', href: `${prefix}/credit-form` },
@@ -44,10 +51,10 @@ export default function MobileBottomNav() {
         // gestor
         return {
             main: [
-                { name: 'Início', href: `${prefix}/dashboard`, icon: LayoutDashboard },
-                { name: 'Pedidos', href: `${prefix}/credit-requests`, icon: FileText },
-                { name: 'Clientes', href: `${prefix}/clientes`, icon: Calculator },
-                { name: 'Chat', href: `${prefix}/chat`, icon: MessageCircle },
+                { name: 'Início', href: `${prefix}/dashboard`, icon: LayoutDashboard, image: inicioImg },
+                { name: 'Pedidos', href: `${prefix}/credit-requests`, icon: FileText, image: pedidosImg },
+                { name: 'Clientes', href: `${prefix}/clientes`, icon: Calculator, image: clientesImg },
+                { name: 'Chat', href: `${prefix}/chat`, icon: MessageCircle, image: chatImg },
             ],
             more: [
                 { name: 'Empréstimos', href: `${prefix}/emprestimos` },
@@ -91,23 +98,49 @@ export default function MobileBottomNav() {
             )}
 
             {/* Bottom Nav Bar */}
-            <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]">
-                <div className="flex items-center justify-around px-2 py-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))]">
+            <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-md border-t border-gray-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] px-2">
+                <div className="flex items-end justify-around py-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] h-20">
                     {main.map((item) => {
                         const isActive = location.pathname.startsWith(item.href);
                         return (
                             <Link
                                 key={item.name}
                                 to={item.href}
-                                className={`flex flex-col items-center gap-0.5 min-w-[56px] py-1.5 rounded-xl transition-all ${isActive
-                                    ? 'text-[#d37c22]'
-                                    : 'text-gray-400 active:text-gray-600'
-                                    }`}
+                                className={cn(
+                                    "flex flex-col items-center justify-end gap-1 min-w-[64px] transition-all relative",
+                                    isActive ? "text-[#d37c22]" : "text-gray-400 active:scale-95"
+                                )}
                             >
-                                <div className={`p-1.5 rounded-xl transition-colors ${isActive ? 'bg-[#d37c22]/10' : ''}`}>
-                                    <item.icon className="h-5 w-5" strokeWidth={isActive ? 2.5 : 1.8} />
+                                <div className={cn(
+                                    "relative flex items-center justify-center transition-all duration-300",
+                                    isActive ? "translate-y-[-8px] scale-110" : ""
+                                )}>
+                                    {item.image ? (
+                                        <img
+                                            src={item.image}
+                                            alt={item.name}
+                                            className={cn(
+                                                "w-10 h-10 object-contain icon-3d-nav",
+                                                isActive ? "icon-3d-nav-active" : "icon-3d-nav-idle"
+                                            )}
+                                        />
+                                    ) : (
+                                        <div className={cn(
+                                            "p-2 rounded-2xl transition-all shadow-sm",
+                                            isActive ? "bg-gradient-to-br from-[#d37c22] to-[#ff9d42] text-white shadow-orange-200" : "bg-gray-50"
+                                        )}>
+                                            <item.icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />
+                                        </div>
+                                    )}
+
+                                    {isActive && (
+                                        <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#d37c22] shadow-[0_0_8px_#d37c22]" />
+                                    )}
                                 </div>
-                                <span className={`text-[10px] leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>
+                                <span className={cn(
+                                    "text-[10px] leading-none tracking-tight transition-all",
+                                    isActive ? "font-black opacity-100" : "font-semibold opacity-60"
+                                )}>
                                     {item.name}
                                 </span>
                             </Link>
@@ -116,13 +149,29 @@ export default function MobileBottomNav() {
                     {more.length > 0 && (
                         <button
                             onClick={() => setShowMore(!showMore)}
-                            className={`flex flex-col items-center gap-0.5 min-w-[56px] py-1.5 rounded-xl transition-all ${showMore ? 'text-[#d37c22]' : 'text-gray-400 active:text-gray-600'
-                                }`}
+                            className={cn(
+                                "flex flex-col items-center justify-end gap-1 min-w-[64px] transition-all relative",
+                                showMore ? "text-[#d37c22]" : "text-gray-400 active:scale-95"
+                            )}
                         >
-                            <div className={`p-1.5 rounded-xl transition-colors ${showMore ? 'bg-[#d37c22]/10' : ''}`}>
-                                <MoreHorizontal className="h-5 w-5" strokeWidth={showMore ? 2.5 : 1.8} />
+                            <div className={cn(
+                                "relative flex items-center justify-center transition-all duration-300 group",
+                                showMore ? "translate-y-[-8px] scale-110" : ""
+                            )}>
+                                <div className={cn(
+                                    "p-2.5 rounded-2xl transition-all shadow-sm",
+                                    showMore ? "bg-gradient-to-br from-[#d37c22] to-[#ff9d42] text-white shadow-orange-200" : "bg-gray-50 text-gray-400"
+                                )}>
+                                    <MoreHorizontal className="h-6 w-6" strokeWidth={showMore ? 2.5 : 2} />
+                                </div>
+                                {showMore && (
+                                    <div className="absolute -bottom-1 w-1.5 h-1.5 rounded-full bg-[#d37c22] shadow-[0_0_8px_#d37c22]" />
+                                )}
                             </div>
-                            <span className={`text-[10px] leading-none ${showMore ? 'font-bold' : 'font-medium'}`}>
+                            <span className={cn(
+                                "text-[10px] leading-none tracking-tight transition-all",
+                                showMore ? "font-black opacity-100" : "font-semibold opacity-60"
+                            )}>
                                 Mais
                             </span>
                         </button>

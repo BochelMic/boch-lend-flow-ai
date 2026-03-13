@@ -18,14 +18,14 @@
     
     <!-- PWA Configuration – manifest dinâmico por perfil via JS -->
     <link id="pwa-manifest" rel="manifest" href="/manifest.json" />
-    <meta id="pwa-theme-color" name="theme-color" content="#22c55e" />
+    <meta id="pwa-theme-color" name="theme-color" content="#0b3a20" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta id="pwa-apple-title" name="apple-mobile-web-app-title" content="Bochel" />
-    <link rel="apple-touch-icon" href="/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png" />
-    <link rel="icon" href="/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png" type="image/png" />
+    <link rel="apple-touch-icon" href="/icon favcon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon favcon.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon favcon.png" />
+    <link rel="icon" href="/icon favcon.png" type="image/png" />
     <script>
       // Detectar perfil armazenado e carregar manifest correcto antes do React
       (function() {
@@ -35,7 +35,7 @@
             var u = JSON.parse(stored);
             var role = u.role;
             var manifests = { gestor: '/manifest-gestor.json', agente: '/manifest-agente.json', cliente: '/manifest-cliente.json' };
-            var themes = { gestor: '#22c55e', agente: '#3b82f6', cliente: '#a855f7' };
+            var themes = { gestor: '#0b3a20', agente: '#1b4d3e', cliente: '#d37c22' };
             var titles = { gestor: 'Bochel Gestor', agente: 'Bochel Agente', cliente: 'Bochel Cliente' };
             if (manifests[role]) {
               document.getElementById('pwa-manifest').setAttribute('href', manifests[role]);

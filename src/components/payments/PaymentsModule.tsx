@@ -140,31 +140,34 @@ const PaymentsModule = () => {
         notes: formData.notes || null,
       };
 
-      if (user) {
-        paymentData.received_by = user.id;
-      }
+      // Process payment with atomic RPC
+      const { data: rpcData, error: rpcError } = await supabase.rpc('receive_payment_with_wallet', {
+        p_loan_id: formData.loanId,
+        p_amount: amount,
+        p_payment_method: formData.method,
+        p_payment_date: formData.date,
+        p_notes: formData.notes || null,
+        p_received_by: user?.id || null
+      });
 
-      const { data: payData, error: payError } = await supabase.from('payments').insert(paymentData).select().single();
-      if (payError) throw payError;
+      if (rpcError) throw rpcError;
 
-      // Prepare payment object for the receipt
+      const newRemaining = rpcData.remaining_amount;
+      const newStatus = rpcData.status;
+      const isFullyPaid = newStatus === 'paid';
+
+      // Prepare payment object for the receipt (using locally available data for the immediate UI)
       const savedPaymentObj: Payment = {
-        ...payData,
+        id: 'RPC-UPDATE', // The RPC doesn't return the payment ID, but we reload below anyway
+        loan_id: formData.loanId,
+        amount,
+        payment_date: formData.date,
+        payment_method: formData.method,
+        notes: formData.notes || null,
+        created_at: new Date().toISOString(),
         loan_client_name: selectedLoan?.client_name || 'Desconhecido',
         client_data: selectedLoan?.client_data || null,
       };
-
-      // Atualizar saldo do empréstimo
-      let isFullyPaid = false;
-      if (selectedLoan) {
-        const newRemaining = Math.max(0, selectedLoan.remaining_amount - amount);
-        const updateData: any = { remaining_amount: newRemaining };
-        if (newRemaining <= 0) {
-          updateData.status = 'paid'; // Set status to paid when fully settled
-          isFullyPaid = true;
-        }
-        await supabase.from('loans').update(updateData).eq('id', formData.loanId);
-      }
 
       // ----------------------------------------------------
       // NOTIFICATIONS

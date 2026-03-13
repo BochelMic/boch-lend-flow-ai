@@ -298,3 +298,26 @@
 .logo-glow {
   animation: logo-glow 3s ease-in-out infinite;
 }
+
+/* 3D Navigation Icons Animations */
+@keyframes nav-float {
+  0%, 100% { transform: translateY(0px) scale(1); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1)); }
+  50% { transform: translateY(-6px) scale(1.15); filter: drop-shadow(0 8px 12px rgba(211, 124, 34, 0.4)); }
+}
+
+.icon-3d-nav {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-origin: bottom center;
+}
+
+.icon-3d-nav-active {
+  animation: nav-float 3s ease-in-out infinite;
+}
+
+.icon-3d-nav-idle {
+  filter: grayscale(40%) opacity(70%);
+}
+
+.icon-3d-nav-idle:active {
+  transform: scale(0.9);
+}
