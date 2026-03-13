@@ -15,7 +15,16 @@ const GestorApp = lazy(() => import("./pages/GestorApp"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const PublicCreditForm = lazy(() => import("./pages/PublicCreditForm"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,          // 30s — evita refetch desnecessário
+      gcTime: 5 * 60_000,         // 5min — mantém cache em memória
+      retry: 1,                   // apenas 1 retry (não infinito)
+      refetchOnWindowFocus: false, // não recarrega ao trocar de aba
+    },
+  },
+});
 
 // Main App Component - Vercel Deployment Check
 const App = () => (

@@ -1,21 +1,29 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import ClientLoginForm from '../components/auth/ClientLoginForm';
-import ClientDashboard from '../components/dashboard/ClientDashboard';
-import ClientAccountModule from '../components/client-account/ClientAccountModule';
-import ClientHistoryModule from '../components/client-history/ClientHistoryModule';
-import ClientRequestsModule from '../components/client-requests/ClientRequestsModule';
-import CreditFormModule from '../components/credit-form/CreditFormModule';
-import ChatModule from '../components/chat/ChatModule';
-import ContractModule from '../components/contracts/ContractModule';
-import ClientPaymentsModule from '../components/client-payments/ClientPaymentsModule';
-import Layout from '../components/layout/Layout';
 import { Loader2 } from 'lucide-react';
-import LandingPage from './LandingPage';
-import RegisterForm from '../components/auth/RegisterForm';
-import PrivacyPolicy from './PrivacyPolicy';
-import TermsOfUse from './TermsOfUse';
+import Layout from '../components/layout/Layout';
+
+// Lazy-load all route modules — reduces initial bundle significantly
+const ClientLoginForm = lazy(() => import('../components/auth/ClientLoginForm'));
+const ClientDashboard = lazy(() => import('../components/dashboard/ClientDashboard'));
+const ClientAccountModule = lazy(() => import('../components/client-account/ClientAccountModule'));
+const ClientHistoryModule = lazy(() => import('../components/client-history/ClientHistoryModule'));
+const ClientRequestsModule = lazy(() => import('../components/client-requests/ClientRequestsModule'));
+const CreditFormModule = lazy(() => import('../components/credit-form/CreditFormModule'));
+const ChatModule = lazy(() => import('../components/chat/ChatModule'));
+const ContractModule = lazy(() => import('../components/contracts/ContractModule'));
+const ClientPaymentsModule = lazy(() => import('../components/client-payments/ClientPaymentsModule'));
+const LandingPage = lazy(() => import('./LandingPage'));
+const RegisterForm = lazy(() => import('../components/auth/RegisterForm'));
+const PrivacyPolicy = lazy(() => import('./PrivacyPolicy'));
+const TermsOfUse = lazy(() => import('./TermsOfUse'));
+
+const PageLoader = () => (
+  <div className="min-h-screen flex items-center justify-center">
+    <Loader2 className="h-7 w-7 animate-spin text-[#1b5e20]" />
+  </div>
+);
 
 const ClientApp = () => {
   const { isAuthenticated, user, loading } = useAuth();
@@ -34,31 +42,35 @@ const ClientApp = () => {
 
   if (!isAuthenticated || user?.role !== 'cliente') {
     return (
-      <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/login" element={<ClientLoginForm />} />
-        <Route path="/register" element={<RegisterForm onSwitchToLogin={() => navigate('/login')} />} />
-        <Route path="/politicas-de-privacidade" element={<PrivacyPolicy />} />
-        <Route path="/termos-de-uso" element={<TermsOfUse />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/login" element={<ClientLoginForm />} />
+          <Route path="/register" element={<RegisterForm onSwitchToLogin={() => navigate('/login')} />} />
+          <Route path="/politicas-de-privacidade" element={<PrivacyPolicy />} />
+          <Route path="/termos-de-uso" element={<TermsOfUse />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     );
   }
 
   return (
     <Layout>
-      <Routes>
-        <Route path="/" element={<Navigate to="/dashboard-cliente" replace />} />
-        <Route path="/dashboard-cliente" element={<ClientDashboard />} />
-        <Route path="/conta/*" element={<ClientAccountModule />} />
-        <Route path="/historico/*" element={<ClientHistoryModule />} />
-        <Route path="/pedidos/*" element={<ClientRequestsModule />} />
-        <Route path="/credit-form/*" element={<CreditFormModule />} />
-        <Route path="/chat/*" element={<ChatModule />} />
-        <Route path="/contratos/*" element={<ContractModule />} />
-        <Route path="/pagamentos/*" element={<ClientPaymentsModule />} />
-        <Route path="*" element={<Navigate to="/dashboard-cliente" replace />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Navigate to="/dashboard-cliente" replace />} />
+          <Route path="/dashboard-cliente" element={<ClientDashboard />} />
+          <Route path="/conta/*" element={<ClientAccountModule />} />
+          <Route path="/historico/*" element={<ClientHistoryModule />} />
+          <Route path="/pedidos/*" element={<ClientRequestsModule />} />
+          <Route path="/credit-form/*" element={<CreditFormModule />} />
+          <Route path="/chat/*" element={<ChatModule />} />
+          <Route path="/contratos/*" element={<ContractModule />} />
+          <Route path="/pagamentos/*" element={<ClientPaymentsModule />} />
+          <Route path="*" element={<Navigate to="/dashboard-cliente" replace />} />
+        </Routes>
+      </Suspense>
     </Layout>
   );
 };
