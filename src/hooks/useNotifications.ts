@@ -45,11 +45,10 @@ export function useNotifications(userId?: string) {
       return;
     }
 
-    refresh();
-
-    // Use a unique name but don't re-create it unless userId actually changes
-    const channelName = `notifs_${userId}`;
-    console.log(`[Realtime] Initializing channel: ${channelName}`);
+    // Use a unique suffix for this hook instance to allow multiple subscriptions (Header + MobileHeader)
+    const instanceId = Math.random().toString(36).substring(7);
+    const channelName = `notifs-live-${instanceId}`;
+    console.log(`[Realtime] Initializing channel: ${channelName} for user: ${userId}`);
 
     const channel = supabase
       .channel(channelName)
@@ -59,18 +58,27 @@ export function useNotifications(userId?: string) {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${userId}`,
+          // We remove the server-side filter and filter in the callback 
+          // to bypass the persistent "binding mismatch" error.
         },
         (payload) => {
-          console.log('[Realtime] Message received!', payload.new);
-          playNotificationSound();
-          refresh();
+          const newNotif = payload.new as any;
+          if (newNotif.user_id === userId) {
+            console.log('[Realtime] New notification matches current user!', newNotif);
+            playNotificationSound();
+            refresh();
+          }
         }
       )
-      .subscribe((status) => {
-        console.log(`[Realtime] Status for ${channelName}:`, status);
+      .subscribe((status, err) => {
+        if (status === 'SUBSCRIBED') {
+          console.log(`[Realtime] ✅ Connected to ${channelName}`);
+        }
+        if (err) {
+          console.error(`[Realtime] Subscription error for ${channelName}:`, err);
+        }
         if (status === 'CHANNEL_ERROR') {
-          console.error(`[Realtime] FAILED to connect. Check SQL publications and RLS. (User: ${userId})`);
+          console.error(`[Realtime] FAILED to connect. Using fallback refresh.`);
         }
       });
 

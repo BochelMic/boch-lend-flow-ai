@@ -48,15 +48,24 @@ const Header = () => {
 
   const handleNotifClick = (notif: typeof notifications[0]) => {
     markOneRead(notif.id);
+
+    // Determine the role prefix for internal navigation
+    const rolePrefix = user?.role === 'cliente' ? '' : `/${user?.role}`;
+
     if (notif.link_url) {
       if (notif.link_url.startsWith('http')) {
         window.open(notif.link_url, '_blank');
       } else {
-        navigate(notif.link_url);
+        // Ensure internal links have the correct role prefix if they don't have it
+        const finalUrl = notif.link_url.startsWith('/')
+          ? (notif.link_url.startsWith(rolePrefix) ? notif.link_url : `${rolePrefix}${notif.link_url}`)
+          : `${rolePrefix}/${notif.link_url}`;
+
+        console.log(`[Header] Navigating to: ${finalUrl}`);
+        navigate(finalUrl);
       }
     } else if (notif.type === 'chat' || notif.type === 'alert') {
-      const prefix = user?.role === 'cliente' ? '' : `/${user?.role}`;
-      navigate(`${prefix}/chat`);
+      navigate(`${rolePrefix}/chat`);
     }
   };
 
