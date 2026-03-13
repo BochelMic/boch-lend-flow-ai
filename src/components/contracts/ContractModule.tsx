@@ -40,6 +40,9 @@ interface Contract {
     signed_at: string | null;
     needs_resignature?: boolean;
     created_at: string;
+    credit_requests?: {
+        agent_id: string | null;
+    } | null;
 }
 
 // Optimized PDF Viewer to avoid flicker or disappearance during state updates (like dragging)
@@ -162,13 +165,14 @@ const ContractModule = () => {
     const pdfPageRef = useRef<HTMLDivElement>(null);
     const sigImageRef = useRef<HTMLImageElement>(null);
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     useEffect(() => { if (user) loadContracts(); }, [user]);
 
     const loadContracts = async () => {
         if (!user) return;
         setLoading(true);
         try {
-            let query = supabase.from('contracts').select('*').order('created_at', { ascending: false });
+            let query = supabase.from('contracts').select('*, credit_requests(agent_id)').order('created_at', { ascending: false });
             if (!isAdmin) query = query.eq('client_id', user.id);
             const { data } = await query;
             setContracts(data || []);
@@ -380,7 +384,8 @@ const ContractModule = () => {
             try {
                 await notifyEvent('CONTRACT_SIGNED', {
                     clientName: selectedContract.client_name,
-                    fromUserId: user?.id || selectedContract.client_id
+                    fromUserId: user?.id || selectedContract.client_id,
+                    agentUserId: selectedContract.credit_requests?.agent_id || null
                 });
             } catch (notifyErr) {
                 console.error("Erro ao notificar gestores:", notifyErr);
@@ -399,7 +404,7 @@ const ContractModule = () => {
                 needs_resignature: false
             });
             loadContracts();
-        } catch (e: any) {
+        } catch (e: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
             toast({ title: 'Erro', description: e.message || 'Erro ao assinar.', variant: 'destructive' });
         } finally { setSaving(false); }
     };
@@ -420,7 +425,7 @@ const ContractModule = () => {
             saveAs(blob, `Contrato_${contract.status === 'signed' ? 'Assinado' : 'Pendente'}_${contract.client_name.replace(/\s+/g, '_')}.pdf`);
 
             toast({ title: 'Download concluído!' });
-        } catch (error: any) {
+        } catch (error: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
             console.error(error);
             toast({ title: 'Erro ao baixar documento', description: error.message, variant: 'destructive' });
         }
@@ -830,7 +835,7 @@ const ContractModule = () => {
                                                     setSelectedContract({ ...selectedContract, contract_url: data.publicUrl });
                                                     toast({ title: 'PDF Atualizado', description: 'O novo documento foi guardado com sucesso!' });
                                                     loadContracts();
-                                                } catch (err: any) {
+                                                } catch (err: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
                                                     toast({ title: 'Erro', description: err.message, variant: 'destructive' });
                                                 } finally {
                                                     setSaving(false);
@@ -934,7 +939,8 @@ const ContractModule = () => {
                                                 toast({ title: 'Sucesso Absoluto!', description: 'O saldo foi injetado na conta do cliente e o contrato arquivado.' });
                                                 setSelectedContract(null);
                                                 loadContracts();
-                                            } catch (err: any) {
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                            } catch (err: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
                                                 toast({ title: 'Erro de Processamento', description: err.message, variant: 'destructive' });
                                             } finally {
                                                 setSaving(false);
@@ -998,7 +1004,7 @@ const ContractModule = () => {
 
                                                     setSelectedContract({ ...selectedContract, needs_resignature: true });
                                                     loadContracts();
-                                                } catch (err: any) {
+                                                } catch (err: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
                                                     console.error("[Contract] Caught error:", err);
                                                     toast({
                                                         title: 'Erro de Banco de Dados',

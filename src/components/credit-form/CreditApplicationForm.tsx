@@ -239,6 +239,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
     checkUserStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   const checkUserStatus = async () => {
@@ -559,7 +560,9 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
               address, id_number: form.documentNumber, status: 'active',
             });
           }
-        } catch { }
+        } catch (e) {
+          console.error("Non-critical error creating client record", e);
+        }
       }
 
       // Submit credit request with retry
@@ -600,6 +603,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       };
 
       // Try up to 2 times
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let lastError: any = null;
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
@@ -628,6 +632,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
           clientName: form.fullName,
           amount: parseFloat(form.requestedAmount),
           fromUserId: user?.id || null,
+          agentUserId: user?.role === 'agente' ? user.id : null,
         });
       } catch (notifyErr) {
         console.warn('Notification error (non-blocking):', notifyErr);
@@ -635,6 +640,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
       setIsSubmitted(true);
       toast({ title: "Pedido enviado com sucesso!", description: "Será analisado em menos de 24h úteis." });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       const message = error?.message?.includes('Failed to fetch')
         ? 'Erro de conexão. Verifique a internet e tente novamente.'

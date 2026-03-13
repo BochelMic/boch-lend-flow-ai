@@ -8,11 +8,20 @@ import { ChangePasswordDialog } from '../auth/ChangePasswordDialog';
 import { ClientProfileDialog } from '../profile/ClientProfileDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { Badge } from '../ui/badge';
+import { ScrollArea } from '../ui/scroll-area';
+import { AlertTriangle, MessageCircle, CheckCheck, Trash2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function MobileHeader() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
-    const { unreadCount } = useNotifications(user?.id);
+    const { notifications, unreadCount, unreadChat, unreadAlerts, markAllRead, markOneRead, clearAll } = useNotifications(user?.id);
     const { currentLoan } = useClientAccess();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showBalance, setShowBalance] = useState(false);
@@ -40,13 +49,40 @@ export default function MobileHeader() {
                 .eq('user_id', user.id)
                 .maybeSingle() // Safer than single()
                 .then(({ data }) => {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     if (data && (data as any).avatar_url) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         setProfilePhoto((data as any).avatar_url);
                     }
                 })
                 .catch(err => console.error("[MobileHeader] Error fetching profile:", err));
         }
     }, [user?.id]);
+
+    const formatTime = (ts: string) => {
+        const d = new Date(ts);
+        const now = new Date();
+        const diffMin = Math.floor((now.getTime() - d.getTime()) / 60000);
+        if (diffMin < 1) return 'agora';
+        if (diffMin < 60) return `${diffMin}m atrás`;
+        const diffH = Math.floor(diffMin / 60);
+        if (diffH < 24) return `${diffH}h atrás`;
+        return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    };
+
+    const handleNotifClick = (notif: typeof notifications[0]) => {
+        markOneRead(notif.id);
+        if (notif.link_url) {
+            if (notif.link_url.startsWith('http')) {
+                window.open(notif.link_url, '_blank');
+            } else {
+                // Fix: Check if it's already an absolute path for the role or needs prefix
+                const prefix = user?.role === 'cliente' ? '' : `/${user?.role}`;
+                const finalUrl = notif.link_url.startsWith('/') ? notif.link_url : `${prefix}${notif.link_url}`;
+                navigate(finalUrl);
+            }
+        }
+    };
 
     const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -82,6 +118,7 @@ export default function MobileHeader() {
 
             setProfilePhoto(publicUrl);
             toast({ title: 'Sucesso', description: 'Foto de perfil atualizada!' });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
             console.error('Error uploading avatar:', error);
             toast({ title: 'Erro', description: 'Não foi possível atualizar a foto.', variant: 'destructive' });
@@ -166,17 +203,116 @@ export default function MobileHeader() {
 
                     <div className="flex items-center gap-2">
                         {/* Notification bell */}
-                        <button
-                            onClick={() => navigate('/notifications')}
-                            className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                        >
-                            <Bell className="h-4 w-4 text-white" />
-                            {unreadCount > 0 && (
-                                <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-[#d37c22] text-[9px] font-bold text-white flex items-center justify-center px-1">
-                                    {unreadCount > 99 ? '99+' : unreadCount}
-                                </span>
-                            )}
-                        </button>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button
+                                    className="relative w-9 h-9 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                                >
+                                    <Bell className="h-4 w-4 text-white" />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-[#d37c22] text-[9px] font-bold text-white flex items-center justify-center px-1">
+                                            {unreadCount > 99 ? '99+' : unreadCount}
+                                        </span>
+                                    )}
+                                </button>
+                            </DropdownMenuTrigger>
+
+                            <DropdownMenuContent
+                                align="end"
+                                className="w-80 sm:w-[350px] border-border/50 bg-white/95 backdrop-blur-xl shadow-2xl p-0 overflow-hidden mt-2"
+                            >
+                                <div className="px-4 py-3 border-b border-border/50 flex items-center justify-between bg-white">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-800">Notificações</p>
+                                        <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
+                                            {unreadCount} pendentes
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                        {unreadChat > 0 && (
+                                            <Badge className="bg-blue-100 text-blue-600 border-0 hover:bg-blue-100 h-5 px-1.5 text-[10px]">
+                                                {unreadChat} <MessageCircle className="h-2.5 w-2.5 ml-0.5" />
+                                            </Badge>
+                                        )}
+                                        {unreadAlerts > 0 && (
+                                            <Badge className="bg-orange-100 text-[#d37c22] border-0 hover:bg-orange-100 h-5 px-1.5 text-[10px]">
+                                                {unreadAlerts} <AlertTriangle className="h-2.5 w-2.5 ml-0.5" />
+                                            </Badge>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <ScrollArea className="max-h-[60vh]">
+                                    {notifications.length === 0 ? (
+                                        <div className="py-10 text-center">
+                                            <Bell className="h-8 w-8 mx-auto text-gray-200 mb-2" />
+                                            <p className="text-xs text-gray-400">Nenhuma notificação</p>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-gray-50">
+                                            {notifications.map((notif) => (
+                                                <button
+                                                    key={notif.id}
+                                                    onClick={() => handleNotifClick(notif)}
+                                                    className={cn(
+                                                        'w-full text-left px-4 py-3.5 flex items-start gap-3 active:bg-gray-100 transition-colors',
+                                                        !notif.read ? 'bg-orange-50/30' : 'bg-white'
+                                                    )}
+                                                >
+                                                    <div className={cn(
+                                                        'mt-0.5 w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0',
+                                                        notif.type === 'alert' ? 'bg-orange-100' : 'bg-blue-100'
+                                                    )}>
+                                                        {notif.type === 'alert'
+                                                            ? <AlertTriangle className="h-4 w-4 text-[#d37c22]" />
+                                                            : <MessageCircle className="h-4 w-4 text-blue-600" />
+                                                        }
+                                                    </div>
+
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between gap-1 mb-0.5">
+                                                            <p className={cn(
+                                                                'text-xs font-bold truncate',
+                                                                !notif.read ? 'text-gray-900' : 'text-gray-500'
+                                                            )}>
+                                                                {notif.title}
+                                                            </p>
+                                                            <span className="text-[9px] text-gray-400 font-medium shrink-0">
+                                                                {formatTime(notif.timestamp)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[11px] text-gray-500 leading-normal line-clamp-2">{notif.body}</p>
+                                                    </div>
+
+                                                    {!notif.read && (
+                                                        <div className="w-2 h-2 rounded-full bg-[#d37c22] flex-shrink-0 mt-2 shadow-[0_0_8px_#d37c22]" />
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </ScrollArea>
+
+                                {notifications.length > 0 && (
+                                    <div className="border-t border-border/50 p-2 flex items-center justify-between bg-gray-50/50">
+                                        <button
+                                            className="text-[10px] font-bold text-[#d37c22] flex items-center gap-1 px-3 py-1.5 rounded-lg active:bg-[#d37c22]/10 transition-colors"
+                                            onClick={markAllRead}
+                                        >
+                                            <CheckCheck className="h-3 w-3" />
+                                            Lidas
+                                        </button>
+                                        <button
+                                            className="text-[10px] font-bold text-red-500 flex items-center gap-1 px-3 py-1.5 rounded-lg active:bg-red-50 transition-colors"
+                                            onClick={clearAll}
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                            Limpar
+                                        </button>
+                                    </div>
+                                )}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                         {/* Change Password */}
                         <ChangePasswordDialog>
                             <button

@@ -33,7 +33,7 @@ async function getAllGestorIds(): Promise<string[]> {
         console.error('[notifyEvent] Error fetching gestors:', error);
         return [];
     }
-    const ids = (data || []).map((r: any) => r.user_id);
+    const ids = (data || []).map((r: { user_id: string }) => r.user_id);
     console.log('[notifyEvent] Found gestors to notify:', ids);
     return ids;
 }
@@ -63,19 +63,34 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
     try {
         switch (event) {
 
-            // ── Client submits a new credit request → notify all gestors ──
+            // ── Client submits a new credit request → notify all gestors (and agent) ──
             case 'NEW_CREDIT_REQUEST': {
                 const gestorIds = await getAllGestorIds();
                 const interest = (params.amount || 0) * 0.3;
                 const total = (params.amount || 0) + interest;
-                await insertNotifications(gestorIds.map(id => ({
+
+                const entries: Parameters<typeof insertNotifications>[0] = gestorIds.map(id => ({
                     user_id: id,
                     type: 'alert' as const,
                     title: '📋 Novo Pedido de Crédito',
                     body: `${params.clientName} solicitou MZN ${fmt(params.amount || 0)}. Total c/ 30% juros: MZN ${fmt(total)}.`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/credit-requests',
-                })));
+                }));
+
+                // If an agent created this, notify them too
+                if (params.agentUserId) {
+                    entries.push({
+                        user_id: params.agentUserId,
+                        type: 'alert' as const,
+                        title: '📋 Pedido de Crédito Submetido',
+                        body: `O pedido para ${params.clientName} (MZN ${fmt(params.amount || 0)}) foi submetido com sucesso e aguarda análise.`,
+                        from_user_id: params.fromUserId || null,
+                        link_url: '/credit-requests',
+                    });
+                }
+
+                await insertNotifications(entries);
                 break;
             }
 
@@ -107,17 +122,31 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                 break;
             }
 
-            // ── Client signs contract → notify all gestors ──
+            // ── Client signs contract → notify all gestors (and agent) ──
             case 'CONTRACT_SIGNED': {
                 const gestorIds = await getAllGestorIds();
-                await insertNotifications(gestorIds.map(id => ({
+                const entries: Parameters<typeof insertNotifications>[0] = gestorIds.map(id => ({
                     user_id: id,
                     type: 'alert' as const,
                     title: '✍️ Contrato Assinado',
                     body: `${params.clientName} acabou de assinar o contrato. Pode proceder à injecção do saldo.`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/credit-requests',
-                })));
+                }));
+
+                // If this client belongs to an agent, notify the agent
+                if (params.agentUserId) {
+                    entries.push({
+                        user_id: params.agentUserId,
+                        type: 'alert' as const,
+                        title: '✍️ Contrato Assinado pelo Cliente',
+                        body: `${params.clientName} assinou o contrato! O pedido está agora pronto para injecção de saldo.`,
+                        from_user_id: params.fromUserId || null,
+                        link_url: '/credit-requests',
+                    });
+                }
+
+                await insertNotifications(entries);
                 break;
             }
 
