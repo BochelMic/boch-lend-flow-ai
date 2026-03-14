@@ -19,7 +19,7 @@ import { AlertTriangle, MessageCircle, CheckCheck, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function MobileHeader() {
-    const { user, logout } = useAuth();
+    const { user, logout, refreshUser } = useAuth();
     const navigate = useNavigate();
     const { notifications, unreadCount, unreadChat, unreadAlerts, markAllRead, markOneRead, clearAll } = useNotifications(user?.id);
     const { currentLoan } = useClientAccess();
@@ -36,28 +36,7 @@ export default function MobileHeader() {
 
     const { toast } = useToast();
     const [isUploading, setIsUploading] = useState(false);
-
-    // Profile photo state (initially null, fetched from Supabase)
-    const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-
-    // Fetch avatar on mount if we have a user
-    useEffect(() => {
-        if (user?.id) {
-            supabase
-                .from('profiles')
-                .select('*') // Using * to be safe against missing avatar_url column
-                .eq('user_id', user.id)
-                .maybeSingle() // Safer than single()
-                .then(({ data }) => {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    if (data && (data as any).avatar_url) {
-                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        setProfilePhoto((data as any).avatar_url);
-                    }
-                })
-                .catch(err => console.error("[MobileHeader] Error fetching profile:", err));
-        }
-    }, [user?.id]);
+    const profilePhoto = user?.avatar_url;
 
     const formatTime = (ts: string) => {
         const d = new Date(ts);
@@ -125,7 +104,7 @@ export default function MobileHeader() {
 
             if (updateError) throw updateError;
 
-            setProfilePhoto(publicUrl);
+            if (refreshUser) await refreshUser();
             toast({ title: 'Sucesso', description: 'Foto de perfil atualizada!' });
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } catch (error: any) {
@@ -281,7 +260,7 @@ export default function MobileHeader() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center justify-between gap-1 mb-0.5">
                                                             <p className={cn(
-                                                                'text-xs font-bold truncate',
+                                                                'text-xs font-bold leading-tight break-words',
                                                                 !notif.read ? 'text-gray-900' : 'text-gray-500'
                                                             )}>
                                                                 {notif.title}
@@ -290,7 +269,7 @@ export default function MobileHeader() {
                                                                 {formatTime(notif.timestamp)}
                                                             </span>
                                                         </div>
-                                                        <p className="text-[11px] text-gray-500 leading-normal line-clamp-2">{notif.body}</p>
+                                                        <p className="text-[11px] text-gray-500 leading-normal break-words">{notif.body}</p>
                                                     </div>
 
                                                     {!notif.read && (

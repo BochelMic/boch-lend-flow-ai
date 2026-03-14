@@ -849,109 +849,17 @@ const ContractModule = () => {
                             {isAdmin && selectedContract.status === 'signed' && (
                                 <div className="border-2 border-green-100 rounded-2xl p-6 bg-green-50/50 space-y-4">
                                     <h3 className="text-lg font-bold text-green-900 flex items-center gap-2"><CheckCircle className="h-6 w-6 text-green-600" /> Contrato Assinado!</h3>
-                                    <p className="text-sm text-green-800">O cliente assinou o documento em {formatDate(selectedContract.signed_at || '')}. Para aprovar definitivamente o crédito e injetar o saldo na conta corrente do cliente, complete a operação abaixo.</p>
-
-                                    <div className="bg-white p-5 rounded-xl border border-green-100 shadow-sm mt-4">
-                                        <p className="text-sm font-bold text-gray-700 mb-3">Definir Número de Parcelas para o Empréstimo</p>
-                                        <div className="flex flex-wrap gap-2">
-                                            {[1, 2, 3, 4, 6, 12].map(n => (
-                                                <button
-                                                    key={n}
-                                                    onClick={() => setLoanInstallments(n)}
-                                                    className={`flex-1 min-w-[60px] py-3 rounded-lg text-sm font-bold transition-all ${loanInstallments === n
-                                                        ? 'bg-[#1b5e20] text-white shadow-md ring-2 ring-[#1b5e20] ring-offset-2'
-                                                        : 'bg-gray-50 border border-gray-200 text-gray-600 hover:bg-gray-100'
-                                                        }`}
-                                                >
-                                                    {n}x
-                                                </button>
-                                            ))}
-                                        </div>
-                                        {loanInstallments > 1 && (
-                                            <p className="text-xs text-center font-medium text-green-800 bg-green-100 px-3 py-1.5 rounded-full inline-block mt-4">
-                                                Duração do Crédito: {loanInstallments * 30} dias ({loanInstallments} meses)
-                                            </p>
-                                        )}
-                                    </div>
+                                    <p className="text-sm text-green-800">
+                                        O cliente assinou o documento em {formatDate(selectedContract.signed_at || '')}.
+                                        O processo de injeção de saldo e ativação do crédito deve ser agora concluído na página de <strong>Pedidos de Crédito</strong>.
+                                    </p>
 
                                     <Button
-                                        onClick={async () => {
-                                            setSaving(true);
-                                            try {
-                                                // 1. Obter os dados do pedido de crédito para saber o valor
-                                                let loanAmount = 0;
-                                                if (selectedContract.credit_request_id) {
-                                                    const { data: requestData } = await supabase
-                                                        .from('credit_requests')
-                                                        .select('amount')
-                                                        .eq('id', selectedContract.credit_request_id)
-                                                        .single();
-                                                    if (requestData?.amount) {
-                                                        loanAmount = Number(requestData.amount);
-                                                    }
-                                                }
-
-                                                if (loanAmount <= 0) {
-                                                    toast({ title: 'Aviso', description: 'Não foi possível determinar o valor do empréstimo a partir do pedido associado.', variant: 'destructive' });
-                                                    setSaving(false);
-                                                    return;
-                                                }
-
-                                                // 2. Buscar o ID do Client associado a este user_id
-                                                const { data: clientRecord } = await supabase
-                                                    .from('clients')
-                                                    .select('id')
-                                                    .eq('user_id', selectedContract.client_id)
-                                                    .maybeSingle();
-
-                                                if (!clientRecord) {
-                                                    toast({ title: 'Aviso', description: 'Registo de Cliente não encontrado para este utilizador. Crie um perfil de cliente primeiro.', variant: 'destructive' });
-                                                    setSaving(false);
-                                                    return;
-                                                }
-
-                                                // 3. Criar Empréstimo Ativo (30 Dias, 30% Juros Fixos)
-                                                const interestRate = 30;
-                                                const interestValue = loanAmount * (interestRate / 100);
-                                                const totalAmount = loanAmount + interestValue;
-
-                                                const startDate = new Date();
-                                                const endDate = new Date();
-                                                endDate.setDate(startDate.getDate() + (30 * loanInstallments));
-
-                                                const { error: loanError } = await supabase.from('loans').insert({
-                                                    client_id: clientRecord.id,
-                                                    amount: loanAmount,
-                                                    interest_rate: interestRate,
-                                                    total_amount: totalAmount,
-                                                    remaining_amount: totalAmount,
-                                                    installments: loanInstallments,
-                                                    status: 'active',
-                                                    start_date: startDate.toISOString().split('T')[0],
-                                                    end_date: endDate.toISOString().split('T')[0],
-                                                });
-
-                                                if (loanError) throw loanError;
-
-                                                // 4. Finalizar Contrato
-                                                await supabase.from('contracts').update({ status: 'completed', updated_at: new Date().toISOString() }).eq('id', selectedContract.id);
-
-                                                toast({ title: 'Sucesso Absoluto!', description: 'O saldo foi injetado na conta do cliente e o contrato arquivado.' });
-                                                setSelectedContract(null);
-                                                loadContracts();
-                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                            } catch (err: any /* eslint-disable-line @typescript-eslint/no-explicit-any */) {
-                                                toast({ title: 'Erro de Processamento', description: err.message, variant: 'destructive' });
-                                            } finally {
-                                                setSaving(false);
-                                            }
-                                        }}
-                                        className="w-full h-14 text-white font-bold text-lg shadow-xl mt-6 transition-all hover:bg-[#124215]"
-                                        style={{ backgroundColor: '#1b5e20' }}
-                                        disabled={saving}
+                                        onClick={() => navigate('/gestor/pedidos')}
+                                        className="w-full h-14 text-white font-bold text-lg shadow-xl mt-2 transition-all hover:bg-[#122a44]"
+                                        style={{ backgroundColor: '#1a3a5c' }}
                                     >
-                                        {saving ? <RefreshCw className="h-5 w-5 animate-spin mr-2" /> : <CheckCircle className="h-5 w-5 mr-2" />}
-                                        {saving ? 'A Processar Injeção...' : 'Aprovar Final e Injetar Saldo'}
+                                        Ir para Pedidos de Crédito <ChevronRight className="h-5 w-5 ml-2" />
                                     </Button>
 
                                     <div className="pt-4 mt-4 border-t border-green-100 flex flex-col gap-3">

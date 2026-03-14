@@ -7,6 +7,7 @@ interface User {
     email: string;
     role: 'gestor' | 'agente' | 'cliente';
     permissions: string[];
+    avatar_url?: string | null;
 }
 
 const rolePermissions: Record<string, string[]> = {
@@ -24,6 +25,7 @@ interface AuthContextType {
     register: (data: { name: string; email: string; password: string; role: 'gestor' | 'agente' | 'cliente' }) => Promise<{ success: boolean; message: string }>;
     logout: () => Promise<void>;
     hasPermission: (permission: string) => boolean;
+    refreshUser: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,70 +39,76 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const setUserFromSession = (authUser: any, role: 'gestor' | 'agente' | 'cliente', name?: string, avatar_url?: string | null) => {
+        setUser({
+            id: authUser.id,
+            name: name || authUser.user_metadata?.name || authUser.email || '',
+            email: authUser.email || '',
+            role,
+            permissions: rolePermissions[role] || [],
+            avatar_url: avatar_url || null,
+        });
+        setIsAuthenticated(true);
+        setLoading(false);
+    };
+
+    const loadUserProfile = async (authUser: any) => {
+        try {
+            // Use individual timeouts on each query to prevent hanging
+            const profilePromise = supabase
+                .from('profiles')
+                .select('name, email, avatar_url')
+                .eq('user_id', authUser.id)
+                .maybeSingle();
+
+            const rolePromise = supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', authUser.id)
+                .maybeSingle();
+
+            // Race both queries against a 4s timeout
+            const [profileResult, roleResult] = await Promise.all([
+                withTimeout(profilePromise, 4000),
+                withTimeout(rolePromise, 4000),
+            ]);
+
+            const profile = profileResult?.data;
+            const roleData = roleResult?.data;
+
+            // Determine role: from DB > from user_metadata > default
+            const role = (roleData?.role || authUser.user_metadata?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
+            const name = profile?.name || authUser.user_metadata?.name || authUser.email || '';
+            const avatar = profile?.avatar_url || null;
+
+            setUserFromSession(authUser, role, name, avatar);
+        } catch (error) {
+            console.error("Error loading profile, using session metadata:", error);
+            // Fallback: use metadata from the auth session itself
+            const metaRole = (authUser.user_metadata?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
+            setUserFromSession(authUser, metaRole);
+        }
+    };
+
+    const refreshUser = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+            await loadUserProfile(session.user);
+        }
+    };
+
     useEffect(() => {
         let mounted = true;
         let resolved = false;
-        const markResolved = () => { resolved = true; };
 
         // Safety timeout
         const safetyTimeout = setTimeout(() => {
             if (mounted && !resolved) {
                 console.warn('Auth initialization timed out, proceeding without auth.');
                 setLoading(false);
-                markResolved();
+                resolved = true;
             }
         }, 8000);
-
-        const setUserFromSession = (authUser: any, role: 'gestor' | 'agente' | 'cliente', name?: string) => {
-            if (!mounted) return;
-            setUser({
-                id: authUser.id,
-                name: name || authUser.user_metadata?.name || authUser.email || '',
-                email: authUser.email || '',
-                role,
-                permissions: rolePermissions[role] || [],
-            });
-            setIsAuthenticated(true);
-            setLoading(false);
-            markResolved();
-        };
-
-        const loadUserProfile = async (authUser: any) => {
-            try {
-                // Use individual timeouts on each query to prevent hanging
-                const profilePromise = supabase
-                    .from('profiles')
-                    .select('name, email')
-                    .eq('user_id', authUser.id)
-                    .maybeSingle();
-
-                const rolePromise = supabase
-                    .from('user_roles')
-                    .select('role')
-                    .eq('user_id', authUser.id)
-                    .maybeSingle();
-
-                // Race both queries against a 4s timeout
-                const [profileResult, roleResult] = await Promise.all([
-                    withTimeout(profilePromise, 4000),
-                    withTimeout(rolePromise, 4000),
-                ]);
-
-                const profile = profileResult?.data;
-                const roleData = roleResult?.data;
-
-                // Determine role: from DB > from user_metadata > default
-                const role = (roleData?.role || authUser.user_metadata?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
-                const name = profile?.name || authUser.user_metadata?.name || authUser.email || '';
-
-                setUserFromSession(authUser, role, name);
-            } catch (error) {
-                console.error("Error loading profile, using session metadata:", error);
-                // Fallback: use metadata from the auth session itself
-                const metaRole = (authUser.user_metadata?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
-                setUserFromSession(authUser, metaRole);
-            }
-        };
 
         const initializeSession = async () => {
             try {
@@ -108,17 +116,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
                 if (session?.user && mounted) {
                     await loadUserProfile(session.user);
+                    resolved = true;
                 } else if (mounted) {
                     setUser(null);
                     setIsAuthenticated(false);
                     setLoading(false);
-                    markResolved();
+                    resolved = true;
                 }
             } catch (error) {
                 console.error("Error checking session:", error);
                 if (mounted) {
                     setLoading(false);
-                    markResolved();
+                    resolved = true;
                 }
             }
         };
@@ -133,7 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     setUser(null);
                     setIsAuthenticated(false);
                     setLoading(false);
-                    markResolved();
+                    resolved = true;
                 }
                 return;
             }
@@ -240,6 +249,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         register,
         logout,
         hasPermission,
+        refreshUser
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
-import { User, History, CreditCard, CheckCircle, AlertTriangle } from 'lucide-react';
+import { User, History, CreditCard, CheckCircle, AlertTriangle, Camera, Loader2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenuItem } from '../ui/dropdown-menu';
+import { toast } from 'sonner';
 
 export interface ClientProfileDialogProps {
     children?: React.ReactNode;
@@ -18,7 +19,7 @@ export interface ClientProfileDialogProps {
 }
 
 export const ClientProfileDialog = ({ children, clientData }: ClientProfileDialogProps) => {
-    const { user } = useAuth();
+    const { user, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const [stats, setStats] = useState({
@@ -28,12 +29,87 @@ export const ClientProfileDialog = ({ children, clientData }: ClientProfileDialo
         totalBorrowed: 0,
     });
     const [loading, setLoading] = useState(false);
+    const [uploading, setUploading] = useState(false);
+
+    // Local state for when viewing OTHER users' profiles
+    const [clientAvatarUrl, setClientAvatarUrl] = useState<string | null>(null);
+
+    // Current effective avatar
+    const avatarUrl = clientData ? clientAvatarUrl : user?.avatar_url;
 
     useEffect(() => {
         if (open) {
             fetchStats();
+            if (clientData) fetchClientAvatar();
         }
     }, [open, user?.id, clientData?.id]);
+
+    const fetchClientAvatar = async () => {
+        try {
+            if (!clientData?.id) return;
+
+            // First get user_id from client
+            const { data: client } = await supabase
+                .from('clients')
+                .select('user_id')
+                .eq('id', clientData.id)
+                .single();
+
+            if (client?.user_id) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('avatar_url')
+                    .eq('user_id', client.user_id)
+                    .single();
+
+                if (profile?.avatar_url) {
+                    setClientAvatarUrl(profile.avatar_url);
+                }
+            }
+        } catch (error) {
+            console.error('Error fetching client avatar:', error);
+        }
+    };
+
+    const handleUploadAvatar = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        try {
+            setUploading(true);
+            const file = event.target.files?.[0];
+            if (!file || !user?.id) return;
+
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+            const filePath = `${fileName}`;
+
+            // 1. Upload to bucket
+            const { error: uploadError } = await supabase.storage
+                .from('avatars')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Get public URL
+            const { data: { publicUrl } } = supabase.storage
+                .from('avatars')
+                .getPublicUrl(filePath);
+
+            // 3. Update profile
+            const { error: updateError } = await supabase
+                .from('profiles')
+                .update({ avatar_url: publicUrl })
+                .eq('user_id', user.id);
+
+            if (updateError) throw updateError;
+
+            toast.success('Foto de perfil atualizada!');
+            if (refreshUser) await refreshUser();
+        } catch (error: any) {
+            toast.error('Erro ao carregar foto: ' + error.message);
+            console.error('Upload error:', error);
+        } finally {
+            setUploading(false);
+        }
+    };
 
     const fetchStats = async () => {
         setLoading(true);
@@ -117,8 +193,20 @@ export const ClientProfileDialog = ({ children, clientData }: ClientProfileDialo
             </DialogTrigger>
             <DialogContent className="sm:max-w-md bg-white border border-gray-100 shadow-2xl rounded-2xl p-0 overflow-hidden">
                 <div className="bg-gradient-to-r from-secondary/10 to-secondary/5 p-6 border-b border-gray-100 flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full bg-gradient-primary flex items-center justify-center shadow-lg border-4 border-white flex-shrink-0">
-                        <span className="text-2xl font-bold text-white uppercase">{initial}</span>
+                    <div className="relative group">
+                        <div className="h-20 w-20 rounded-full bg-gradient-primary flex items-center justify-center shadow-lg border-4 border-white flex-shrink-0 overflow-hidden">
+                            {avatarUrl ? (
+                                <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+                            ) : (
+                                <span className="text-3xl font-bold text-white uppercase">{initial}</span>
+                            )}
+                        </div>
+                        {!clientData && (
+                            <label className="absolute bottom-0 right-0 bg-white p-1.5 rounded-full shadow-md cursor-pointer border border-gray-100 hover:bg-gray-50 transition-colors">
+                                {uploading ? <Loader2 className="h-4 w-4 animate-spin text-secondary" /> : <Camera className="h-4 w-4 text-secondary" />}
+                                <input type="file" className="hidden" accept="image/*" onChange={handleUploadAvatar} disabled={uploading} />
+                            </label>
+                        )}
                     </div>
                     <div>
                         <h2 className="text-xl font-bold text-gray-900">{displayName}</h2>

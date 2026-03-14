@@ -589,7 +589,7 @@ const LandingPage = () => {
             <div>
               <h4 className="font-bold text-lg mb-5" style={{ color: secondaryColor }}>Contactos</h4>
               <ul className="space-y-3 text-sm font-medium text-gray-300">
-                <li>Avenida Principal, Maputo, MOZ</li>
+                <li>Moçambique, Maputo - Malhampsene (N4)</li>
                 <li>bochelmicrocredito@gmail.com</li>
                 <li>+258 86 188 7302</li>
               </ul>
