@@ -55,6 +55,11 @@ export interface CreditRequest {
   doc_front_url?: string | null;
   doc_back_url?: string | null;
   guarantee_photos?: string[] | null;
+  credit_option?: 'A' | 'B' | 'C' | null;
+  is_installment?: boolean | null;
+  installment_months?: number | null;
+  amortization_plan?: any[] | null;
+  interest_rate_at_request?: number | null;
 }
 
 const LABELS: Record<string, string> = {
@@ -89,20 +94,57 @@ const CreditRequestManager = () => {
   // Check contract status and existing loan when viewing an approved request
   useEffect(() => {
     if (selected && selected.status === 'approved') {
-      supabase.from('contracts').select('status').eq('credit_request_id', selected.id).limit(1)
-        .then(({ data }) => setContractStatus(data && data.length > 0 ? data[0].status : null));
+      console.log("[GUARD] Request selected for sub-check:", selected.id, "Client Name:", selected.client_name);
 
-      // Check if a loan was already injected for this request
       (async () => {
-        if (!selected.user_id) { setLoanAlreadyExists(false); return; }
-        const { data: client } = await supabase.from('clients').select('id').eq('user_id', selected.user_id).limit(1);
-        if (client && client.length > 0) {
-          const { data: loans } = await supabase.from('loans').select('id')
-            .eq('client_id', client[0].id).eq('amount', selected.amount)
-            .neq('status', 'paid').neq('status', 'completed').limit(1);
-          setLoanAlreadyExists(!!(loans && loans.length > 0));
-        } else {
-          setLoanAlreadyExists(false);
+        setLoading(true);
+        try {
+          if (!selected.user_id) {
+            console.warn("[GUARD] Request has no user_id.");
+            setContractStatus(null);
+            setLoanAlreadyExists(false);
+            return;
+          }
+
+          // 1. Find the client record globally by user_id
+          console.log("[GUARD] Searching client for user_id:", selected.user_id);
+          const { data: clientRes } = await supabase.from('clients').select('id').eq('user_id', selected.user_id).limit(1);
+          const clientId = clientRes?.[0]?.id;
+
+          if (clientId) {
+            console.log("[GUARD] Global Client ID identified:", clientId);
+
+            // 2. Check for GLOBAL signed contract (ANY signed contract for this client)
+            const { data: contracts } = await supabase.from('contracts')
+              .select('id, status')
+              .eq('client_id', clientId)
+              .eq('status', 'signed')
+              .limit(1);
+
+            const isSigned = !!(contracts && contracts.length > 0);
+            console.log("[GUARD] Contract Check:", isSigned ? "FOUND SIGNED" : "NONE SIGNED");
+            setContractStatus(isSigned ? 'signed' : null);
+
+            // 3. Check for existing UNPAID loan to avoid double injection
+            const { data: loans } = await supabase.from('loans')
+              .select('id')
+              .eq('client_id', clientId)
+              .eq('amount', selected.amount)
+              .not('status', 'in', '(paid,completed)')
+              .limit(1);
+
+            const loanExists = !!(loans && loans.length > 0);
+            console.log("[GUARD] Current Loan Check (unpaid):", loanExists ? "YES" : "NO");
+            setLoanAlreadyExists(loanExists);
+          } else {
+            console.log("[GUARD] No client record found yet.");
+            setContractStatus(null);
+            setLoanAlreadyExists(false);
+          }
+        } catch (err) {
+          console.error('[GUARD] Critical error in sub-checks:', err);
+        } finally {
+          setLoading(false);
         }
       })();
     } else {
@@ -112,6 +154,7 @@ const CreditRequestManager = () => {
   }, [selected]);
 
   const [injecting, setInjecting] = useState(false);
+  const [acting, setActing] = useState(false);
 
   const load = async () => {
     try {
@@ -184,8 +227,15 @@ const CreditRequestManager = () => {
         }
       }
 
+      console.log('[INJECT] Verifying critical IDs before proceeding...');
       if (!clientId) {
-        throw new Error('Não foi possível encontrar ou criar o registo do cliente.');
+        console.error('[INJECT] Critical Error: Client ID not found after all attempts.');
+        throw new Error('Falha catastrófica: ID do cliente não encontrado.');
+      }
+
+      if (!request.id) {
+        console.error('[INJECT] Critical Error: Request ID is missing.');
+        throw new Error('Falha catastrófica: ID do pedido não encontrado.');
       }
 
       // 2. Check for existing active loan
@@ -208,22 +258,44 @@ const CreditRequestManager = () => {
 
       // 3. Create loan (Atomic RPC)
       console.log('[INJECT] Step 3: Calling disburse_loan_with_wallet RPC for client:', clientId, 'amount:', request.amount);
+
       const startDate = new Date();
       const endDate = new Date();
-      endDate.setDate(endDate.getDate() + 30);
+
+      const installments = request.installment_months || 1;
+      const isInstallment = request.is_installment || false;
+      const option = request.credit_option || 'A';
+
+      if (isInstallment && installments > 1) {
+        if (option === 'A') {
+          // 4 weeks
+          endDate.setDate(endDate.getDate() + (installments * 7));
+        } else {
+          // N months
+          endDate.setDate(endDate.getDate() + (installments * 30));
+        }
+      } else {
+        // Single payment: Padrão 30 dias (ou o que estiver no "term" se usado)
+        endDate.setDate(endDate.getDate() + 30);
+      }
 
       const interestRate = 30;
       const { data: rpcData, error: rpcErr } = await supabase.rpc('disburse_loan_with_wallet', {
         p_request_id: request.id,
         p_user_id: request.user_id,
         p_client_id: clientId,
-        p_amount: request.amount,
-        p_interest_rate: interestRate,
-        p_installments: 1,
-        p_total_amount: request.amount * 1.3,
+        p_amount: Number(request.amount),
+        p_interest_rate: Number(request.interest_rate_at_request || 30),
+        p_installments: Number(request.installment_months || 1),
+        p_total_amount: Number(request.amortization_plan
+          ? request.amortization_plan.reduce((acc: number, row: any) => acc + (Number(row.total) || 0), 0)
+          : request.amount * 1.3),
         p_agent_id: request.agent_id || null,
         p_start_date: startDate.toISOString(),
-        p_end_date: endDate.toISOString()
+        p_end_date: endDate.toISOString(),
+        p_credit_option: request.credit_option || 'A',
+        p_is_installment: request.is_installment || false,
+        p_amortization_plan: request.amortization_plan || null
       });
 
       if (rpcErr) {
@@ -253,7 +325,10 @@ const CreditRequestManager = () => {
       }
 
       console.log('[INJECT] ✅ All steps completed successfully!');
-      toast({ title: '✅ Saldo Injectado!', description: `MZN ${request.amount.toLocaleString()} creditados a ${request.client_name}. Prazo: 30 dias.` });
+      toast({
+        title: '✅ Saldo Injectado!',
+        description: `MZN ${request.amount.toLocaleString()} creditados a ${request.client_name}. Prazo total: ${isInstallment ? `${installments} ${option === 'A' ? 'Semanas' : 'Meses'}` : '30 dias'}.`
+      });
       setSelected(null);
       load();
     } catch (e: any) {
@@ -270,58 +345,63 @@ const CreditRequestManager = () => {
       return;
     }
 
-    const request = requests.find(r => r.id === id);
-    if (!request) return;
-
+    console.log(`[ACTION] Starting ${action} for request ${id}`);
+    setActing(true);
     try {
+      console.log('[ACTION] Step 1: Updating credit_requests table...');
       const { error } = await supabase.from('credit_requests').update({
         status: action,
         reviewed_at: new Date().toISOString(),
         reviewed_by: user?.id || null,
         review_message: reviewMsg || (action === 'approved' ? 'Aprovado' : ''),
       }).eq('id', id);
-      if (error) throw error;
-
-      if (action === 'approved') {
-        const { error: contractError } = await supabase.from('contracts').insert({
-          credit_request_id: id,
-          client_id: request.user_id || '', // use the user id associated with the request
-          client_name: request.client_name,
-          status: 'pending',
-          created_at: new Date().toISOString(),
-        });
-
-        if (contractError) {
-          console.error('Error creating contract:', contractError);
-          toast({ title: 'Aviso', description: 'Pedido aprovado, mas falhou ao criar o contrato.', variant: 'destructive' });
-        }
+      if (error) {
+        console.error('[ACTION] FAILED at Step 1 (Update request):', error);
+        throw error;
       }
+      console.log('[ACTION] ✅ Step 1 Success: Request updated.');
 
+      console.log('[ACTION] Step 2: Main updates successful. Closing UI...');
       toast({ title: action === 'approved' ? 'Pedido Aprovado e Contrato Gerado' : 'Pedido Rejeitado' });
 
-      // Notify the client (and agent) about the decision
-      if (request.user_id) {
-        await notifyEvent(action === 'approved' ? 'CREDIT_APPROVED' : 'CREDIT_REJECTED', {
-          userId: request.user_id,
-          amount: request.amount,
-          rejectReason: reviewMsg,
-          fromUserId: user?.id || null,
-        });
-      }
+      // Close UI instantly while notifications run in background
+      const savedReviewMsg = reviewMsg;
+      setSelected(null);
+      setReviewMsg('');
+      load();
 
-      if (request.agent_id) {
-        await notifyEvent('AGENT_REQUEST_UPDATE', {
-          agentUserId: request.agent_id,
-          action: action,
-          clientName: request.client_name,
-          amount: request.amount,
-          fromUserId: user?.id || null,
-        });
-      }
+      // Background notifications (NOT awaited)
+      (async () => {
+        try {
+          console.log('[ACTION] Step 3 (BG): Starting notifications...');
+          if (request.user_id) {
+            await notifyEvent(action === 'approved' ? 'CREDIT_APPROVED' : 'CREDIT_REJECTED', {
+              userId: request.user_id,
+              amount: request.amount,
+              rejectReason: savedReviewMsg,
+              fromUserId: user?.id || null,
+            });
+          }
 
-      setSelected(null); setReviewMsg(''); load();
+          if (request.agent_id) {
+            await notifyEvent('AGENT_REQUEST_UPDATE', {
+              agentUserId: request.agent_id,
+              action: action,
+              clientName: request.client_name,
+              amount: request.amount,
+              fromUserId: user?.id || null,
+            });
+          }
+          console.log('[ACTION] ✅ BG Step 3 Success: Notifications processed.');
+        } catch (bgErr) {
+          console.warn('[ACTION] ⚠️ BG Step 3 Warning: Notifications failed (non-blocking)', bgErr);
+        }
+      })();
+      console.log('[ACTION] Flow complete.');
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } finally {
+      setActing(false);
     }
   };
 
@@ -384,6 +464,10 @@ const CreditRequestManager = () => {
           docFrontUrl: request.doc_front_url || undefined,
           docBackUrl: request.doc_back_url || undefined,
           guaranteePhotos: request.guarantee_photos || undefined,
+          creditOption: request.credit_option || undefined,
+          isInstallment: request.is_installment || undefined,
+          installmentMonths: request.installment_months || undefined,
+          amortizationPlan: request.amortization_plan || undefined,
           company: {
             name: companySettings?.company_name || 'BOCHEL MICROCREDITO',
             email: companySettings?.email || undefined,
@@ -437,7 +521,11 @@ const CreditRequestManager = () => {
               <div className="bg-blue-50 rounded-xl p-3 text-center">
                 <Calendar className="h-5 w-5 mx-auto mb-1 text-blue-600" />
                 <p className="text-[10px] text-gray-500">Prazo</p>
-                <p className="font-bold text-blue-700">30 dias</p>
+                <p className="font-bold text-blue-700">
+                  {r.is_installment
+                    ? `${r.installment_months} ${r.credit_option === 'A' ? 'Semanas' : 'Meses'}`
+                    : '30 dias'}
+                </p>
               </div>
               <div className="bg-purple-50 rounded-xl p-3 text-center">
                 <Phone className="h-5 w-5 mx-auto mb-1 text-purple-600" />
@@ -499,8 +587,62 @@ const CreditRequestManager = () => {
                 <InfoRow icon={Calendar} title="Data para Receber" value={r.receive_date} />
                 <InfoRow icon={Shield} title="Garantia" value={label(r.guarantee_type)} />
                 <InfoRow icon={Shield} title="Modo de Garantia" value={label(r.guarantee_mode)} />
-                <InfoRow icon={Calendar} title="Prazo" value="30 dias (1 mês)" />
+                <InfoRow
+                  icon={Calendar}
+                  title="Tipo de Plano"
+                  value={r.is_installment ? `Parcelado (${r.installment_months} ${r.credit_option === 'A' ? 'Semanas' : 'Meses'})` : 'Pagamento Único (30 dias)'}
+                />
+                {r.credit_option && (
+                  <div className="flex items-start gap-2.5 bg-orange-50 rounded-lg p-3 border border-orange-100">
+                    <Shield className="h-4 w-4 mt-0.5 text-orange-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-orange-600 uppercase tracking-wide">Opção Escolhida</p>
+                      <p className="text-sm font-bold text-orange-800">Candidato à Opção {r.credit_option}</p>
+                    </div>
+                  </div>
+                )}
               </div>
+
+              {r.is_installment && r.amortization_plan && r.amortization_plan.length > 0 && (
+                <div className="mt-4 border rounded-xl overflow-hidden shadow-sm bg-white">
+                  <div className="bg-gray-50 p-2.5 border-b flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-gray-400" />
+                    <span className="text-xs font-bold text-gray-700 uppercase">Plano de Amortização Simulado</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-gray-50/50 text-gray-500">
+                        <tr>
+                          <th className="px-4 py-2 font-medium">#</th>
+                          <th className="px-4 py-2 font-medium">Vencimento</th>
+                          <th className="px-4 py-2 font-medium text-right">Amortização</th>
+                          <th className="px-4 py-2 font-medium text-right">Juros</th>
+                          <th className="px-4 py-2 font-medium text-right font-bold text-gray-900">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {r.amortization_plan.map((row: any) => (
+                          <tr key={row.installmentNumber} className="hover:bg-gray-50/50">
+                            <td className="px-4 py-2">{row.installmentNumber}</td>
+                            <td className="px-4 py-2">{new Date(row.date).toLocaleDateString('pt-MZ')}</td>
+                            <td className="px-4 py-2 text-right">MT {Number(row.principal || 0).toLocaleString()}</td>
+                            <td className="px-4 py-2 text-right">MT {Number(row.interest || 0).toLocaleString()}</td>
+                            <td className="px-4 py-2 text-right font-bold text-[#1b5e20]">MT {Number(row.total || 0).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="bg-green-50/30">
+                        <tr>
+                          <td colSpan={4} className="px-4 py-2 text-right font-medium text-gray-600">Total a Pagar Estimado:</td>
+                          <td className="px-4 py-2 text-right font-black text-[#1b5e20] text-sm">
+                            MT {r.amortization_plan.reduce((sum: number, row: any) => sum + Number(row.total || 0), 0).toLocaleString()}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
               {r.observations && (
                 <div className="mt-2 bg-amber-50 border border-amber-200 rounded-lg p-3">
                   <p className="text-[10px] text-amber-600 uppercase mb-1">Observações</p>
@@ -576,11 +718,22 @@ const CreditRequestManager = () => {
                   <Textarea value={reviewMsg} onChange={e => setReviewMsg(e.target.value)} placeholder="Mensagem (obrigatória para rejeitar)..." rows={3} />
                 </div>
                 <div className="flex gap-3">
-                  <Button onClick={() => handleAction(r.id, 'approved')} className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white font-bold shadow-md">
-                    <CheckCircle className="w-4 h-4 mr-2" /> Aprovar
+                  <Button
+                    onClick={() => handleAction(r.id, 'approved')}
+                    disabled={acting}
+                    className="flex-1 h-12 bg-green-600 hover:bg-green-700 text-white font-bold shadow-md"
+                  >
+                    {acting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+                    Aprovar
                   </Button>
-                  <Button onClick={() => handleAction(r.id, 'rejected')} variant="destructive" className="flex-1 h-12 font-bold shadow-md">
-                    <XCircle className="w-4 h-4 mr-2" /> Rejeitar
+                  <Button
+                    onClick={() => handleAction(r.id, 'rejected')}
+                    variant="destructive"
+                    disabled={acting}
+                    className="flex-1 h-12 font-bold shadow-md"
+                  >
+                    {acting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <XCircle className="w-4 h-4 mr-2" />}
+                    Rejeitar
                   </Button>
                 </div>
               </div>
@@ -612,20 +765,29 @@ const CreditRequestManager = () => {
                   </div>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4 text-center">
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
-                      <p className="text-[10px] text-gray-500 uppercase font-bold">Capital</p>
-                      <p className="font-bold text-gray-800">MZN {Number(r.amount).toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-500 uppercase font-bold">Opção / Parcelas</p>
+                      <p className="font-bold text-gray-800">
+                        {r.credit_option || 'B'} / {r.is_installment ? `${r.installment_months}x` : 'Fixo'}
+                      </p>
                     </div>
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
-                      <p className="text-[10px] text-gray-500 uppercase font-bold">Juros (30%)</p>
-                      <p className="font-bold text-orange-600">MZN {(Number(r.amount) * 0.3).toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-500 uppercase font-bold">Juros Estimados</p>
+                      <p className="font-bold text-orange-600">
+                        MZN {(
+                          (r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: any) => acc + row.total, 0) : r.amount * 1.3)
+                          - r.amount
+                        ).toLocaleString()}
+                      </p>
                     </div>
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
                       <p className="text-[10px] text-gray-500 uppercase font-bold">Dívida a Receber</p>
-                      <p className="font-black text-green-700">MZN {(Number(r.amount) * 1.3).toLocaleString()}</p>
+                      <p className="font-black text-green-700">
+                        MZN {(r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: any) => acc + row.total, 0) : r.amount * 1.3).toLocaleString()}
+                      </p>
                     </div>
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
                       <p className="text-[10px] text-gray-500 uppercase font-bold">Prazo / Mora</p>
-                      <p className="font-bold text-blue-700">30d / 1.5%<span className="text-[10px]">dia</span></p>
+                      <p className="font-bold text-blue-700">{r.is_installment ? 'Mensal' : '30d'} / 1.5%<span className="text-[10px]">dia</span></p>
                     </div>
                   </div>
                   <Button
@@ -644,7 +806,7 @@ const CreditRequestManager = () => {
             )}
           </CardContent>
         </Card>
-      </div>
+      </div >
     );
   }
 

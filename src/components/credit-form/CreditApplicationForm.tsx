@@ -6,17 +6,30 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { toast } from '@/components/ui/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   CheckCircle, Send, User, MapPin, Briefcase, CreditCard,
-  ChevronRight, ChevronLeft, Upload, X, Loader2, AlertTriangle, Clock, Ban, DollarSign
+  ChevronRight, ChevronLeft, Upload, X, Loader2, AlertTriangle, Clock, Ban, DollarSign,
+  Table as TableIcon
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { notifyEvent } from '@/utils/notifyEvent';
+import { cn } from '@/lib/utils';
+import {
+  simulateCredit,
+  getAvailableOptions,
+  getInstallmentLimits,
+  CreditOption,
+  SimulationResult
+} from '@/utils/creditUtils';
 
 interface CreditApplicationFormProps {
   isPublicAccess?: boolean;
+  initialData?: any;
 }
 
 const FULL_STEPS = [
@@ -143,7 +156,7 @@ const compressImage = (file: File, maxWidth = 1024, quality = 0.6): Promise<File
   });
 };
 
-const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationFormProps) => {
+const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditApplicationFormProps) => {
   // Initial form state constant
   const initialFormState = {
     fullName: '', birthDate: '', documentType: '', documentNumber: '',
@@ -156,6 +169,10 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
     observations: '', truthDeclaration: false,
     docFrontUrl: '', docBackUrl: '',
     guaranteePhotos: [] as string[],
+    creditOption: 'B' as CreditOption,
+    isInstallment: false,
+    installmentMonths: 1,
+    amortizationPlan: null as any,
   };
 
   const [currentStep, setCurrentStep] = useState(() => {
@@ -194,19 +211,50 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
   // Form data with localStorage persistence
   const [form, setForm] = useState(() => {
+    let baseState = initialFormState;
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('bochel_credit_form_data');
       if (saved) {
         try {
-          return JSON.parse(saved);
+          baseState = { ...initialFormState, ...JSON.parse(saved) };
         } catch (e) {
           console.error("Error parsing form data:", e);
           localStorage.removeItem('bochel_credit_form_data');
         }
       }
     }
-    return initialFormState;
+
+    // Override with initialData from simulation if available
+    if (initialData) {
+      return {
+        ...baseState,
+        requestedAmount: initialData.amount?.toString() || baseState.requestedAmount,
+        creditOption: initialData.option || baseState.creditOption,
+        isInstallment: initialData.isInstallment !== undefined ? initialData.isInstallment : baseState.isInstallment,
+        installmentMonths: initialData.installments || initialData.installmentMonths || baseState.installmentMonths,
+      };
+    }
+
+    return baseState;
   });
+
+  // Calculate Amortization Plan automatically - Intelligent Selection
+  useEffect(() => {
+    const amount = parseFloat(form.requestedAmount);
+    // Use days from simulation if available, default to 30
+    const days = initialData?.days || 30;
+
+    if (amount > 0) {
+      // simulateCredit now handles auto-selection internally
+      const sim = simulateCredit(amount, days, undefined, form.isInstallment, form.installmentMonths);
+
+      setForm(prev => ({
+        ...prev,
+        creditOption: sim.option,
+        amortizationPlan: sim.installments
+      }));
+    }
+  }, [form.requestedAmount, form.isInstallment, form.installmentMonths]);
 
   // Save form data to localStorage on changes
   useEffect(() => {
@@ -252,27 +300,35 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         supabase.from('credit_requests').select('*').eq('user_id', user!.id).order('created_at', { ascending: false }).limit(1),
       ]);
 
-      // 1. Block if pending request
-      if (pendingRes.data && pendingRes.data.length > 0) {
+      console.log("[GUARD] Checking user status for user:", user!.id);
+
+      // 1. Block if pending OR approved (not yet injected) request exists
+      if (pendingRes.data?.length || approvedRes.data?.length) {
+        console.log("[GUARD] Found pending or approved request. Blocking.");
         setIsBlocked(true);
-        setBlockReason('Já tem um pedido de crédito pendente em análise. Aguarde a decisão antes de fazer um novo pedido.');
+        setBlockReason(pendingRes.data?.length
+          ? 'Já tem um pedido de crédito pendente em análise. Aguarde a decisão antes de fazer um novo pedido.'
+          : 'Já tem um pedido aprovado aguardando desembolso. Por favor, aguarde o processamento ou contacte o suporte.');
         setCheckingStatus(false);
         return;
       }
 
       const clientId: string | null = clientRes.data?.[0]?.id ?? null;
 
-      // 2. Block if approved request with unpaid loan
-      if (approvedRes.data && approvedRes.data.length > 0) {
-        let loanFullyPaid = false;
-        if (clientId) {
-          const { data: paidLoans } = await supabase
-            .from('loans').select('id').eq('client_id', clientId).in('status', ['paid', 'completed']).limit(1);
-          loanFullyPaid = !!(paidLoans && paidLoans.length > 0);
-        }
-        if (!loanFullyPaid) {
+      // 2. Block if any ACTIVE (unpaid) loan exists
+      if (clientId) {
+        console.log("[GUARD] Client ID found:", clientId, ". Checking active loans...");
+        const { data: activeLoans } = await supabase
+          .from('loans')
+          .select('id, status')
+          .eq('client_id', clientId)
+          .not('status', 'in', '(paid,completed)')
+          .limit(1);
+
+        if (activeLoans && activeLoans.length > 0) {
+          console.log("[GUARD] Found active loan:", activeLoans[0].id, "Status:", activeLoans[0].status);
           setIsBlocked(true);
-          setBlockReason('Ja tem um credito aprovado. Deve quitar a divida antes de solicitar novo credito.');
+          setBlockReason('Já tem um crédito activo. Deve quitar a dívida antes de solicitar novo crédito.');
           setCheckingStatus(false);
           return;
         }
@@ -549,20 +605,33 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       const address = `${form.neighborhood}, ${form.district}, ${form.province}`;
 
       // Try to create/update client record (non-blocking)
+      // 1. Try to create/update client record (non-blocking, short timeout)
       if (user) {
-        try {
-          const { data: existingClient } = await supabase
-            .from('clients').select('id').eq('user_id', user.id).maybeSingle();
-          if (!existingClient) {
-            await supabase.from('clients').insert({
-              user_id: user.id, name: form.fullName,
-              email: form.email || user.email, phone: form.phone,
-              address, id_number: form.documentNumber, status: 'active',
-            });
+        // We use a separate async execution to not block the main request
+        (async () => {
+          try {
+            // Check existence first
+            const { data: existingClient } = await supabase
+              .from('clients')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (!existingClient) {
+              await supabase.from('clients').insert({
+                user_id: user.id,
+                name: form.fullName,
+                email: form.email || user.email,
+                phone: form.phone,
+                address,
+                id_number: form.documentNumber,
+                status: 'active',
+              });
+            }
+          } catch (e) {
+            console.warn("Non-critical error creating client record (timed out or connection error)", e);
           }
-        } catch (e) {
-          console.error("Non-critical error creating client record", e);
-        }
+        })();
       }
 
       // Submit credit request with retry
@@ -600,22 +669,44 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
         doc_front_url: form.docFrontUrl,
         doc_back_url: form.docBackUrl,
         guarantee_photos: form.guaranteePhotos,
+        credit_option: form.creditOption,
+        is_installment: form.isInstallment,
+        installment_months: form.installmentMonths,
+        amortization_plan: form.amortizationPlan,
+        interest_rate_at_request: form.creditOption === 'B'
+          ? (form.isInstallment || parseFloat(form.requestedAmount) > 15 ? 30 : 20)
+          : 30
       };
 
-      // Try up to 2 times
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // 2. Submit credit request with resilience
       let lastError: any = null;
-      for (let attempt = 0; attempt < 2; attempt++) {
+      const MAX_ATTEMPTS = 2;
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
         try {
-          const { error } = await supabase.from('credit_requests').insert(requestData);
+          console.log(`[Submit] Attempt ${attempt}/${MAX_ATTEMPTS} to insert credit_request`);
+
+          // Use a Promise.race for simple timeout (15s)
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+          );
+
+          const insertPromise = supabase.from('credit_requests').insert(requestData);
+
+          const { error } = await Promise.race([insertPromise, timeoutPromise]) as any;
+
           if (error) throw error;
+
           lastError = null;
+          console.log(`[Submit] ✅ Successfully inserted credit_request on attempt ${attempt}`);
           break;
-        } catch (err) {
+        } catch (err: any) {
           lastError = err;
-          if (attempt === 0) {
-            // Wait 1s before retry
-            await new Promise(r => setTimeout(r, 1000));
+          console.warn(`[Submit] ⚠️ Attempt ${attempt} failed:`, err.message || err);
+
+          if (attempt < MAX_ATTEMPTS) {
+            // Quick delay before retry
+            await new Promise(r => setTimeout(r, 1500 * attempt));
           }
         }
       }
@@ -642,10 +733,23 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
       toast({ title: "Pedido enviado com sucesso!", description: "Será analisado em menos de 24h úteis." });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
-      const message = error?.message?.includes('Failed to fetch')
-        ? 'Erro de conexão. Verifique a internet e tente novamente.'
-        : error?.message || 'Tente novamente.';
-      toast({ title: "Erro ao enviar", description: message, variant: "destructive" });
+      console.error('[Submit] ❌ Terminal Error:', error);
+      let message = 'Tente novamente.';
+
+      if (error?.message === 'TIMEOUT') {
+        message = 'A conexão está muito lenta. Por favor, verifique sua internet e tente clicar em enviar novamente.';
+      } else if (error?.message?.includes('Failed to fetch')) {
+        message = 'Erro de conexão (Supabase offline ou sem internet). Tente novamente em alguns instantes.';
+      } else if (error?.message) {
+        message = error.message;
+      }
+
+      toast({
+        title: "Erro ao enviar",
+        description: message,
+        variant: "destructive",
+        duration: 8000
+      });
     } finally {
       setIsLoading(false);
     }
@@ -811,48 +915,131 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                 </Select>
                 <FieldError field="creditPurpose" />
               </div>
-              <div>
-                <Label className="text-sm font-medium">Prazo de Pagamento</Label>
-                <div className="mt-1.5 bg-gray-50 border rounded-md px-3 py-2.5 text-sm text-gray-700 font-medium">30 dias (1 mês)</div>
-                <p className="text-[10px] text-gray-400 mt-1">Prazo fixo</p>
+              {/* Tier Selection */}
+              <div className="md:col-span-2 space-y-3">
+                <Label className="font-bold text-gray-700">Opção de Crédito Disponível</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {['A', 'B', 'C'].map((opt) => {
+                    const isAvailable = getAvailableOptions(Number(form.requestedAmount), 30).includes(opt as CreditOption);
+                    const isSelected = form.creditOption === opt;
+
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        disabled={!isAvailable}
+                        onClick={() => updateField('creditOption', opt as CreditOption)}
+                        className={cn(
+                          "flex items-center justify-between p-3 rounded-xl border-2 transition-all text-left",
+                          isAvailable
+                            ? isSelected
+                              ? "border-[#d37c22] bg-orange-50/50 shadow-sm"
+                              : "border-gray-100 hover:border-gray-200"
+                            : "opacity-40 grayscale cursor-not-allowed border-dashed"
+                        )}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px]",
+                            isSelected ? "bg-[#d37c22] text-white" : "bg-gray-100 text-gray-500"
+                          )}>
+                            {opt}
+                          </div>
+                          <div>
+                            <p className="font-bold text-xs">Opção {opt}</p>
+                            <p className="text-[9px] text-gray-500">
+                              {opt === 'A' ? 'Geral' : opt === 'B' ? 'Empresarial' : 'Venc. Fixo'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-bold text-[10px]">
+                            {opt === 'B' && !form.isInstallment && Number(form.requestedAmount) <= 15 ? '20%' : '30%'}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-              <div>
-                <Label className="text-sm font-medium">Tipo de Garantia *</Label>
-                <Select value={form.guaranteeType || undefined} onValueChange={v => updateField('guaranteeType', v)}>
-                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bem_movel">Bem Móvel</SelectItem>
-                    <SelectItem value="bem_imovel">Bem Imóvel</SelectItem>
-                    <SelectItem value="fiador">Fiador</SelectItem>
-                    <SelectItem value="salario">Salário</SelectItem>
-                    <SelectItem value="sem_garantia">Sem Garantia</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FieldError field="guaranteeType" />
-              </div>
-              <div>
-                <Label className="text-sm font-medium">Modo de Garantia *</Label>
-                <Select value={form.guaranteeMode || undefined} onValueChange={v => updateField('guaranteeMode', v)}>
-                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="antecipado">Antecipado</SelectItem>
-                    <SelectItem value="postecipado">Postecipado</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FieldError field="guaranteeMode" />
-              </div>
+
+              {/* Installments */}
+              {getInstallmentLimits(Number(form.requestedAmount)) > 1 && (
+                <div className="md:col-span-2 pt-2 border-t space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="font-bold">Pagamento Parcelado</Label>
+                      <p className="text-[10px] text-muted-foreground">Dividir em mensalidades</p>
+                    </div>
+                    <Switch
+                      checked={form.isInstallment}
+                      onCheckedChange={(v) => updateField('isInstallment', v)}
+                    />
+                  </div>
+
+                  {form.isInstallment && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                      <div>
+                        <Label className="text-xs font-bold">Número de Meses</Label>
+                        <Select value={form.installmentMonths.toString()} onValueChange={v => updateField('installmentMonths', parseInt(v))}>
+                          <SelectTrigger className="border-2 font-bold mt-1">
+                            <SelectValue placeholder="Meses" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {[...Array(getInstallmentLimits(Number(form.requestedAmount)))].map((_, i) => (
+                              <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                {i + 1} Meses
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center p-3 bg-amber-50 rounded-lg border border-amber-100">
+                        <p className="text-[10px] text-amber-700 font-medium leading-tight">
+                          <AlertTriangle className="h-3 w-3 inline mr-1" />
+                          Os juros de 30% são recapitalizados mensalmente sobre o saldo devedor.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {Number(form.requestedAmount) > 0 && (
-              <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4">
-                <h3 className="text-[#166534] font-semibold text-sm mb-3 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" /> Resumo do Empréstimo Esperado
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  <div><p className="text-[#166534]/70">Capital</p><p className="font-bold text-[#166534]">MZN {(Number(form.requestedAmount) || 0).toLocaleString()}</p></div>
-                  <div><p className="text-[#166534]/70">Juros (30%)</p><p className="font-bold text-[#166534]">MZN {((Number(form.requestedAmount) || 0) * 0.3).toLocaleString()}</p></div>
-                  <div><p className="text-[#166534]/70">Prazo</p><p className="font-bold text-[#166534]">30 Dias</p></div>
-                  <div><p className="text-[#166534]/70">Total a Pagar</p><p className="font-black text-[#166534]">MZN {((Number(form.requestedAmount) || 0) * 1.3).toLocaleString()}</p></div>
+            {form.amortizationPlan && form.amortizationPlan.length > 0 && (
+              <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-gray-50 p-3 border-b">
+                  <h3 className="text-xs font-bold flex items-center gap-2">
+                    <TableIcon className="h-4 w-4 text-[#1b5e20]" />
+                    Plano de Pagamento Estimado
+                  </h3>
+                </div>
+                <Table>
+                  <TableHeader className="bg-gray-50/50">
+                    <TableRow>
+                      <TableHead className="h-8 text-[10px] font-bold">Nº</TableHead>
+                      <TableHead className="h-8 text-[10px] font-bold">Vencimento</TableHead>
+                      <TableHead className="h-8 text-[10px] font-bold text-right">Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {form.amortizationPlan.map((row: any) => (
+                      <TableRow key={row.installmentNumber} className="h-10 hover:bg-gray-50 transition-colors">
+                        <TableCell className="py-2 text-xs font-bold">{row.installmentNumber}</TableCell>
+                        <TableCell className="py-2 text-[10px]">
+                          {new Date(row.date).toLocaleDateString('pt-MZ')}
+                        </TableCell>
+                        <TableCell className="py-2 text-right text-xs font-black text-green-700">
+                          MT {row.total.toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <div className="p-3 bg-[#1b5e20]/5 text-center">
+                  <p className="text-[10px] font-bold text-[#1b5e20]">
+                    Total a Pagar: MT {form.amortizationPlan.reduce((acc: number, r: any) => acc + r.total, 0).toLocaleString()}
+                  </p>
                 </div>
               </div>
             )}
@@ -914,7 +1101,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
               <Checkbox checked={form.truthDeclaration} onCheckedChange={(v) => updateField('truthDeclaration', v === true)} className="mt-0.5" />
               <div>
                 <Label className="text-sm font-medium cursor-pointer">Declaração de Veracidade *</Label>
-                <p className="text-xs text-amber-700 mt-1">Declaro que todas as informações são verdadeiras. Taxa de juro: 30% por mês (pode variar conforme o valor).</p>
+                <p className="text-xs text-amber-700 mt-1">Declaro que todas as informações são verdadeiras. Taxas: Opção A/C (30%), Opção B (20% até dia 15, senão 30%). Parcelamentos possuem juros capitalizados mensalmente.</p>
                 <FieldError field="truthDeclaration" />
               </div>
             </div>
@@ -1057,27 +1244,110 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
                   <div><Label className="text-sm font-medium">Data para Receber *</Label><Input type="date" value={form.receiveDate} onChange={e => updateField('receiveDate', e.target.value)} className="mt-1.5" /><FieldError field="receiveDate" /></div>
                   <div><Label className="text-sm font-medium">Finalidade do Crédito *</Label>
                     <Select value={form.creditPurpose || undefined} onValueChange={v => updateField('creditPurpose', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="negocio">Negócio</SelectItem><SelectItem value="consumo">Consumo</SelectItem><SelectItem value="saude">Saúde</SelectItem><SelectItem value="educacao">Educação</SelectItem><SelectItem value="emergencia">Emergência</SelectItem><SelectItem value="construcao">Construção/Reforma</SelectItem><SelectItem value="outros">Outros</SelectItem></SelectContent></Select><FieldError field="creditPurpose" /></div>
-                  <div>
-                    <Label className="text-sm font-medium">Prazo de Pagamento</Label>
-                    <div className="mt-1.5 bg-gray-50 border rounded-md px-3 py-2.5 text-sm text-gray-700 font-medium">30 dias (1 mês)</div>
-                    <p className="text-[10px] text-gray-400 mt-1">Prazo fixo</p>
+                  {/* Auto-selected Tier Display */}
+                  <div className="md:col-span-2 p-4 rounded-xl bg-green-50/50 border-2 border-dashed border-green-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="font-bold text-[#1b5e20] text-xs uppercase tracking-wider">Plano de Crédito Determinado</Label>
+                      <Badge className="bg-[#1b5e20] text-white">Opção {form.creditOption}</Badge>
+                    </div>
+                    <p className="text-[11px] text-gray-600 leading-relaxed font-medium">
+                      {form.creditOption === 'A' && "Crédito Geral: Aplicável para valores até 4.000 MT com juros de 30%."}
+                      {form.creditOption === 'B' && "Plano Express: Juros de 20% para prazos curtos (até 15 dias)."}
+                      {form.creditOption === 'C' && "Vencimento Fixo: Plano padrão para montantes 5.000+ MT com juros de 30%."}
+                    </p>
+                    {form.creditOption === 'B' && (
+                      <div className="bg-amber-50 p-2 rounded-lg border border-amber-100 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                        <p className="text-[10px] text-amber-700 leading-tight">
+                          <strong>Nota:</strong> Se o pagamento não for realizado em 15 dias, a taxa é ajustada automaticamente para 30%.
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <div><Label className="text-sm font-medium">Tipo de Garantia *</Label>
-                    <Select value={form.guaranteeType || undefined} onValueChange={v => updateField('guaranteeType', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="bem_movel">Bem Móvel</SelectItem><SelectItem value="bem_imovel">Bem Imóvel</SelectItem><SelectItem value="fiador">Fiador</SelectItem><SelectItem value="salario">Salário</SelectItem><SelectItem value="sem_garantia">Sem Garantia</SelectItem></SelectContent></Select><FieldError field="guaranteeType" /></div>
-                  <div><Label className="text-sm font-medium">Modo de Garantia *</Label>
-                    <Select value={form.guaranteeMode || undefined} onValueChange={v => updateField('guaranteeMode', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="antecipado">Antecipado</SelectItem><SelectItem value="postecipado">Postecipado</SelectItem></SelectContent></Select><FieldError field="guaranteeMode" /></div>
+
+                  {/* Installments */}
+                  {getInstallmentLimits(Number(form.requestedAmount)) > 1 && (
+                    <div className="md:col-span-2 pt-2 border-t space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="font-bold">Pagamento Parcelado</Label>
+                          <p className="text-[10px] text-muted-foreground">
+                            {form.creditOption === 'A' ? 'Dividir em prestações semanais' : 'Dividir em prestações mensais'}
+                          </p>
+                        </div>
+                        <Switch
+                          checked={form.isInstallment}
+                          onCheckedChange={(v) => updateField('isInstallment', v)}
+                        />
+                      </div>
+
+                      {form.isInstallment && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-200">
+                          <div>
+                            <Label className="text-xs font-bold">Número de {form.creditOption === 'A' ? 'Semanas' : 'Meses'}</Label>
+                            <Select value={(form.installmentMonths || 1).toString()} onValueChange={v => updateField('installmentMonths', parseInt(v))}>
+                              <SelectTrigger className="border-2 font-bold mt-1">
+                                <SelectValue placeholder={form.creditOption === 'A' ? 'Semanas' : 'Meses'} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {[...Array(getInstallmentLimits(Number(form.requestedAmount)))].map((_, i) => (
+                                  <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                    {i + 1} {form.creditOption === 'A' ? (i === 0 ? 'Semana' : 'Semanas') : (i === 0 ? 'Mês' : 'Meses')}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="flex items-center p-3 bg-amber-50 rounded-lg border border-amber-100">
+                            <p className="text-[10px] text-amber-700 font-medium leading-tight">
+                              <AlertTriangle className="h-3 w-3 inline mr-1" />
+                              {form.creditOption === 'A'
+                                ? "A Opção A oferece flexibilidade semanal para pagamentos dentro do prazo de 30 dias."
+                                : "Os juros de 30% são recapitalizados mensalmente sobre o saldo devedor."}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
-                {Number(form.requestedAmount) > 0 && (
-                  <div className="bg-[#f0fdf4] border border-[#bbf7d0] rounded-xl p-4">
-                    <h3 className="text-[#166534] font-semibold text-sm mb-3 flex items-center gap-2">
-                      <DollarSign className="h-4 w-4" /> Resumo do Empréstimo Esperado
-                    </h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div><p className="text-[#166534]/70">Capital</p><p className="font-bold text-[#166534]">MZN {(Number(form.requestedAmount) || 0).toLocaleString()}</p></div>
-                      <div><p className="text-[#166534]/70">Juros (30%)</p><p className="font-bold text-[#166534]">MZN {((Number(form.requestedAmount) || 0) * 0.3).toLocaleString()}</p></div>
-                      <div><p className="text-[#166534]/70">Prazo</p><p className="font-bold text-[#166534]">30 Dias</p></div>
-                      <div><p className="text-[#166534]/70">Total a Pagar</p><p className="font-black text-[#166534]">MZN {((Number(form.requestedAmount) || 0) * 1.3).toLocaleString()}</p></div>
+                {form.amortizationPlan && form.amortizationPlan.length > 0 && (
+                  <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                    <div className="bg-gray-50 p-3 border-b">
+                      <h3 className="text-xs font-bold flex items-center gap-2">
+                        <TableIcon className="h-4 w-4 text-[#1b5e20]" />
+                        Plano de Pagamento Estimado
+                      </h3>
+                    </div>
+                    <Table>
+                      <TableHeader className="bg-gray-50/50">
+                        <TableRow>
+                          <TableHead className="h-8 text-[10px] font-bold">Nº</TableHead>
+                          <TableHead className="h-8 text-[10px] font-bold">
+                            {form.creditOption === 'A' ? 'Venc. Semana' : 'Venc. Mês'}
+                          </TableHead>
+                          <TableHead className="h-8 text-[10px] font-bold text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {form.amortizationPlan.map((row: any) => (
+                          <TableRow key={row.installmentNumber} className="h-10 hover:bg-gray-50 transition-colors">
+                            <TableCell className="py-2 text-xs font-bold">{row.installmentNumber}</TableCell>
+                            <TableCell className="py-2 text-[10px]">
+                              {new Date(row.date).toLocaleDateString('pt-MZ')}
+                            </TableCell>
+                            <TableCell className="py-2 text-right text-xs font-black text-green-700">
+                              MT {row.total.toLocaleString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                    <div className="p-3 bg-[#1b5e20]/5 text-center">
+                      <p className="text-[10px] font-bold text-[#1b5e20]">
+                        Total a Pagar: MT {form.amortizationPlan.reduce((acc: number, r: any) => acc + r.total, 0).toLocaleString()}
+                      </p>
                     </div>
                   </div>
                 )}
@@ -1211,7 +1481,7 @@ const CreditApplicationForm = ({ isPublicAccess = false }: CreditApplicationForm
 
                 <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
                   <Checkbox checked={form.truthDeclaration} onCheckedChange={(v) => updateField('truthDeclaration', v === true)} className="mt-0.5" />
-                  <div><Label className="text-sm font-medium cursor-pointer">Declaração de Veracidade *</Label><p className="text-xs text-amber-700 mt-1">Declaro que todas as informações são verdadeiras. Taxa de juro: 30% por mês (pode variar).</p><FieldError field="truthDeclaration" /></div>
+                  <div><Label className="text-sm font-medium cursor-pointer">Declaração de Veracidade *</Label><p className="text-xs text-amber-700 mt-1">Declaro que todas as informações são verdadeiras. Taxas: Opção A/C (30%), Opção B (20% até dia 15, senão 30%). Parcelamentos possuem juros capitalizados mensalmente.</p><FieldError field="truthDeclaration" /></div>
                 </div>
               </div>
             )}

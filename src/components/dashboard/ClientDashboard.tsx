@@ -31,6 +31,10 @@ interface LoanData {
   installments: number;
   startDate: string | null;
   endDate?: string | null;
+  is_installment?: boolean;
+  credit_option?: string;
+  remaining_installments?: number;
+  amortization_plan?: any[];
 }
 
 const ClientDashboard = () => {
@@ -79,9 +83,13 @@ const ClientDashboard = () => {
         amount: Number(currentLoan.amount),
         totalAmount,
         remainingAmount,
-        installments: currentLoan.installments || 12,
+        installments: currentLoan.installments || 1,
         startDate: currentLoan.start_date || null,
         endDate: currentLoan.end_date || null,
+        is_installment: currentLoan.is_installment || false,
+        credit_option: currentLoan.credit_option || 'A',
+        remaining_installments: currentLoan.remaining_installments,
+        amortization_plan: currentLoan.amortization_plan,
       });
 
       // Pagamentos deste empréstimo
@@ -190,7 +198,11 @@ const ClientDashboard = () => {
     );
   }
 
-  const monthlyPayment = loanData ? Math.round(loanData.totalAmount / loanData.installments) : 0;
+  const monthlyPayment = loanData
+    ? (loanData.is_installment
+      ? (loanData.amortization_plan?.find(p => p.installmentNumber === (loanData.installments - (loanData.remaining_installments || 0) + 1))?.total || Math.round(loanData.totalAmount / loanData.installments))
+      : Math.round(loanData.totalAmount / loanData.installments))
+    : 0;
   const paidPercentage = loanData && loanData.totalAmount > 0
     ? Math.round(((loanData.totalAmount - loanData.remainingAmount) / loanData.totalAmount) * 100)
     : 0;
@@ -237,7 +249,13 @@ const ClientDashboard = () => {
                     <p className="text-white/90 mt-1">
                       {isLate
                         ? `A sua dívida está em atraso há ${Math.abs(diffDays)} dias.`
-                        : `Faltam ${diffDays} dias para o encerramento do empréstimo de 30 dias.`}
+                        : (() => {
+                          const start = loanData?.startDate ? new Date(loanData.startDate) : new Date();
+                          const end = new Date(loanData?.endDate || new Date());
+                          const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+                          const label = loanData?.credit_option === 'A' ? `${loanData.installments} semanas` : `${loanData.installments} meses`;
+                          return `Faltam ${diffDays} dias para o encerramento do seu plano de ${loanData?.is_installment ? label : '30 dias'}.`;
+                        })()}
                     </p>
                   </div>
                 </div>
@@ -272,7 +290,9 @@ const ClientDashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-success">MZN {monthlyPayment.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">Prestação mensal</p>
+              <p className="text-xs text-muted-foreground">
+                {loanData?.credit_option === 'A' ? 'Prestação semanal' : 'Prestação mensal'}
+              </p>
             </CardContent>
           </Card>
 
@@ -406,6 +426,63 @@ const ClientDashboard = () => {
             </Link>
           </CardContent>
         </Card>
+
+        {/* Amortization Plan for Installment Loans */}
+        {loanData?.is_installment && loanData.amortization_plan && (
+          <Card className="border-0 shadow-medium overflow-hidden">
+            <CardHeader className="bg-gray-50 border-b">
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-[#d37c22]" />
+                Plano de Amortização
+              </CardTitle>
+              <CardDescription>Acompanhe o cronograma das suas prestações</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs uppercase bg-gray-100 text-gray-600">
+                    <tr>
+                      <th className="px-4 py-3">Parcela</th>
+                      <th className="px-4 py-3">Status</th>
+                      <th className="px-4 py-3">Capital</th>
+                      <th className="px-4 py-3">Juros</th>
+                      <th className="px-4 py-3 font-bold">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {loanData.amortization_plan.map((row: any) => {
+                      const isPaid = (loanData.installments - (loanData.remaining_installments || 0)) >= row.installmentNumber;
+                      const isCurrent = (loanData.installments - (loanData.remaining_installments || 0) + 1) === row.installmentNumber;
+
+                      return (
+                        <tr key={row.installmentNumber} className={`${isCurrent ? 'bg-orange-50 font-medium' : ''} ${isPaid ? 'opacity-60' : ''}`}>
+                          <td className="px-4 py-3">{row.installmentNumber}ª</td>
+                          <td className="px-4 py-3">
+                            {isPaid ? (
+                              <Badge className="bg-green-100 text-green-700 hover:bg-green-200 border-0">Pago</Badge>
+                            ) : isCurrent ? (
+                              <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-200 border-0">Aguardando</Badge>
+                            ) : (
+                              <Badge className="bg-gray-100 text-gray-500 hover:bg-gray-200 border-0">Agendado</Badge>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">MZN {Number(row.principal || 0).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-gray-600">MZN {Number(row.interest || 0).toLocaleString()}</td>
+                          <td className="px-4 py-3 font-bold text-[#1b5e20]">MZN {Number(row.total || 0).toLocaleString()}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-4 bg-orange-50/50 border-t border-orange-100">
+                <p className="text-[10px] text-orange-700 italic">
+                  * Nota: A recolha e juros são calculados mensalmente sobre o capital remanescente (Recapitalização).
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

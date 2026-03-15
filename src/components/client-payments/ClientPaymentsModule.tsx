@@ -34,7 +34,7 @@ const ClientPaymentsModule = () => {
             if (clientData) {
                 const { data: loanData, error } = await supabase
                     .from('loans')
-                    .select('*')
+                    .select('*, clients(*)')
                     .eq('client_id', clientData.id)
                     .in('status', ['active', 'overdue'])
                     .order('created_at', { ascending: false })
@@ -129,9 +129,21 @@ const ClientPaymentsModule = () => {
                                             </div>
                                             <div>
                                                 <p className="text-blue-200">Prestações</p>
-                                                <p className="font-semibold">{activeLoan.installments}x</p>
+                                                <p className="font-semibold">{activeLoan.installments}x {activeLoan.is_installment ? `(${activeLoan.installments - activeLoan.remaining_installments + 1}ª parcela)` : ''}</p>
                                             </div>
                                         </div>
+
+                                        {activeLoan.is_installment && (
+                                            <div className="pt-3 border-t border-white/10">
+                                                <p className="text-blue-200 text-xs mb-1">Próxima Parcela (Estimada)</p>
+                                                <div className="flex items-center justify-between">
+                                                    <h3 className="text-xl font-bold">
+                                                        MZN {(activeLoan.amortization_plan?.find((p: any) => p.installmentNumber === (activeLoan.installments - activeLoan.remaining_installments + 1))?.total || Math.round(activeLoan.total_amount / activeLoan.installments)).toLocaleString()}
+                                                    </h3>
+                                                    <Badge className="bg-amber-500/20 text-amber-200 border-amber-500/30">Opção {activeLoan.credit_option}</Badge>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="py-4 text-center">

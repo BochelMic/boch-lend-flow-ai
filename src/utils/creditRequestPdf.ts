@@ -35,6 +35,11 @@ export interface CreditPdfData {
     docBackUrl?: string;
     guaranteePhotos?: string[];
 
+    creditOption?: string;
+    isInstallment?: boolean;
+    installmentMonths?: number;
+    amortizationPlan?: any[];
+
     company: {
         name: string;
         email?: string;
@@ -248,12 +253,14 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
 
     const creditLeft = [
         ['Valor Solicitado', 'MZN ' + data.amount.toLocaleString()],
-        ['Prazo', '30 dias (1 mes)'],
+        ['Prazo Escolhido', data.isInstallment ? `${data.installmentMonths} ${data.creditOption === 'A' ? 'Semanas' : 'Meses'}` : '30 dias'],
         ['Finalidade', data.purpose],
         ['Data Desejada', data.receiveDate],
     ].filter(([, v]) => v && v !== '-') as [string, string][];
 
     const creditRight = [
+        ['Opção de Crédito', data.creditOption ? 'Opção ' + data.creditOption : undefined],
+        ['Tipo de Plano', data.isInstallment ? 'Parcelado' : 'Pagamento Único'],
         ['Garantia', data.guaranteeType],
         ['Modo Garantia', data.guaranteeMode],
     ].filter(([, v]) => v && v !== '-') as [string, string][];
@@ -267,7 +274,55 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
     for (const [label, value] of creditRight) {
         infoRow(label, value, col2L, col2R);
     }
-    y = Math.max(leftEnd3, y) + 2;
+    y = Math.max(leftEnd3, y) + 4;
+
+    // --- AMORTIZATION TABLE ---
+    if (data.isInstallment && data.amortizationPlan && data.amortizationPlan.length > 0) {
+        checkPageBreak(30);
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...COLORS.primary);
+        doc.text('PLANO DE AMORTIZAÇÃO SIMULADO', margin, y);
+        y += 4;
+
+        // Table Header
+        doc.setFillColor(...COLORS.lightBg);
+        doc.rect(margin, y, contentW, 6, 'F');
+        doc.setFontSize(7);
+        doc.setTextColor(...COLORS.gray);
+        doc.text('#', margin + 3, y + 4);
+        doc.text('Data', margin + 15, y + 4);
+        doc.text('Principal', margin + 50, y + 4, { align: 'right' });
+        doc.text('Juros', margin + 80, y + 4, { align: 'right' });
+        doc.text('Total a Pagar', pageW - margin - 3, y + 4, { align: 'right' });
+        y += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...COLORS.dark);
+        let totalVal = 0;
+
+        for (const row of data.amortizationPlan) {
+            checkPageBreak(6);
+            doc.text(row.installmentNumber.toString(), margin + 3, y + 4);
+            doc.text(new Date(row.date).toLocaleDateString('pt-MZ'), margin + 15, y + 4);
+            doc.text('MT ' + Number(row.principal).toLocaleString(), margin + 50, y + 4, { align: 'right' });
+            doc.text('MT ' + Number(row.interest).toLocaleString(), margin + 80, y + 4, { align: 'right' });
+            doc.setFont('helvetica', 'bold');
+            doc.text('MT ' + Number(row.total).toLocaleString(), pageW - margin - 3, y + 4, { align: 'right' });
+            doc.setFont('helvetica', 'normal');
+            totalVal += Number(row.total);
+            y += 5;
+        }
+
+        doc.setDrawColor(...COLORS.border);
+        doc.line(margin, y, pageW - margin, y);
+        y += 4;
+        doc.setFont('helvetica', 'bold');
+        doc.text('TOTAL ESTIMADO:', margin + 80, y, { align: 'right' });
+        doc.setTextColor(...COLORS.primary);
+        doc.text('MT ' + totalVal.toLocaleString(), pageW - margin - 3, y, { align: 'right' });
+        y += 6;
+    }
 
     // Observations box
     if (data.observations) {

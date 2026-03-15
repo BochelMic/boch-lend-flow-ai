@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import AboutSection from '@/components/landing/AboutSection';
 import ProductsSection from '@/components/landing/ProductsSection';
+import CreditSimulatorModule from '@/components/credit-simulator/CreditSimulatorModule';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -37,19 +38,7 @@ const LandingPage = () => {
     }
   };
 
-  // Simulator State
-  const [amount, setAmount] = useState(5000);
-  const interestRate = 0.30; // 30% for 1 month
-
-  // Calculate total to pay after 1 month
-  const calculateTotal = () => {
-    const interest = amount * interestRate;
-    return (amount + interest);
-  };
-
-  const calculateInterest = () => {
-    return (amount * interestRate);
-  };
+  // Simulator State (Removed hardcoded logic in favor of Module)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -387,88 +376,25 @@ const LandingPage = () => {
               <ul className="space-y-4 mb-10">
                 <li className="flex items-center text-gray-700">
                   <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
-                  <span className="font-bold text-lg">Taxa fixa de 30% ao mês</span>
+                  <span className="font-bold text-lg">Taxas a partir de 20% (Opção B)</span>
                 </li>
                 <li className="flex items-center text-gray-700">
                   <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
-                  <span className="font-bold text-lg">Prazo de pagamento: 1 mês</span>
+                  <span className="font-bold text-lg">Pague em até 6 parcelas mensais</span>
                 </li>
                 <li className="flex items-center text-gray-700">
                   <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
-                  <span className="font-bold text-lg">Transferência imediata após aprovação</span>
+                  <span className="font-bold text-lg">Recapitalização mensal inteligente</span>
                 </li>
               </ul>
             </div>
 
             {/* Calculadora Box */}
-            <div className="order-1 lg:order-2">
-              <div className="bg-white rounded-3xl shadow-2xl p-8 border border-gray-100 relative">
-                <div className="absolute top-0 left-0 w-full h-2 rounded-t-3xl" style={{ backgroundColor: primaryColor }}></div>
-                <div className="flex items-center mb-8 pb-6 border-b border-gray-100 mt-2">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center mr-4" style={{ backgroundColor: `${secondaryColor}15`, color: secondaryColor }}>
-                    <Calculator className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900">Calculadora de Crédito</h3>
-                    <p className="text-sm font-semibold text-gray-500">Avaliação instantânea</p>
-                  </div>
-                </div>
-
-                {/* Montante */}
-                <div className="mb-8">
-                  <div className="flex justify-between mb-2">
-                    <label className="font-bold text-gray-700">Qual o valor que necessita?</label>
-                    <span className="font-black text-xl text-gray-900">{amount.toLocaleString()} MZN</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="500"
-                    max="100000"
-                    step="500"
-                    value={amount}
-                    onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full h-2.5 rounded-lg appearance-none cursor-pointer bg-gray-200"
-                    style={{ accentColor: primaryColor }}
-                  />
-                  <div className="flex justify-between text-xs font-bold text-gray-400 mt-2">
-                    <span>500 MZN</span>
-                    <span>100,000 MZN</span>
-                  </div>
-                </div>
-
-                {/* Prazo fixo */}
-                <div className="mb-10">
-                  <div className="flex justify-between mb-2">
-                    <label className="font-bold text-gray-700">Prazo de pagamento</label>
-                    <span className="font-black text-xl text-gray-900">1 Mês</span>
-                  </div>
-                  <div className="bg-gray-100 rounded-lg px-4 py-3 text-center">
-                    <p className="text-sm font-semibold text-gray-500">Prazo fixo • Taxa de 30%</p>
-                  </div>
-                </div>
-
-                {/* Results & CTA */}
-                <div className="bg-gray-50 rounded-2xl p-6 border border-gray-100 mb-8">
-                  <div className="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
-                    <span className="text-sm text-gray-500 font-bold">Juros (30%)</span>
-                    <span className="text-lg font-bold text-gray-700">{calculateInterest().toLocaleString()} MZN</span>
-                  </div>
-                  <p className="text-sm text-gray-500 font-bold mb-1">Total a Pagar (após 1 mês)</p>
-                  <p className="text-4xl font-black mb-2" style={{ color: primaryColor }}>
-                    {calculateTotal().toLocaleString()} <span className="text-lg font-bold text-gray-500">MZN</span>
-                  </p>
-                  <p className="text-xs font-semibold text-gray-400">* O valor final pode variar após análise de crédito.</p>
-                </div>
-
-                <Button
-                  className="w-full h-14 text-lg font-bold shadow-lg hover:-translate-y-1 transition-all rounded-xl text-white"
-                  style={{ backgroundColor: secondaryColor }}
-                  onClick={() => navigate('/register')}
-                >
-                  Solicitar Crédito Agora
-                </Button>
-                <p className="text-center text-xs font-medium text-gray-400 mt-4">Poderá preencher o formulário completo e enviar a sua documentação após criar a sua conta base.</p>
-              </div>
+            <div className="order-1 lg:order-2 w-full">
+              <CreditSimulatorModule
+                className="max-w-full p-0 shadow-none border-0"
+                onApply={(simData) => navigate('/register', { state: simData })}
+              />
             </div>
           </div>
         </div>

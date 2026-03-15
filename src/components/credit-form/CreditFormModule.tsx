@@ -1,20 +1,31 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import CreditApplicationForm from './CreditApplicationForm';
 import CreditRequestForm from '../credit-requests/CreditRequestForm';
 import CreditRequestManager from '../credit-requests/CreditRequestManager';
+import CreditSimulatorModule from '../credit-simulator/CreditSimulatorModule';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useLocation } from 'react-router-dom';
 
 const CreditFormModule = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const isGestor = user?.role === 'gestor';
   const isAgent = user?.role === 'agente';
+
   const [hasCompletedProfile, setHasCompletedProfile] = useState<boolean | null>(null);
   const [hasDebt, setHasDebt] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Simulation Flow State
+  const [flowStep, setFlowStep] = useState<'simulate' | 'apply'>(() => {
+    // If coming from landing page with state, skip to apply
+    return location.state ? 'apply' : 'simulate';
+  });
+  const [simulationData, setSimulationData] = useState<any>(location.state || null);
 
   useEffect(() => {
     if (user) checkClientStatus();
@@ -25,7 +36,6 @@ const CreditFormModule = () => {
     if (!user) return;
     setLoading(true);
     try {
-      // Check if client has a complete profile (id_number = completed full form)
       const { data: client } = await supabase
         .from('clients')
         .select('id, id_number, phone, address')
@@ -34,8 +44,6 @@ const CreditFormModule = () => {
 
       if (client) {
         setHasCompletedProfile(!!(client.id_number && client.phone));
-
-        // Check if they have active debt
         const { data: activeLoans } = await supabase
           .from('loans')
           .select('remaining_amount')
@@ -56,7 +64,15 @@ const CreditFormModule = () => {
     }
   };
 
-  // Gestor and Agent: always show the manager + simple form
+  const handleSimulationApply = (data: any) => {
+    setSimulationData(data);
+    setFlowStep('apply');
+  };
+
+  const handleGoBack = () => {
+    setFlowStep('simulate');
+  };
+
   if (isGestor || isAgent) {
     return (
       <div className="container mx-auto p-4 md:p-6 space-y-6">
@@ -69,7 +85,6 @@ const CreditFormModule = () => {
     );
   }
 
-  // Client: check loading
   if (loading) {
     return (
       <div className="min-h-[40vh] flex items-center justify-center">
@@ -78,7 +93,6 @@ const CreditFormModule = () => {
     );
   }
 
-  // Client has debt: show message
   if (hasDebt) {
     return (
       <div className="max-w-lg mx-auto p-6">
@@ -97,13 +111,38 @@ const CreditFormModule = () => {
     );
   }
 
-  // Client first-time: show full wizard form
-  if (!hasCompletedProfile) {
-    return <CreditApplicationForm />;
+  // Step 1: Simulation (Mandatory)
+  if (flowStep === 'simulate') {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white p-4 border-b flex items-center justify-between sticky top-0 z-10 shadow-sm">
+          <div>
+            <h2 className="text-xl font-bold text-[#1a3a5c]">Passo 1: Simulação</h2>
+            <p className="text-xs text-gray-500">Entenda as opções A, B e C antes de solicitar</p>
+          </div>
+        </div>
+        <CreditSimulatorModule onApply={handleSimulationApply} />
+      </div>
+    );
   }
 
-  // Client repeat: show simple form  
-  return <CreditRequestForm />;
+  // Step 2: Application Form
+  return (
+    <div className="space-y-4">
+      <div className="bg-white p-4 border-b flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={handleGoBack} className="text-gray-500 hover:text-[#1a3a5c]">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Voltar para Simulação
+        </Button>
+      </div>
+
+      {!hasCompletedProfile ? (
+        <CreditApplicationForm initialData={simulationData} />
+      ) : (
+        <CreditRequestForm initialData={simulationData} />
+      )}
+    </div>
+  );
 };
 
 export default CreditFormModule;

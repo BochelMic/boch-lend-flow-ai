@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DollarSign, Receipt, Clock, CheckCircle, Printer, Check } from 'lucide-react';
+import { DollarSign, Receipt, Clock, CheckCircle, Printer, Check, Info, TrendingDown, Calendar, ArrowUpRight } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generateReceiptHTML, downloadDocumentAsPdf } from '../../utils/exportUtils';
 import { notifyEvent } from '@/utils/notifyEvent';
+import { cn } from '@/lib/utils';
 
 interface Payment {
   id: string;
@@ -33,6 +34,10 @@ interface ActiveLoan {
   remaining_amount: number;
   total_amount: number;
   installments: number;
+  is_installment: boolean;
+  credit_option: string;
+  remaining_installments: number;
+  amortization_plan?: any[];
 }
 
 const PaymentsModule = () => {
@@ -89,8 +94,9 @@ const PaymentsModule = () => {
       const today = new Date().toISOString().split('T')[0];
       const todayPayments = mapped.filter((p: Payment) => p.payment_date === today);
       setTodayTotal(todayPayments.reduce((sum: number, p: Payment) => sum + Number(p.amount), 0));
-    } catch (error) {
-      console.error('Error loading payments:', error);
+    } catch (error: any) {
+      console.error('Error loading payments:', error?.message || error);
+      toast({ title: 'Erro de Conexão', description: 'Não foi possível carregar o histórico de pagamentos.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -100,8 +106,19 @@ const PaymentsModule = () => {
     try {
       const { data, error } = await supabase
         .from('loans')
-        .select('id, remaining_amount, total_amount, installments, clients(*)')
-        .eq('status', 'active');
+        .select(`
+          id, 
+          remaining_amount, 
+          total_amount, 
+          installments, 
+          is_installment, 
+          credit_option, 
+          remaining_installments, 
+          amortization_plan,
+          clients(*)
+        `)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -113,10 +130,15 @@ const PaymentsModule = () => {
         remaining_amount: Number(l.remaining_amount),
         total_amount: Number(l.total_amount),
         installments: l.installments,
+        is_installment: l.is_installment || false,
+        credit_option: l.credit_option || '?',
+        remaining_installments: l.remaining_installments,
+        amortization_plan: l.amortization_plan,
       }));
       setActiveLoans(mapped);
-    } catch (error) {
-      console.error('Error loading active loans:', error);
+    } catch (error: any) {
+      console.error('Error loading active loans:', error?.message || error);
+      toast({ title: 'Erro de Dados', description: 'Ocorreu um problema ao carregar os empréstimos activos.', variant: 'destructive' });
     }
   };
 
@@ -147,7 +169,8 @@ const PaymentsModule = () => {
         p_payment_method: formData.method,
         p_payment_date: formData.date,
         p_notes: formData.notes || null,
-        p_received_by: user?.id || null
+        p_received_by: user?.id || null,
+        p_installment_number: null // Desambiguação explícita para RPC
       });
 
       if (rpcError) throw rpcError;
@@ -201,8 +224,13 @@ const PaymentsModule = () => {
       setLastSavedPayment(savedPaymentObj);
       setShowSuccessDialog(true);
     } catch (error: any) {
-      console.error('Error registering payment:', error);
-      toast({ title: 'Erro', description: error.message || 'Erro ao registrar pagamento.', variant: 'destructive' });
+      console.error('Error registering payment:', error?.message || error || 'Unknown Error');
+      const errorMsg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      toast({
+        title: 'Falha no Registro',
+        description: `Não foi possível salvar o pagamento: ${errorMsg.slice(0, 100)}`,
+        variant: 'destructive'
+      });
     }
   };
 
@@ -238,223 +266,389 @@ const PaymentsModule = () => {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div>
-        <h1 className="text-xl md:text-3xl font-bold tracking-tight">Pagamentos</h1>
-        <p className="text-sm text-muted-foreground">Registre e acompanhe pagamentos dos clientes</p>
+    <div className="space-y-4 md:space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-4xl font-black tracking-tight text-[#1a3a5c]">Gestão de Recebimentos</h1>
+          <p className="text-sm md:text-base text-gray-500 font-medium">Controlo financeiro e fluxos de caixa em tempo real</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Badge className="bg-[#1a3a5c] text-white px-4 py-2 rounded-full font-bold shadow-lg">
+            <Calendar className="h-4 w-4 mr-2" /> {new Date().toLocaleDateString('pt-MZ')}
+          </Badge>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        <Card>
-          <CardContent className="p-3 md:p-4">
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-500" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {[
+          { icon: DollarSign, label: 'Hoje', val: todayTotal, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { icon: Clock, label: 'Activos', val: activeLoans.length, color: 'text-amber-600', bg: 'bg-amber-50', suffix: '' },
+          { icon: ArrowUpRight, label: 'Entradas', val: payments.length, color: 'text-blue-600', bg: 'bg-blue-50', suffix: '' },
+          { icon: CheckCircle, label: 'Recebido', val: payments.reduce((sum, p) => sum + Number(p.amount), 0), color: 'text-[#1a3a5c]', bg: 'bg-slate-100' },
+        ].map((stat, i) => (
+          <Card key={i} className="border-0 shadow-sm hover:shadow-md transition-all overflow-hidden bg-white/50 backdrop-blur-sm border-t-2 border-t-slate-100">
+            <CardContent className="p-5 flex items-center justify-between">
               <div>
-                <p className="text-xs md:text-sm text-muted-foreground">Recebido Hoje</p>
-                <p className="text-sm md:text-lg font-semibold">{todayTotal.toLocaleString()} MZN</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 md:p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-yellow-500" />
-              <div>
-                <p className="text-xs md:text-sm text-muted-foreground">Empréstimos Ativos</p>
-                <p className="text-sm md:text-lg font-semibold">{activeLoans.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 md:p-4">
-            <div className="flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-blue-500" />
-              <div>
-                <p className="text-xs md:text-sm text-muted-foreground">Pagamentos</p>
-                <p className="text-sm md:text-lg font-semibold">{payments.length}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3 md:p-4">
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-purple-500" />
-              <div>
-                <p className="text-xs md:text-sm text-muted-foreground">Total Recebido</p>
-                <p className="text-sm md:text-lg font-semibold">
-                  {payments.reduce((sum, p) => sum + Number(p.amount), 0).toLocaleString()} MZN
+                <p className="text-[10px] uppercase tracking-widest font-black text-gray-400 mb-1">{stat.label}</p>
+                <p className={cn("text-lg md:text-2xl font-black", stat.color)}>
+                  {stat.suffix === '' ? stat.val : `${stat.val.toLocaleString()} MT`}
                 </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className={cn("p-3 rounded-2xl shadow-inner", stat.bg)}>
+                <stat.icon className={cn("h-6 w-6", stat.color)} />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Registrar Pagamento */}
-        <Card>
-          <CardHeader className="p-4 md:p-6">
-            <CardTitle className="text-base md:text-lg">Registrar Pagamento</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Registre um pagamento recebido</CardDescription>
+        {/* Registrar Pagamento - LEFT (5/12) */}
+        <Card className="xl:col-span-5 border-0 shadow-2xl rounded-3xl overflow-hidden xl:sticky xl:top-8 bg-white border-l-4 border-l-[#1a3a5c]">
+          <CardHeader className="bg-[#1a3a5c] p-6 text-white pb-8">
+            <div className="flex items-center justify-between mb-2">
+              <Badge className="bg-[#d37c22] text-white border-0 font-bold uppercase text-[9px]">Nova Transação</Badge>
+              <Receipt className="h-6 w-6 opacity-30" />
+            </div>
+            <CardTitle className="text-xl md:text-2xl font-bold">Registar Recebimento</CardTitle>
+            <CardDescription className="text-blue-100/70 text-xs">Insira os dados do valor que deu entrada na caixa</CardDescription>
           </CardHeader>
-          <CardContent className="p-4 md:p-6 pt-0">
-            <form className="space-y-4" onSubmit={handleSubmit}>
+          <CardContent className="p-6 md:p-8 -mt-4 bg-white rounded-t-3xl relative z-10 space-y-5">
+            <form className="space-y-6" onSubmit={handleSubmit}>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Empréstimo *</label>
-                <Select value={formData.loanId} onValueChange={(v) => setFormData({ ...formData, loanId: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar empréstimo..." />
+                <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Empréstimo Activado *</label>
+                <Select value={formData.loanId} onValueChange={(v) => {
+                  const loan = activeLoans.find(l => l.id === v);
+                  setFormData({ ...formData, loanId: v, amount: '' });
+                }}>
+                  <SelectTrigger className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner focus:ring-2 ring-[#d37c22]/20">
+                    <SelectValue placeholder="Selecione o Cliente..." />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
                     {activeLoans.map(loan => (
-                      <SelectItem key={loan.id} value={loan.id}>
-                        {loan.client_name} — Saldo: {loan.remaining_amount.toLocaleString()} MZN
+                      <SelectItem key={loan.id} value={loan.id} className="rounded-xl py-3 px-4 focus:bg-amber-50">
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="font-bold text-gray-800">{loan.client_name}</span>
+                          <span className="text-[10px] text-gray-500">Saldo Actual: <strong className="text-red-500">MZN {loan.remaining_amount.toLocaleString()}</strong></span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Valor (MZN) *</label>
-                <Input
-                  type="number"
-                  placeholder={monthlyPayment > 0 ? String(monthlyPayment) : '0.00'}
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Forma de Pagamento</label>
-                <Select value={formData.method} onValueChange={(v) => setFormData({ ...formData, method: v })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Dinheiro</SelectItem>
-                    <SelectItem value="transfer">Transferência</SelectItem>
-                    <SelectItem value="mpesa">M-Pesa</SelectItem>
-                    <SelectItem value="check">Cheque</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Data</label>
-                <Input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Observações</label>
-                <Input
-                  placeholder="Observações..."
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                />
-              </div>
 
               {selectedLoan && (
-                <div className="border-t pt-3 grid grid-cols-2 gap-3 text-sm">
-                  <div className="bg-gray-50 p-2 rounded">
-                    <p className="text-muted-foreground text-xs">Saldo Devedor</p>
-                    <p className="font-semibold">{selectedLoan.remaining_amount.toLocaleString()} MZN</p>
-                  </div>
-                  <div className="bg-gray-50 p-2 rounded">
-                    <p className="text-muted-foreground text-xs">Prestação Mensal</p>
-                    <p className="font-semibold">{monthlyPayment.toLocaleString()} MZN</p>
-                  </div>
+                <div className="animate-in slide-in-from-top-2 duration-300">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-12 border-2 border-dashed border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group active:scale-[0.98]"
+                    onClick={() => setFormData({ ...formData, amount: String(selectedLoan.remaining_amount), notes: 'Liquidação total do saldo devedor.' })}
+                  >
+                    <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+                      <DollarSign className="h-4 w-4" />
+                    </div>
+                    Liquidar Saldo Total (MZN {selectedLoan.remaining_amount.toLocaleString()})
+                  </Button>
                 </div>
               )}
 
-              <Button type="submit" className="w-full">
-                Registrar Pagamento
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Valor MT *</label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner pl-12 font-black text-xl text-[#2e7d32]"
+                      placeholder="0.00"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                    />
+                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Data Entrada</label>
+                  <Input
+                    type="date"
+                    className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner font-bold"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Metodo Pago</label>
+                  <Select value={formData.method} onValueChange={(v) => setFormData({ ...formData, method: v })}>
+                    <SelectTrigger className="h-12 border-gray-200 rounded-xl bg-gray-50/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="cash">💵 Dinheiro / Mão</SelectItem>
+                      <SelectItem value="transfer">🏛️ T. Bancária</SelectItem>
+                      <SelectItem value="mpesa">📱 M-Pesa</SelectItem>
+                      <SelectItem value="check">📄 Cheque</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Referência</label>
+                  <Input
+                    className="h-12 border-gray-200 rounded-xl bg-gray-50/50 italic placeholder:text-gray-300"
+                    placeholder="Nº Talão, Parcela..."
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {selectedLoan && (
+                <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border border-emerald-100 shadow-sm space-y-4 animate-in zoom-in duration-300">
+                  <div className="flex justify-between items-center text-[10px] text-emerald-800 font-bold uppercase tracking-widest opacity-80">
+                    <span className="flex items-center gap-2"><Info className="h-4 w-4" /> Resumo do Crédito</span>
+                    <Badge className="bg-emerald-600 text-white border-0 px-2 py-0.5">{selectedLoan.credit_option || 'Padrao'}</Badge>
+                  </div>
+                  <div className="flex justify-between items-end border-b border-emerald-200/50 pb-3">
+                    <div className="space-y-1">
+                      <span className="text-sm font-medium text-emerald-900">Limite em Aberto:</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-black text-xl text-emerald-900 leading-none">MZN {selectedLoan.remaining_amount.toLocaleString()}</span>
+                      <p className="text-[9px] text-emerald-600 font-bold">Dívida Total Actual</p>
+                    </div>
+                  </div>
+                  {selectedLoan.is_installment && (
+                    <div className="flex justify-between items-center text-emerald-700">
+                      <div className="flex items-center gap-2">
+                        <div className="p-2 bg-emerald-100 rounded-lg"><TrendingDown className="h-4 w-4" /></div>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-bold leading-tight">Valor da {selectedLoan.credit_option === 'A' ? 'Semana' : 'Parcela'}</span>
+                          <span className="text-[9px] opacity-70 italic tracking-tighter">Sugestão de amortização</span>
+                        </div>
+                      </div>
+                      <span className="font-black text-lg">
+                        MZN {(selectedLoan.amortization_plan?.find(p => p.installmentNumber === (selectedLoan.installments - selectedLoan.remaining_installments + 1))?.total || monthlyPayment).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <Button type="submit" disabled={!formData.loanId || !formData.amount} className="w-full h-16 text-lg font-black bg-[#d37c22] hover:bg-[#b0661a] text-white shadow-xl shadow-orange-500/20 rounded-2xl transition-all group active:scale-95">
+                Confirmar Recebimento <ArrowUpRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
               </Button>
             </form>
           </CardContent>
         </Card>
 
-        {/* Histórico */}
-        <Card>
-          <CardHeader className="p-4 md:p-6">
-            <CardTitle className="text-base md:text-lg">Últimos Pagamentos</CardTitle>
-            <CardDescription className="text-xs md:text-sm">Pagamentos registrados recentemente</CardDescription>
-          </CardHeader>
-          <CardContent className="p-4 md:p-6 pt-0">
-            <div className="space-y-3">
+        {/* Info & History - RIGHT (7/12) */}
+        <div className="xl:col-span-7 space-y-8">
+          {/* Detailed Amortization Table */}
+          {selectedLoan && selectedLoan.is_installment ? (
+            <Card className="border-0 shadow-xl rounded-3xl overflow-hidden bg-white animate-in slide-in-from-right-10 duration-500">
+              <CardHeader className="bg-gray-50/80 p-6 border-b border-gray-100 flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-black text-[#1a3a5c] uppercase tracking-widest flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-[#d37c22]" /> Plano de Pagamento Alvo
+                  </CardTitle>
+                  <CardDescription className="text-[10px] text-gray-500 mt-1 font-medium">Clique em "Usar Valor" para amortizar parcelas específicas</CardDescription>
+                </div>
+                <Badge variant="outline" className="text-gray-400 font-bold h-6">Interactive List</Badge>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="max-h-[500px] overflow-y-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-100 text-gray-500 sticky top-0 z-20">
+                      <tr>
+                        <th className="px-6 py-4 font-black text-[10px] uppercase">Parcela</th>
+                        <th className="px-6 py-4 font-black text-[10px] uppercase">Data / Estado</th>
+                        <th className="px-6 py-4 font-black text-[10px] uppercase text-right">Amortizar</th>
+                        <th className="px-6 py-4 font-black text-[10px] uppercase text-center">Ação</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {selectedLoan.amortization_plan?.map((row: any) => {
+                        const totalPaidInstallments = (selectedLoan.installments - selectedLoan.remaining_installments);
+                        const isPaid = totalPaidInstallments >= row.installmentNumber;
+                        const isCurrent = (totalPaidInstallments + 1) === row.installmentNumber;
+
+                        return (
+                          <tr key={row.installmentNumber} className={cn(
+                            "group transition-all duration-300",
+                            isCurrent ? 'bg-amber-50/50' : '',
+                            isPaid ? 'bg-gray-50/30 grayscale-[0.8]' : 'hover:bg-blue-50/30'
+                          )}>
+                            <td className="px-6 py-5">
+                              <div className="flex items-center gap-3">
+                                <span className={cn(
+                                  "flex items-center justify-center h-8 w-8 rounded-full text-xs font-black shadow-inner",
+                                  isPaid ? "bg-gray-200 text-gray-400" : (isCurrent ? "bg-amber-500 text-white" : "bg-[#1a3a5c] text-white")
+                                )}>
+                                  {row.installmentNumber}
+                                </span>
+                                <span className="font-bold text-gray-800 text-xs tracking-tighter uppercase">{selectedLoan.credit_option === 'A' ? 'Semana' : 'Mes'}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-gray-700 text-xs">{new Date(row.date).toLocaleDateString('pt-MZ')}</span>
+                                {isPaid ? (
+                                  <span className="text-[9px] text-green-600 font-black uppercase tracking-tighter flex items-center gap-1 mt-0.5"><CheckCircle className="h-3 w-3" /> Liquidada</span>
+                                ) : (
+                                  <span className={cn("text-[9px] font-black uppercase tracking-tighter mt-0.5", isCurrent ? 'text-amber-500' : 'text-gray-400')}>{isCurrent ? '⚡ Vencendo Agora' : 'Aguardando'}</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-5 text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-black text-gray-900">MZN {Number(row.total || 0).toLocaleString()}</span>
+                                <span className="text-[9px] text-gray-400 font-medium">Sugerido para hoje</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-5 text-center">
+                              {!isPaid ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setFormData({
+                                    ...formData,
+                                    amount: String(row.total),
+                                    notes: `Pagam. Parcela ${row.installmentNumber} - Ref: ${new Date(row.date).toLocaleDateString()}`
+                                  })}
+                                  className="h-10 px-4 rounded-xl text-[10px] text-[#1a3a5c] border-[#1a3a5c]/20 hover:bg-[#1a3a5c] hover:text-white font-black shadow-sm transition-all active:scale-90"
+                                >
+                                  Usar Valor
+                                </Button>
+                              ) : (
+                                <div className="h-8 w-8 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto shadow-inner"><Check className="h-4 w-4" /></div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          ) : selectedLoan ? (
+            <div className="bg-[#1a3a5c]/5 p-12 rounded-3xl border-2 border-dashed border-[#1a3a5c]/10 flex flex-col items-center justify-center text-center space-y-4 animate-in fade-in duration-500">
+              <div className="p-4 bg-white rounded-2xl shadow-xl"><DollarSign className="h-12 w-12 text-[#1a3a5c]" /></div>
+              <div>
+                <h3 className="text-xl font-bold text-[#1a3a5c]">Crédito em Pagamento Único</h3>
+                <p className="max-w-[400px] text-gray-500 text-sm mt-1">Este empréstimo (Opção B - Curta) não possui parcelamento fracionado. Receba o valor total de amortização.</p>
+              </div>
+              <Button variant="outline" className="rounded-xl font-bold" onClick={() => setFormData({ ...formData, amount: String(selectedLoan.remaining_amount) })}>Preencher Saldo Total</Button>
+            </div>
+          ) : (
+            <div className="bg-gray-50/50 p-16 rounded-3xl border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center opacity-50 grayscale">
+              <Receipt className="h-16 w-16 text-gray-200 mb-4" />
+              <h3 className="text-lg font-bold text-gray-400">Nenhum Empréstimo Selecionado</h3>
+              <p className="text-xs text-gray-300">Selecione um cliente ao lado para ver o detalhamento</p>
+            </div>
+          )}
+
+          {/* Histórico Recente V2 */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-sm font-black text-[#1a3a5c] uppercase tracking-widest flex items-center gap-2">
+                <ArrowUpRight className="h-4 w-4" /> Fluxo de Caixa Recente
+              </h3>
+              <span className="text-[10px] font-bold text-gray-400">Últimas 10 Entradas</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
               {loading ? (
-                <p className="text-center text-muted-foreground py-4">Carregando...</p>
+                <div className="py-20 text-center text-gray-300">Carregando fluxo...</div>
               ) : payments.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Nenhum pagamento registrado</p>
+                <div className="py-20 text-center border-2 border-dashed border-gray-100 rounded-3xl text-gray-300 italic font-medium">Sem transacções registadas</div>
               ) : (
                 payments.slice(0, 10).map((payment) => (
-                  <div key={payment.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div>
-                      <p className="font-medium text-sm">{payment.loan_client_name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {getMethodLabel(payment.payment_method)} • {payment.payment_date}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-right">
-                        <p className="font-semibold text-sm">{Number(payment.amount).toLocaleString()} MZN</p>
-                        <Badge className="bg-green-100 text-green-800 text-xs">Pago</Badge>
+                  <Card key={payment.id} className="border-0 shadow-sm hover:shadow-lg transition-all rounded-3xl group cursor-default">
+                    <CardContent className="p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-slate-50 flex items-center justify-center shadow-inner group-hover:bg-[#1a3a5c] transition-colors">
+                          <Receipt className="h-6 w-6 text-slate-400 group-hover:text-white transition-colors" />
+                        </div>
+                        <div>
+                          <p className="font-black text-gray-800 text-sm group-hover:text-[#1a3a5c] transition-colors">{payment.loan_client_name}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <Badge variant="outline" className="text-[8px] h-4 border-gray-100 px-1 bg-gray-50 text-gray-500 font-bold uppercase">{getMethodLabel(payment.payment_method)}</Badge>
+                            <span className="text-[10px] text-gray-400 font-bold">• {new Date(payment.payment_date).toLocaleDateString('pt-MZ')}</span>
+                          </div>
+                        </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8 p-0 text-gray-500 hover:text-[#0b3a20]"
-                        onClick={() => handlePrintReceipt(payment)}
-                        title="Gerar Recibo PDF"
-                      >
-                        <Printer className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <p className="font-black text-base text-[#2e7d32]">+{Number(payment.amount).toLocaleString()} MT</p>
+                          <p className="text-[8px] text-gray-400 font-black uppercase tracking-widest leading-none mt-1">Confirmado</p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-12 w-12 p-0 text-gray-300 hover:text-[#d37c22] hover:bg-orange-50 rounded-2xl transition-all"
+                          onClick={() => handlePrintReceipt(payment)}
+                        >
+                          <Printer className="h-5 w-5" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Success / Receipt Dialog */}
       <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <Check className="h-6 w-6 text-green-600" />
+        <DialogContent className="sm:max-w-md rounded-3xl border-0 shadow-2xl p-0 overflow-hidden">
+          <div className="bg-[#2e7d32] p-12 flex flex-col items-center justify-center text-white relative overflow-hidden">
+            <div className="absolute -right-10 -bottom-10 h-40 w-40 bg-white/10 rounded-full blur-3xl"></div>
+            <div className="mx-auto w-24 h-24 bg-white/20 rounded-3xl flex items-center justify-center mb-6 backdrop-blur-md border border-white/30 animate-in zoom-in spin-in duration-500">
+              <Check className="h-12 w-12 text-white" />
             </div>
-            <DialogTitle className="text-center text-xl">Pagamento Registrado!</DialogTitle>
-            <DialogDescription className="text-center">
-              O pagamento de {lastSavedPayment ? Number(lastSavedPayment.amount).toLocaleString() : 0} MZN foi salvo com sucesso no sistema.
-            </DialogDescription>
-          </DialogHeader>
+            <h2 className="text-2xl font-black mb-2">Transação Concluída!</h2>
+            <p className="text-white/70 text-sm font-medium">Recibo gerado digitalmente</p>
+          </div>
+          <div className="p-8 space-y-6">
+            <div className="text-center space-y-1">
+              <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">Valor Recebido</p>
+              <p className="text-5xl font-black text-[#1a3a5c]">
+                {lastSavedPayment ? Number(lastSavedPayment.amount).toLocaleString() : 0} <span className="text-xl">MT</span>
+              </p>
+            </div>
 
-          <div className="flex flex-col gap-3 mt-4">
-            <Button
-              className="w-full h-12 text-md gap-2"
-              onClick={() => {
-                if (lastSavedPayment) {
-                  handlePrintReceipt(lastSavedPayment);
-                  setShowSuccessDialog(false);
-                }
-              }}
-            >
-              <Printer className="h-5 w-5" />
-              Baixar / Imprimir Recibo
-            </Button>
+            <div className="bg-gray-50 p-6 rounded-2xl border border-dashed border-gray-200 space-y-3">
+              <div className="flex justify-between text-xs"><span className="text-gray-400 font-bold">Cliente:</span> <span className="font-black text-gray-800">{lastSavedPayment?.loan_client_name}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-gray-400 font-bold">Data:</span> <span className="font-black text-gray-800">{lastSavedPayment && new Date(lastSavedPayment.payment_date).toLocaleDateString('pt-MZ')}</span></div>
+              <div className="flex justify-between text-xs"><span className="text-gray-400 font-bold">Metodo:</span> <span className="font-black text-gray-800 uppercase">{lastSavedPayment?.payment_method}</span></div>
+            </div>
 
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowSuccessDialog(false)}
-            >
-              Agora não, apenas fechar
-            </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <Button
+                variant="outline"
+                className="h-14 rounded-2xl font-bold border-gray-200 text-gray-500"
+                onClick={() => setShowSuccessDialog(false)}
+              >
+                Fechar
+              </Button>
+              <Button
+                className="h-14 rounded-2xl font-bold bg-[#1a3a5c] text-white hover:bg-[#0d1e30] gap-2 shadow-xl shadow-blue-500/20"
+                onClick={() => {
+                  if (lastSavedPayment) {
+                    handlePrintReceipt(lastSavedPayment);
+                    setShowSuccessDialog(false);
+                  }
+                }}
+              >
+                <Printer className="h-5 w-5" /> Recibo PDF
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
