@@ -112,6 +112,8 @@ const ContractModule = () => {
     const [sigPos, setSigPos] = useState({ x: 50, y: 50 }); // Draggable position
     const [sigScale, setSigScale] = useState(60); // Signature height in pixels
     const [inkColor, setInkColor] = useState('#0000a0'); // Default to Bic Blue
+    const [existingSignatureUrl, setExistingSignatureUrl] = useState<string | null>(null);
+    const [fetchingSignature, setFetchingSignature] = useState(false);
     const draggableRef = useRef<HTMLDivElement>(null);
 
     const [basePdfUrl, setBasePdfUrl] = useState<string>("/contrato-bochel.pdf");
@@ -176,6 +178,14 @@ const ContractModule = () => {
             if (!isAdmin) query = query.eq('client_id', user.id);
             const { data } = await query;
             setContracts(data || []);
+
+            // Optimization: Find if this client has any already signed contract to reuse signature
+            if (!isAdmin && data && data.length > 0) {
+                const signedContract = data.find(c => c.status === 'signed' && c.signature_url);
+                if (signedContract) {
+                    setExistingSignatureUrl(signedContract.signature_url);
+                }
+            }
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
@@ -254,8 +264,41 @@ const ContractModule = () => {
         // We will now show the PDF with the signature on top instead of the canvas
     };
 
+    const handleReuseSignature = async () => {
+        if (!existingSignatureUrl) return;
+        setFetchingSignature(true);
+        try {
+            const signatureBase64 = await loadImageAsBase64(existingSignatureUrl);
+            if (signatureBase64) {
+                setSignatureImage(signatureBase64);
+                setHasSignature(true);
+                toast({ title: "Assinatura Reutilizada", description: "A sua assinatura anterior foi carregada com sucesso." });
+            }
+        } catch (err) {
+            console.error("Erro ao reutilizar assinatura:", err);
+            toast({ title: "Erro", description: "Não foi possível carregar a assinatura anterior.", variant: "destructive" });
+        } finally {
+            setFetchingSignature(false);
+        }
+    };
+
     const handleDrag = (e: DraggableEvent, data: DraggableData) => {
         setSigPos({ x: data.x, y: data.y });
+    };
+
+    const loadImageAsBase64 = async (url: string): Promise<string | null> => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(blob);
+            });
+        } catch {
+            return null;
+        }
     };
 
     const signContract = async () => {
@@ -472,9 +515,27 @@ const ContractModule = () => {
                                     <button onClick={() => setInkColor('#0000a0')} className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#0000a0' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'}`} style={{ backgroundColor: '#0000a0' }} type="button" />
                                     <button onClick={() => setInkColor('#000000')} className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#000000' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'}`} style={{ backgroundColor: '#000000' }} type="button" />
                                 </div>
-                                <Button variant="outline" onClick={clearCanvas} size="sm" className="text-gray-500">
-                                    <Eraser className="h-4 w-4 mr-2" /> Limpar
-                                </Button>
+                                <div className="flex gap-2">
+                                    {existingSignatureUrl && (
+                                        <Button
+                                            variant="outline"
+                                            onClick={handleReuseSignature}
+                                            size="sm"
+                                            disabled={fetchingSignature}
+                                            className="text-[#1a3a5c] border-[#1a3a5c]/20 hover:bg-blue-50 font-bold"
+                                        >
+                                            {fetchingSignature ? (
+                                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                            ) : (
+                                                <RefreshCw className="h-4 w-4 mr-2" />
+                                            )}
+                                            Reusar Assinatura
+                                        </Button>
+                                    )}
+                                    <Button variant="outline" onClick={clearCanvas} size="sm" className="text-gray-500">
+                                        <Eraser className="h-4 w-4 mr-2" /> Limpar
+                                    </Button>
+                                </div>
                             </div>
 
                             <div className="border-2 border-dashed border-gray-300 rounded-xl overflow-hidden bg-white relative touch-none shadow-inner">

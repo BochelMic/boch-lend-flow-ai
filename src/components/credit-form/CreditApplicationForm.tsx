@@ -494,21 +494,31 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
       // Log for debugging (only in console)
       console.log(`[Upload] Resilient upload trial: ${path}, Type: ${compressed.type}, Size: ${compressed.size}`);
 
-      const { data: uploadData, error } = await supabase.storage.from('chat-files').upload(path, compressed, {
+      // Added explicit timeout via Promise.race
+      const uploadPromise = supabase.storage.from('chat-files').upload(path, compressed, {
         contentType: compressed.type || 'image/jpeg',
         upsert: true,
         cacheControl: '3600'
       });
+
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('TIMEOUT')), 20000)
+      );
+
+      const { data: uploadData, error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
+
       if (error) {
         console.warn(`Upload ${side} failed:`, error.message, error);
 
         let errorMsg = "Não foi possível enviar a foto.";
-        if (error.message.includes('Payload too large') || (compressed.size > 5 * 1024 * 1024)) {
+        if (error.message === 'TIMEOUT') {
+          errorMsg = "O envio demorou muito tempo. Verifique sua conexão e tente novamente.";
+        } else if (error.message.includes('Payload too large') || (compressed.size > 5 * 1024 * 1024)) {
           errorMsg = "A foto é demasiado grande (>5MB). Tente tirar outra foto ou reduzir o tamanho.";
         } else if (error.message.includes('storage/quota-exceeded')) {
           errorMsg = "Limite de armazenamento atingido.";
         } else if (error.message === 'Failed to fetch') {
-          errorMsg = "Erro de conexão ou certificado SSL no telemóvel. Tente usar Chrome ou Safari.";
+          errorMsg = "Erro de rede (CORS ou SSL). Tente usar um navegador moderno (Chrome/Safari).";
         } else {
           errorMsg = `Erro servidor: ${error.message}`;
         }
@@ -915,6 +925,31 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
                 </Select>
                 <FieldError field="creditPurpose" />
               </div>
+              <div>
+                <Label className="text-sm font-medium">Tipo de Garantia *</Label>
+                <Select value={form.guaranteeType || undefined} onValueChange={v => updateField('guaranteeType', v)}>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bem_movel">Bem Móvel</SelectItem>
+                    <SelectItem value="bem_imovel">Bem Imóvel</SelectItem>
+                    <SelectItem value="fiador">Fiador</SelectItem>
+                    <SelectItem value="salario">Salário</SelectItem>
+                    <SelectItem value="sem_garantia">Sem Garantia</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError field="guaranteeType" />
+              </div>
+              <div>
+                <Label className="text-sm font-medium">Modo de Garantia *</Label>
+                <Select value={form.guaranteeMode || undefined} onValueChange={v => updateField('guaranteeMode', v)}>
+                  <SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="antecipado">Antecipado</SelectItem>
+                    <SelectItem value="postecipado">Postecipado</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FieldError field="guaranteeMode" />
+              </div>
               {/* Tier Selection */}
               <div className="md:col-span-2 space-y-3">
                 <Label className="font-bold text-gray-700">Opção de Crédito Disponível</Label>
@@ -1244,6 +1279,10 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
                   <div><Label className="text-sm font-medium">Data para Receber *</Label><Input type="date" value={form.receiveDate} onChange={e => updateField('receiveDate', e.target.value)} className="mt-1.5" /><FieldError field="receiveDate" /></div>
                   <div><Label className="text-sm font-medium">Finalidade do Crédito *</Label>
                     <Select value={form.creditPurpose || undefined} onValueChange={v => updateField('creditPurpose', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="negocio">Negócio</SelectItem><SelectItem value="consumo">Consumo</SelectItem><SelectItem value="saude">Saúde</SelectItem><SelectItem value="educacao">Educação</SelectItem><SelectItem value="emergencia">Emergência</SelectItem><SelectItem value="construcao">Construção/Reforma</SelectItem><SelectItem value="outros">Outros</SelectItem></SelectContent></Select><FieldError field="creditPurpose" /></div>
+                  <div><Label className="text-sm font-medium">Tipo de Garantia *</Label>
+                    <Select value={form.guaranteeType || undefined} onValueChange={v => updateField('guaranteeType', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="bem_movel">Bem Móvel</SelectItem><SelectItem value="bem_imovel">Bem Imóvel</SelectItem><SelectItem value="fiador">Fiador</SelectItem><SelectItem value="salario">Salário</SelectItem><SelectItem value="sem_garantia">Sem Garantia</SelectItem></SelectContent></Select><FieldError field="guaranteeType" /></div>
+                  <div><Label className="text-sm font-medium">Modo de Garantia *</Label>
+                    <Select value={form.guaranteeMode || undefined} onValueChange={v => updateField('guaranteeMode', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="antecipado">Antecipado</SelectItem><SelectItem value="postecipado">Postecipado</SelectItem></SelectContent></Select><FieldError field="guaranteeMode" /></div>
                   {/* Auto-selected Tier Display */}
                   <div className="md:col-span-2 p-4 rounded-xl bg-green-50/50 border-2 border-dashed border-green-200 space-y-2">
                     <div className="flex items-center justify-between">
