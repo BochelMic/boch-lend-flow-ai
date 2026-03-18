@@ -92,24 +92,25 @@ export const generateAmortizationPlan = (
       remainingBalance -= principalPerPeriod;
     }
   } else {
-    // Option B/C behavior: 30% Monthly Recapitalization on declining balance
+    // Option B/C behavior: FIXED Interest based on initial principal (Equal Installments)
     const monthlyRate = 0.30;
-    const principalPerMonth = principal / count;
+    const totalInterest = principal * monthlyRate * count;
+    const totalToPay = principal + totalInterest;
+    const perPeriod = totalToPay / count;
+    const principalPerPeriod = principal / count;
+    const interestPerPeriod = totalInterest / count;
 
     for (let i = 1; i <= count; i++) {
-      const interest = remainingBalance * monthlyRate;
-      const total = principalPerMonth + interest;
-
       plan.push({
         installmentNumber: i,
         date: format(addDays(startDate, i * 30), 'yyyy-MM-dd'),
-        principal: principalPerMonth,
-        interest: interest,
-        total: total,
-        remainingBalance: Math.max(0, remainingBalance - principalPerMonth)
+        principal: principalPerPeriod,
+        interest: interestPerPeriod,
+        total: perPeriod,
+        remainingBalance: Math.max(0, remainingBalance - principalPerPeriod)
       });
 
-      remainingBalance -= principalPerMonth;
+      remainingBalance -= principalPerPeriod;
     }
   }
 

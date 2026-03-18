@@ -58,16 +58,20 @@ export default function MobileBottomNav() {
             ],
             more: [
                 { name: 'Empréstimos', href: `${prefix}/emprestimos` },
-                { name: 'Cobranças', href: `${prefix}/cobrancas` },
+                { name: 'Pagamentos', href: `${prefix}/pagamentos` },
                 { name: 'Contratos', href: `${prefix}/contratos` },
-                { name: 'Faturas/Recibos', href: `${prefix}/faturas` },
-                { name: 'Crédito', href: `${prefix}/credit-form` },
-                { name: 'Simulador', href: `${prefix}/credit-simulator` },
-                { name: 'Usuários', href: `${prefix}/usuarios` },
-                { name: 'Agentes', href: `${prefix}/agentes` },
+                { name: 'Cobranças', href: `${prefix}/cobrancas` },
+                { name: 'Caixa', href: `${prefix}/caixa` },
                 { name: 'Relatórios', href: `${prefix}/reports` },
+                { name: 'Agentes', href: `${prefix}/agentes` },
+                { name: 'Faturas/Recibos', href: `${prefix}/faturas` },
+                { name: 'Simulador', href: `${prefix}/credit-simulator` },
+                { name: 'Administração', href: `${prefix}/admin` },
+                { name: 'Fluxo de Caixa', href: `${prefix}/cashflow` },
+                { name: 'Auditoria', href: `${prefix}/audit` },
                 { name: 'Subsistemas', href: `${prefix}/subsistemas` },
                 { name: 'Configurações', href: `${prefix}/settings` },
+                { name: 'Novo Crédito', href: `${prefix}/credit-form` },
             ],
         };
     };
@@ -80,7 +84,7 @@ export default function MobileBottomNav() {
             {showMore && (
                 <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setShowMore(false)}>
                     <div
-                        className="absolute bottom-20 left-4 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 space-y-1"
+                        className="absolute bottom-20 left-4 right-4 bg-white rounded-2xl shadow-xl border border-gray-100 p-3 space-y-1 max-h-[70vh] overflow-y-auto scrollbar-hide"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {more.map((item) => (

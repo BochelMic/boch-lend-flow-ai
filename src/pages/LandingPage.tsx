@@ -366,31 +366,27 @@ const LandingPage = () => {
         <div className="absolute bottom-0 left-0 translate-y-1/3 -translate-x-1/3 w-[500px] h-[500px] rounded-full blur-3xl opacity-20" style={{ backgroundColor: `${secondaryColor}40` }}></div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+          <div className="grid lg:grid-cols-[1fr_4fr] gap-6 lg:gap-8 items-center">
 
             <div className="order-2 lg:order-1">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 leading-tight">Simule o seu crédito instantaneamente.</h2>
-              <p className="text-lg text-gray-600 mb-8 font-medium">
-                Descubra as condições ideais para o seu projeto. Ajuste o montante e o prazo de pagamento à sua medida e veja na hora quanto vai pagar por mês.
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4 leading-tight">Simule o seu crédito instantaneamente.</h2>
+              <p className="text-sm md:text-base text-gray-600 mb-6 font-medium">
+                Descubra as condições ideais para o seu projeto. Ajuste o montante e o prazo à sua medida.
               </p>
-              <ul className="space-y-4 mb-10">
-                <li className="flex items-center text-gray-700">
-                  <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
-                  <span className="font-bold text-lg">Taxas a partir de 20% (Opção B)</span>
+              <ul className="space-y-2 mb-8 hidden sm:block">
+                <li className="flex items-center text-gray-700 text-sm">
+                  <CheckCircle2 className="mr-2 w-4 h-4 shrink-0" style={{ color: secondaryColor }} />
+                  <span className="font-bold">Taxas 20% (Opção B)</span>
                 </li>
-                <li className="flex items-center text-gray-700">
-                  <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
-                  <span className="font-bold text-lg">Pague em até 6 parcelas mensais</span>
-                </li>
-                <li className="flex items-center text-gray-700">
-                  <CheckCircle2 className="mr-3 w-6 h-6" style={{ color: secondaryColor }} />
-                  <span className="font-bold text-lg">Recapitalização mensal inteligente</span>
+                <li className="flex items-center text-gray-700 text-sm">
+                  <CheckCircle2 className="mr-2 w-4 h-4 shrink-0" style={{ color: secondaryColor }} />
+                  <span className="font-bold">Até 6 parcelas</span>
                 </li>
               </ul>
             </div>
 
             {/* Calculadora Box */}
-            <div className="order-1 lg:order-2 w-full">
+            <div className="order-1 lg:order-2 w-full lg:-mr-6 xl:-mr-12">
               <CreditSimulatorModule
                 className="max-w-full p-0 shadow-none border-0"
                 onApply={(simData) => navigate('/register', { state: simData })}

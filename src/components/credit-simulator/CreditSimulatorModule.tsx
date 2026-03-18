@@ -64,7 +64,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
   };
 
   return (
-    <div className={cn("container mx-auto p-4 md:p-6 space-y-6 max-w-6xl", className)}>
+    <div className={cn("w-full space-y-6 overflow-x-hidden", className)}>
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight text-[#1a3a5c]">Simulador de Crédito</h1>
@@ -77,9 +77,9 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-start">
         {/* Formulário de Simulação (Left Column) */}
-        <div className="lg:col-span-4 space-y-6">
+        <div className="w-full lg:w-[300px] shrink-0 space-y-4">
           <Card className="border-0 shadow-xl overflow-hidden">
             <div className="bg-[#1a3a5c] p-4 text-white">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -176,7 +176,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                         <Info className="h-3 w-3" />
                         {result?.option === 'A'
                           ? "Pagamentos semanais recomendados para facilitar a quitação dentro dos 30 dias."
-                          : "Juros de 30% recapitalizados mensalmente sobre o saldo."}
+                          : "Prestações mensais fixas com juros de 30%."}
                       </p>
                     </div>
                   )}
@@ -187,47 +187,47 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
         </div>
 
         {/* Resultados e Amortização (Right Column) */}
-        <div className="lg:col-span-8 space-y-6">
+        <div className="flex-1 min-w-0 w-full space-y-6">
           {result ? (
             <>
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="border-0 shadow-lg bg-white border-l-4 border-l-[#1a3a5c]">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="p-3 bg-blue-50 rounded-full text-[#1a3a5c]">
-                      <Calendar className="h-5 w-5" />
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
+                <Card className="border-0 shadow-md bg-white border-l-4 border-l-[#1a3a5c]">
+                  <CardContent className="p-3 md:p-4 flex items-center gap-2 md:gap-4">
+                    <div className="p-2 bg-blue-50 rounded-full text-[#1a3a5c] flex-shrink-0">
+                      <Calendar className="h-4 w-4" />
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Total a Pagar</p>
-                      <p className="text-xl font-black text-[#1a3a5c]">MT {result.totalToPay.toLocaleString()}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-0 shadow-lg bg-white border-l-4 border-l-[#d37c22]">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="p-3 bg-orange-50 rounded-full text-[#d37c22]">
-                      <Percent className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">Juros Totais</p>
-                      <p className="text-xl font-black text-[#d37c22]">MT {result.totalInterest.toLocaleString()}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">Total a Pagar</p>
+                      <p className="text-base md:text-lg font-black text-[#1a3a5c] truncate">MT {result.totalToPay.toLocaleString()}</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-lg bg-white border-l-4 border-l-green-600">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="p-3 bg-green-50 rounded-full text-green-600">
-                      <TrendingUp className="h-5 w-5" />
+                <Card className="border-0 shadow-md bg-white border-l-4 border-l-[#d37c22]">
+                  <CardContent className="p-3 md:p-4 flex items-center gap-2 md:gap-4">
+                    <div className="p-2 bg-orange-50 rounded-full text-[#d37c22] flex-shrink-0">
+                      <Percent className="h-4 w-4" />
                     </div>
-                    <div>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest leading-none mb-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">Juros Totais</p>
+                      <p className="text-base md:text-lg font-black text-[#d37c22] truncate">MT {result.totalInterest.toLocaleString()}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-0 shadow-md bg-white border-l-4 border-l-green-600">
+                  <CardContent className="p-3 md:p-4 flex items-center gap-2 md:gap-4">
+                    <div className="p-2 bg-green-50 rounded-full text-green-600 flex-shrink-0">
+                      <TrendingUp className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">
                         {isInstallment
-                          ? (result.option === 'A' ? 'Pagamento Semanal' : 'Mensalidade')
+                          ? (result.option === 'A' ? 'Semanal' : 'Mensal')
                           : 'Vencimento'}
                       </p>
-                      <p className="text-xl font-black text-green-600">
+                      <p className="text-base md:text-lg font-black text-green-600 truncate">
                         MT {isInstallment
                           ? result.installments[0].total.toLocaleString()
                           : result.totalToPay.toLocaleString()}
@@ -253,7 +253,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent className="p-0">
+                <CardContent className="p-0 overflow-x-auto">
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
@@ -290,7 +290,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                       {isInstallment
                         ? (result.option === 'A'
                           ? "A Opção A permite flexibilidade semanal para quitação do capital e juros fixos de 30%."
-                          : "O valor da prestação diminui à medida que o capital é amortizado. Juros de 30% aplicados mensalmente.")
+                          : "Prestações fixas mensais. Nestes valores parcelados você poderá pagar o exacto valor, acima ou o total do valor disponível.")
                         : "Pagamento único em regime de juro fixo para o período selecionado."}
                     </span>
                   </div>
@@ -374,7 +374,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <p className="text-[11px] text-white/70 leading-relaxed">
-              Pague em até <strong>6 meses</strong> para valores acima de 5.000 MT. Amortização mensal com recapitalização de 30% sobre o saldo.
+              Pague em até <strong>6 meses</strong> para valores acima de <strong>50.000 MT</strong>. Amortização mensal com prestações fixas.
             </p>
           </CardContent>
         </Card>
