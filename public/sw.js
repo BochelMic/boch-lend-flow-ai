@@ -6,7 +6,7 @@
 // - avoids caching Vite dev modules/scripts
 // - uses network-first for navigations
 
-const CACHE_NAME = 'boch-lend-v4';
+const CACHE_NAME = 'boch-lend-v5';
 
 const urlsToCache = [
   '/',
