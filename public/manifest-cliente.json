@@ -7,7 +7,6 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#d37c22",
-  "orientation": "any",
   "categories": [
     "finance"
   ],
