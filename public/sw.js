@@ -67,16 +67,25 @@ function shouldBypassCache(request) {
   return false;
 }
 
-async function networkFirst(request) {
+async function networkFirst(request, timeout = 5000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+
   try {
-    const response = await fetch(request);
+    const response = await fetch(request, { signal: controller.signal });
+    clearTimeout(id);
+
     // Update cache for navigations/app-shell
     const cache = await caches.open(CACHE_NAME);
     cache.put(request, response.clone());
     return response;
   } catch (err) {
+    clearTimeout(id);
     const cached = await caches.match(request);
-    if (cached) return cached;
+    if (cached) {
+      console.log('🛡️ Guardian: Usando cache devido a falha ou lentidão na rede:', request.url);
+      return cached;
+    }
     throw err;
   }
 }
