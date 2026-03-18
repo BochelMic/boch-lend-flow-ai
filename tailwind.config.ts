@@ -1,5 +1,7 @@
 import type { Config } from "tailwindcss";
 
+import tailwindcssAnimate from "tailwindcss-animate";
+
 export default {
 	darkMode: ["class"],
 	content: [
@@ -83,7 +85,7 @@ export default {
 					ring: 'hsl(var(--sidebar-ring))'
 				}
 			},
-		backgroundImage: {
+			backgroundImage: {
 				'gradient-primary': 'var(--gradient-primary)',
 				'gradient-secondary': 'var(--gradient-secondary)',
 				'gradient-accent': 'var(--gradient-accent)',
@@ -127,5 +129,5 @@ export default {
 			}
 		}
 	},
-	plugins: [require("tailwindcss-animate")],
+	plugins: [tailwindcssAnimate],
 } satisfies Config;

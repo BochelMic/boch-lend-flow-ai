@@ -31,7 +31,7 @@ serve(async (req) => {
 
     // 2. Original Logic: Determine type and handle database insertion + push
     let userId = payload.userId;
-    let type = payload.type || 'system';
+    const type = payload.type || 'system';
     let title = payload.title;
     let body = payload.body;
     let link_url = payload.link_url || '/';

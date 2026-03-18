@@ -196,7 +196,7 @@ const ChatModule = () => {
     }
 
     // For gestor: build a map of client user_id -> agent name
-    let agentLabelMap = new Map<string, string>();
+    const agentLabelMap = new Map<string, string>();
     if (user.role === 'gestor') {
       const { data: clientsWithAgent } = await supabase
         .from('clients')

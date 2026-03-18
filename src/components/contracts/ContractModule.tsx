@@ -824,8 +824,37 @@ const ContractModule = () => {
                                         className="w-full md:w-auto px-8 h-14 text-white font-bold shadow-xl transition-transform hover:scale-105"
                                         style={{ backgroundColor: '#d37c22' }}
                                     >
-                                        <PenLine className="h-5 w-5 mr-3" /> Iniciar Assinatura Digital
+                                        <PenLine className="h-5 w-5 mr-3" /> Iniciar Nova Assinatura Digital
                                     </Button>
+
+                                    {selectedContract.signature_url && (
+                                        <div className="pt-2">
+                                            <p className="text-xs text-gray-500 mb-2">— OU —</p>
+                                            <Button
+                                                onClick={async () => {
+                                                    setSaving(true);
+                                                    try {
+                                                        const base64 = await loadImageAsBase64(selectedContract.signature_url!);
+                                                        if (base64) {
+                                                            setSignatureImage(base64);
+                                                            setHasSignature(true);
+                                                            setAgreedToTerms(true);
+                                                            setShowSigning(true);
+                                                            toast({ title: "Assinatura Carregada", description: "Posicione a sua assinatura no documento para finalizar." });
+                                                        }
+                                                    } catch (err) {
+                                                        toast({ title: "Erro", description: "Não foi possível carregar a assinatura anterior.", variant: "destructive" });
+                                                    } finally {
+                                                        setSaving(false);
+                                                    }
+                                                }}
+                                                variant="outline"
+                                                className="w-full md:w-auto px-8 h-14 text-[#1a3a5c] border-[#1a3a5c] font-bold shadow-md hover:bg-blue-50"
+                                            >
+                                                <RefreshCw className={cn("h-5 w-5 mr-3", saving && "animate-spin")} /> Reusar Assinatura Anterior
+                                            </Button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -1042,9 +1071,20 @@ const ContractModule = () => {
                 </div>
             ) : contracts.length === 0 ? (
                 <Card className="border-0 shadow-md">
-                    <CardContent className="py-12 text-center text-muted-foreground">
-                        <FileText className="h-12 w-12 mx-auto mb-3 opacity-40" />
-                        <p>Nenhum contrato encontrado</p>
+                    <CardContent className="py-12 px-6 text-center text-muted-foreground space-y-4">
+                        <div className="bg-gray-50 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-2">
+                            <FileText className="h-10 w-10 opacity-20" />
+                        </div>
+                        <div className="space-y-1">
+                            <p className="text-lg font-bold text-gray-800">Nenhum contrato encontrado</p>
+                            <p className="text-sm max-w-xs mx-auto">
+                                Se você tem um pedido aprovado mas não vê o contrato aqui,
+                                o seu pedido pode não estar vinculado à sua conta.
+                            </p>
+                        </div>
+                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 text-xs text-blue-800 leading-relaxed max-w-sm mx-auto">
+                            <strong>Dica:</strong> Certifique-se de que o Telefone e Email no seu perfil são os mesmos que usou no pedido de crédito.
+                        </div>
                     </CardContent>
                 </Card>
             ) : (

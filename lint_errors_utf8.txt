@@ -1,0 +1,18 @@
+﻿
+D:\Projetos de websites\Bochel Microcredito\boch-lend-flow-ai\src\components\client-requests\ClientRequestsModule.tsx
+  31:6  warning  React Hook useEffect has a missing dependency: 'loadData'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+D:\Projetos de websites\Bochel Microcredito\boch-lend-flow-ai\src\components\credit-requests\CreditRequestManager.tsx
+   61:23  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   88:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  311:65  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  354:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  495:17  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  515:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  727:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  741:79  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  899:96  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  907:99  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+Ô£û 11 problems (10 errors, 1 warning)
+

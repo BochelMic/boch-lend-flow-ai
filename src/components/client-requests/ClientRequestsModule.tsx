@@ -1,11 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, FileText, Clock, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Plus, FileText, Clock, CheckCircle, XCircle, RefreshCw, PenLine } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -26,11 +26,7 @@ const ClientRequestsModule = () => {
   const [hasDebt, setHasDebt] = useState(true);
   const [hasCompletedProfile, setHasCompletedProfile] = useState(false);
 
-  useEffect(() => {
-    if (user) loadData();
-  }, [user]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
@@ -66,7 +62,11 @@ const ClientRequestsModule = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) loadData();
+  }, [user, loadData]);
 
   const fmt = (v: number) => v.toLocaleString('pt-MZ', { minimumFractionDigits: 0 });
   const formatDate = (d: string) => new Date(d).toLocaleDateString('pt-MZ');
@@ -206,6 +206,21 @@ const ClientRequestsModule = () => {
                             <p className="font-black text-green-700">{fmt(req.amount * 1.3)} MZN</p>
                           </div>
                         </div>
+
+                        {req.status === 'approved' && (
+                          <div className="mt-4 flex gap-3">
+                            <Link to="/contratos" className="flex-1">
+                              <Button color="primary" className="w-full font-bold shadow-md bg-[#1a3a5c] hover:bg-[#1a3a5c]/90 text-white">
+                                <PenLine className="mr-2 h-4 w-4" />
+                                Assinar Contrato
+                              </Button>
+                            </Link>
+                            <Button variant="outline" className="flex-1 text-gray-400 cursor-not-allowed">
+                              <CheckCircle className="mr-2 h-4 w-4" />
+                              Aguardar Saldo
+                            </Button>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

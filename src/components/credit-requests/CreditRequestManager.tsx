@@ -15,6 +15,14 @@ import {
 } from 'lucide-react';
 import { generateCreditRequestPdf } from '../../utils/creditRequestPdf';
 
+interface AmortizationRow {
+  installmentNumber: number;
+  date: string;
+  principal: number;
+  interest: number;
+  total: number;
+}
+
 export interface CreditRequest {
   id: string;
   client_name: string;
@@ -58,7 +66,7 @@ export interface CreditRequest {
   credit_option?: 'A' | 'B' | 'C' | null;
   is_installment?: boolean | null;
   installment_months?: number | null;
-  amortization_plan?: any[] | null;
+  amortization_plan?: AmortizationRow[] | null;
   interest_rate_at_request?: number | null;
 }
 
@@ -85,7 +93,7 @@ const CreditRequestManager = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const [companySettings, setCompanySettings] = useState<any>(null);
+  const [companySettings, setCompanySettings] = useState<Record<string, unknown> | null>(null);
   const [contractStatus, setContractStatus] = useState<string | null>(null);
   const [loanAlreadyExists, setLoanAlreadyExists] = useState(false);
 
@@ -106,41 +114,61 @@ const CreditRequestManager = () => {
             return;
           }
 
-          // 1. Find the client record globally by user_id
-          console.log("[GUARD] Searching client for user_id:", selected.user_id);
-          const { data: clientRes } = await supabase.from('clients').select('id').eq('user_id', selected.user_id).limit(1);
-          const clientId = clientRes?.[0]?.id;
+          // 1. Check for ANY contract for THIS specific request
+          const { data: contracts } = await supabase.from('contracts')
+            .select('id, status')
+            .eq('credit_request_id', selected.id)
+            .limit(1);
 
-          if (clientId) {
-            console.log("[GUARD] Global Client ID identified:", clientId);
+          const contract = contracts?.[0];
+          console.log("[GUARD] Contract Check (request_id):", contract ? `FOUND (${contract.status})` : "NONE");
+          setContractStatus(contract ? contract.status : null);
 
-            // 2. Check for GLOBAL signed contract (ANY signed contract for this client)
-            const { data: contracts } = await supabase.from('contracts')
-              .select('id, status')
-              .eq('client_id', clientId)
-              .eq('status', 'signed')
-              .limit(1);
+          // 3. PROACTIVE FIX: If request is approved but user_id is missing, try to link it NOW
+          if (selected.status === 'approved' && !selected.user_id) {
+            console.log("[GUARD] Orphaned approved request detected. Attempting auto-link...");
+            let foundUserId = null;
 
-            const isSigned = !!(contracts && contracts.length > 0);
-            console.log("[GUARD] Contract Check:", isSigned ? "FOUND SIGNED" : "NONE SIGNED");
-            setContractStatus(isSigned ? 'signed' : null);
+            // Try phone
+            if (selected.client_phone) {
+              const { data: pMatch } = await supabase.from('clients').select('user_id').eq('phone', selected.client_phone).not('user_id', 'is', null).limit(1);
+              if (pMatch?.[0]?.user_id) foundUserId = pMatch[0].user_id;
+            }
+            // Try email
+            if (!foundUserId && selected.client_email) {
+              const { data: eMatch } = await supabase.from('clients').select('user_id').eq('email', selected.client_email).not('user_id', 'is', null).limit(1);
+              if (eMatch?.[0]?.user_id) foundUserId = eMatch[0].user_id;
+            }
 
-            // 3. Check for existing UNPAID loan to avoid double injection
-            const { data: loans } = await supabase.from('loans')
-              .select('id')
-              .eq('client_id', clientId)
-              .eq('amount', selected.amount)
-              .not('status', 'in', '(paid,completed)')
-              .limit(1);
-
-            const loanExists = !!(loans && loans.length > 0);
-            console.log("[GUARD] Current Loan Check (unpaid):", loanExists ? "YES" : "NO");
-            setLoanAlreadyExists(loanExists);
-          } else {
-            console.log("[GUARD] No client record found yet.");
-            setContractStatus(null);
-            setLoanAlreadyExists(false);
+            if (foundUserId) {
+              console.log("[GUARD] Auto-link Success:", foundUserId);
+              await supabase.from('credit_requests').update({ user_id: foundUserId }).eq('id', selected.id);
+              // Also check if contract exists for this user
+              const { data: existingContract } = await supabase.from('contracts').select('id').eq('credit_request_id', selected.id).limit(1);
+              if (!existingContract || existingContract.length === 0) {
+                console.log("[GUARD] Creating missing contract for auto-linked user...");
+                await supabase.from('contracts').insert({
+                  credit_request_id: selected.id,
+                  client_id: foundUserId,
+                  client_name: selected.client_name,
+                  status: 'pending',
+                  contract_url: '/contrato-bochel.pdf'
+                });
+              }
+              load(); // Refresh list to reflect the fix
+            }
           }
+
+          // 4. Check for existing DISBURSEMENT in ledger for THIS specific request
+          const { data: ledgerEntries } = await supabase.from('wallet_ledger')
+            .select('id')
+            .eq('reference_id', selected.id)
+            .eq('transaction_type', 'disbursement')
+            .limit(1);
+
+          const loanExists = !!(ledgerEntries && ledgerEntries.length > 0);
+          console.log("[GUARD] Request Disbursed Check (ledger):", loanExists ? "YES" : "NO");
+          setLoanAlreadyExists(loanExists);
         } catch (err) {
           console.error('[GUARD] Critical error in sub-checks:', err);
         } finally {
@@ -288,7 +316,7 @@ const CreditRequestManager = () => {
         p_interest_rate: Number(request.interest_rate_at_request || 30),
         p_installments: Number(request.installment_months || 1),
         p_total_amount: Number(request.amortization_plan
-          ? request.amortization_plan.reduce((acc: number, row: any) => acc + (Number(row.total) || 0), 0)
+          ? request.amortization_plan.reduce((acc: number, row: AmortizationRow) => acc + (Number(row.total) || 0), 0)
           : request.amount * 1.3),
         p_agent_id: request.agent_id || null,
         p_start_date: startDate.toISOString(),
@@ -331,9 +359,10 @@ const CreditRequestManager = () => {
       });
       setSelected(null);
       load();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('[INJECT] ❌ FULL ERROR:', e);
-      toast({ title: 'Erro ao injectar saldo', description: e.message || 'Erro desconhecido. Verifique a consola.', variant: 'destructive' });
+      const errorMsg = e instanceof Error ? e.message : 'Erro inesperado';
+      toast({ title: 'Erro ao injectar saldo', description: errorMsg, variant: 'destructive' });
     } finally {
       setInjecting(false);
     }
@@ -366,29 +395,103 @@ const CreditRequestManager = () => {
 
       // Close UI instantly while notifications run in background
       const savedReviewMsg = reviewMsg;
+      const selectedReq: CreditRequest = { ...selected };
       setSelected(null);
       setReviewMsg('');
       load();
 
-      // Background notifications (NOT awaited)
+      // Background logic (Contract creation & notifications)
       (async () => {
         try {
+          if (action === 'approved') {
+            console.log('[ACTION] BG Step: Creating contract record...');
+
+            let targetUserId = selectedReq.user_id;
+
+            // Improved Fallback: If user_id is missing on request, try to find it via phone, email or name in clients table
+            if (!targetUserId) {
+              console.warn('[ACTION] BG Warning: request.user_id is missing. Trying to find in clients table...');
+
+              // Try phone first (most unique)
+              if (selectedReq.client_phone) {
+                const { data: phoneMatch } = await supabase.from('clients')
+                  .select('user_id')
+                  .eq('phone', selectedReq.client_phone)
+                  .not('user_id', 'is', null)
+                  .limit(1);
+                if (phoneMatch?.[0]?.user_id) targetUserId = phoneMatch[0].user_id;
+              }
+
+              // Try email second
+              if (!targetUserId && selectedReq.client_email) {
+                const { data: emailMatch } = await supabase.from('clients')
+                  .select('user_id')
+                  .eq('email', selectedReq.client_email)
+                  .not('user_id', 'is', null)
+                  .limit(1);
+                if (emailMatch?.[0]?.user_id) targetUserId = emailMatch[0].user_id;
+              }
+
+              // Try name last (least robust)
+              if (!targetUserId) {
+                const { data: nameMatch } = await supabase.from('clients')
+                  .select('user_id')
+                  .ilike('name', selectedReq.client_name)
+                  .not('user_id', 'is', null)
+                  .limit(1);
+                if (nameMatch?.[0]?.user_id) targetUserId = nameMatch[0].user_id;
+              }
+
+              if (targetUserId) {
+                console.log('[ACTION] BG Success: Found user_id from clients table:', targetUserId);
+                // CRITICAL: Link the request to the user so they can see it in their history!
+                await supabase.from('credit_requests').update({ user_id: targetUserId }).eq('id', selectedReq.id);
+              }
+            }
+
+            if (!targetUserId) {
+              console.error('[ACTION] BG Abort: Cannot create contract because client has no linked user account (user_id is null).');
+              return;
+            }
+
+            // Find existing signed contract to reuse signature
+            const { data: prevContracts } = await supabase.from('contracts')
+              .select('signature_url')
+              .eq('client_id', targetUserId)
+              .eq('status', 'signed')
+              .not('signature_url', 'is', null)
+              .limit(1);
+
+            const reuseSig = prevContracts?.[0]?.signature_url || null;
+
+            const { error: contractErr } = await supabase.from('contracts').insert({
+              credit_request_id: selectedReq.id,
+              client_id: targetUserId,
+              client_name: selectedReq.client_name,
+              status: 'pending',
+              signature_url: reuseSig,
+              contract_url: '/contrato-bochel.pdf'
+            });
+            if (contractErr) console.error('[ACTION] BG Error creating contract:', contractErr);
+            else console.log('[ACTION] ✅ BG Success: Contract created.');
+          }
+
           console.log('[ACTION] Step 3 (BG): Starting notifications...');
-          if (request.user_id) {
+          if (selectedReq.user_id) {
             await notifyEvent(action === 'approved' ? 'CREDIT_APPROVED' : 'CREDIT_REJECTED', {
-              userId: request.user_id,
-              amount: request.amount,
+              userId: selectedReq.user_id,
+              amount: selectedReq.amount,
               rejectReason: savedReviewMsg,
               fromUserId: user?.id || null,
             });
           }
 
-          if (request.agent_id) {
+          if (selectedReq.agent_id) {
             await notifyEvent('AGENT_REQUEST_UPDATE', {
-              agentUserId: request.agent_id,
+              agentUserId: selectedReq.agent_id,
               action: action,
-              clientName: request.client_name,
-              amount: request.amount,
+              clientName: selectedReq.client_name,
+              amount: selectedReq.amount,
               fromUserId: user?.id || null,
             });
           }
@@ -398,8 +501,9 @@ const CreditRequestManager = () => {
         }
       })();
       console.log('[ACTION] Flow complete.');
-    } catch (e: any) {
-      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : 'Erro inesperado';
+      toast({ title: 'Erro', description: errorMsg, variant: 'destructive' });
     } finally {
       setActing(false);
     }
@@ -418,7 +522,7 @@ const CreditRequestManager = () => {
   const filtered = requests.filter(r => filter === 'all' || r.status === filter);
   const isGestor = user?.role === 'gestor';
 
-  const InfoRow = ({ icon: Icon, title, value }: { icon: any; title: string; value: string | null | undefined }) => {
+  const InfoRow = ({ icon: Icon, title, value }: { icon: React.ElementType; title: string; value: string | null | undefined }) => {
     if (!value) return null;
     return (
       <div className="flex items-start gap-2.5 bg-gray-50 rounded-lg p-3">
@@ -601,6 +705,15 @@ const CreditRequestManager = () => {
                     </div>
                   </div>
                 )}
+                {!r.user_id && (
+                  <div className="flex items-start gap-2.5 bg-red-50 rounded-lg p-3 border border-red-100">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 text-red-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-[10px] text-red-600 uppercase tracking-wide">Utilizador Não Vinculado</p>
+                      <p className="text-xs font-semibold text-red-800">Este pedido foi feito sem login. O contrato só poderá ser gerado após o cliente registar-se com o mesmo Telefone/Email.</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {r.is_installment && r.amortization_plan && r.amortization_plan.length > 0 && (
@@ -621,7 +734,7 @@ const CreditRequestManager = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
-                        {r.amortization_plan.map((row: any) => (
+                        {r.amortization_plan.map((row: AmortizationRow) => (
                           <tr key={row.installmentNumber} className="hover:bg-gray-50/50">
                             <td className="px-4 py-2">{row.installmentNumber}</td>
                             <td className="px-4 py-2">{new Date(row.date).toLocaleDateString('pt-MZ')}</td>
@@ -635,7 +748,7 @@ const CreditRequestManager = () => {
                         <tr>
                           <td colSpan={4} className="px-4 py-2 text-right font-medium text-gray-600">Total a Pagar Estimado:</td>
                           <td className="px-4 py-2 text-right font-black text-[#1b5e20] text-sm">
-                            MT {r.amortization_plan.reduce((sum: number, row: any) => sum + Number(row.total || 0), 0).toLocaleString()}
+                            MT {r.amortization_plan.reduce((sum: number, row: AmortizationRow) => sum + Number(row.total || 0), 0).toLocaleString()}
                           </td>
                         </tr>
                       </tfoot>
@@ -739,6 +852,25 @@ const CreditRequestManager = () => {
               </div>
             )}
 
+            {/* Info: Contract pending signature */}
+            {isGestor && r.status === 'approved' && contractStatus === 'pending' && (
+              <div className="border-t pt-5">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 text-center space-y-3">
+                  <Clock className="h-8 w-8 text-amber-600 mx-auto animate-pulse" />
+                  <div className="space-y-1">
+                    <h3 className="font-bold text-amber-800 text-lg">Aguardando Assinatura</h3>
+                    <p className="text-sm text-amber-700 leading-relaxed">
+                      O contrato foi gerado com sucesso, mas o cliente ainda não assinou digitalmente.
+                      <br />O botão de injecção será libertado assim que for assinado.
+                    </p>
+                  </div>
+                  <Button variant="outline" className="border-amber-300 text-amber-800 hover:bg-amber-100 font-bold" onClick={() => load()}>
+                    <RefreshCw className="h-4 w-4 mr-2" /> Actualizar Estado
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Info: Loan already injected */}
             {isGestor && r.status === 'approved' && contractStatus === 'signed' && loanAlreadyExists && (
               <div className="border-t pt-5">
@@ -774,7 +906,7 @@ const CreditRequestManager = () => {
                       <p className="text-[10px] text-gray-500 uppercase font-bold">Juros Estimados</p>
                       <p className="font-bold text-orange-600">
                         MZN {(
-                          (r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: any) => acc + row.total, 0) : r.amount * 1.3)
+                          (r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: AmortizationRow) => acc + row.total, 0) : r.amount * 1.3)
                           - r.amount
                         ).toLocaleString()}
                       </p>
@@ -782,7 +914,7 @@ const CreditRequestManager = () => {
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
                       <p className="text-[10px] text-gray-500 uppercase font-bold">Dívida a Receber</p>
                       <p className="font-black text-green-700">
-                        MZN {(r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: any) => acc + row.total, 0) : r.amount * 1.3).toLocaleString()}
+                        MZN {(r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: AmortizationRow) => acc + row.total, 0) : r.amount * 1.3).toLocaleString()}
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
