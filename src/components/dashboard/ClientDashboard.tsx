@@ -21,7 +21,8 @@ import {
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useClientAccess } from '@/hooks/useClientAccess';
 import { useAuth } from '@/hooks/useAuth';
-import { Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { calculateSmartSettlement } from '@/utils/creditUtils';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LoanData {
@@ -427,6 +428,37 @@ const ClientDashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Smart Settlement Suggestion for Active Loans */}
+        {loanData && loanData.status !== 'paid' && (
+          <Card className="border-0 shadow-medium bg-gradient-to-br from-[#1a3a5c] to-[#2c5282] text-white">
+            <CardHeader>
+              <div className="flex items-center gap-2 mb-1">
+                <div className="p-1.5 bg-orange-500 rounded-lg">
+                  <TrendingDown className="h-4 w-4 text-white" />
+                </div>
+                <CardTitle className="text-lg">Liquidação Antecipada</CardTitle>
+              </div>
+              <CardDescription className="text-blue-100">Pague hoje com desconto nos juros futuros</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs text-blue-200 uppercase tracking-wider font-semibold mb-1">Valor para fechar hoje</p>
+                  <p className="text-3xl font-black">MZN {calculateSmartSettlement(loanData).toLocaleString()}</p>
+                  <p className="text-[10px] text-orange-300 mt-1 flex items-center gap-1">
+                    <Info className="h-3 w-3" /> Poupança estimada de MZN {(loanData.remaining_amount - calculateSmartSettlement(loanData)).toLocaleString()} em juros.
+                  </p>
+                </div>
+                <Link to="/chat" className="md:w-auto w-full">
+                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold border-0 shadow-lg transition-all active:scale-95">
+                    Solicitar Fechamento
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Amortization Plan for Installment Loans */}
         {loanData?.is_installment && loanData.amortization_plan && (
           <Card className="border-0 shadow-medium overflow-hidden">
@@ -451,8 +483,9 @@ const ClientDashboard = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {loanData.amortization_plan.map((row: any) => {
-                      const isPaid = (loanData.installments - (loanData.remaining_installments || 0)) >= row.installmentNumber;
-                      const isCurrent = (loanData.installments - (loanData.remaining_installments || 0) + 1) === row.installmentNumber;
+                      const paidInstallments = loanData.installments - (loanData.remaining_installments || 0);
+                      const isPaid = paidInstallments >= row.installmentNumber;
+                      const isCurrent = (paidInstallments + 1) === row.installmentNumber;
 
                       return (
                         <tr key={row.installmentNumber} className={`${isCurrent ? 'bg-orange-50 font-medium' : ''} ${isPaid ? 'opacity-60' : ''}`}>

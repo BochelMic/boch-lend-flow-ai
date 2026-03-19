@@ -101,6 +101,7 @@ export interface ReceiptData {
   number: string;
   date: string;
   clientName: string;
+  clientEmail?: string;
   clientPhone?: string;
   clientDocument?: string;
   clientNuit?: string;
@@ -322,6 +323,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
     <div class="info-box">
       <h3>Dados do Cliente</h3>
       <div class="info-row"><span class="label">Nome</span><span class="value">${s(receiptData.clientName)}</span></div>
+      ${receiptData.clientEmail ? `<div class="info-row"><span class="label">Email</span><span class="value">${s(receiptData.clientEmail)}</span></div>` : ''}
       ${receiptData.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(receiptData.clientDocument)}</span></div>` : ''}
       ${receiptData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(receiptData.clientNuit)}</span></div>` : ''}
       ${receiptData.clientPhone ? `<div class="info-row"><span class="label">Telefone</span><span class="value">${s(receiptData.clientPhone)}</span></div>` : ''}

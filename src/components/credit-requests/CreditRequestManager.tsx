@@ -216,9 +216,20 @@ const CreditRequestManager = () => {
         throw new Error(`Erro ao buscar cliente: ${clientLookupErr.message}`);
       }
 
+      const fullAddress = [request.neighborhood, request.district, request.province, request.client_address]
+        .filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .join(', ');
+
       if (existingClient && existingClient.length > 0) {
         clientId = existingClient[0].id;
         console.log('[INJECT] Found existing client by user_id:', clientId);
+        // Sync address and other info to ensure receipts are complete
+        await supabase.from('clients').update({
+          address: fullAddress,
+          id_number: request.document_number,
+          user_id: request.user_id
+        }).eq('id', clientId);
       } else {
         if (request.client_phone) {
           const { data: byPhone, error: phoneErr } = await supabase
@@ -241,8 +252,14 @@ const CreditRequestManager = () => {
         if (!clientId) {
           console.log('[INJECT] Creating new client...');
           const { data: newClient, error: clientErr } = await supabase.from('clients').insert({
-            name: request.client_name, phone: request.client_phone, email: request.client_email,
-            address: request.client_address, user_id: request.user_id, agent_id: request.agent_id, status: 'active',
+            name: request.client_name,
+            phone: request.client_phone,
+            email: request.client_email,
+            address: fullAddress,
+            id_number: request.document_number,
+            user_id: request.user_id,
+            agent_id: request.agent_id,
+            status: 'active',
           }).select('id').single();
           if (clientErr) {
             console.error('[INJECT] Error creating client:', clientErr);
@@ -251,7 +268,11 @@ const CreditRequestManager = () => {
           clientId = newClient.id;
           console.log('[INJECT] Created new client:', clientId);
         } else {
-          await supabase.from('clients').update({ user_id: request.user_id }).eq('id', clientId).is('user_id', null);
+          await supabase.from('clients').update({
+            user_id: request.user_id,
+            address: fullAddress,
+            id_number: request.document_number
+          }).eq('id', clientId);
         }
       }
 

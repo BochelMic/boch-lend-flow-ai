@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,12 +30,24 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
   const [days, setDays] = useState('30');
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentMonths, setInstallmentMonths] = useState('1');
+  const [frequency, setFrequency] = useState<'daily' | '2-days' | '3-days' | 'weekly' | 'monthly'>('monthly');
+  const [customAmortizations, setCustomAmortizations] = useState<number[]>([]);
   const [result, setResult] = useState<SimulationResult | null>(null);
+
+  // Sync frequency with option
+  useEffect(() => {
+    const numAmount = Number(amount);
+    if (numAmount <= 4000) {
+      if (frequency === 'monthly') setFrequency('weekly');
+    } else {
+      setFrequency('monthly');
+    }
+  }, [amount]);
 
   // Auto-calculate simulation whenever inputs change
   useEffect(() => {
     handleSimulate();
-  }, [amount, days, isInstallment, installmentMonths]);
+  }, [amount, days, isInstallment, installmentMonths, frequency, customAmortizations]);
 
   const maxInstallments = getInstallmentLimits(Number(amount));
 
@@ -46,13 +56,61 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
     const numDays = Number(days);
     const numMonths = Number(installmentMonths);
 
-    if (numAmount > 0 && numDays > 0) {
-      // simulateCredit now auto-determines the option (A/B/C)
-      const sim = simulateCredit(numAmount, numDays, undefined, isInstallment, numMonths);
+    if (numAmount > 0) {
+      const sim = simulateCredit(
+        numAmount,
+        numDays,
+        undefined,
+        isInstallment,
+        numMonths,
+        frequency,
+        customAmortizations.length > 0 ? customAmortizations : undefined
+      );
       setResult(sim);
     } else {
       setResult(null);
     }
+  };
+
+  const updateCustomAmortization = (index: number, val: string) => {
+    const totalPrincipal = Number(amount);
+    let newVal = Number(val);
+    if (isNaN(newVal)) newVal = 0;
+
+    const numMonths = Number(installmentMonths);
+    const newAmorts = [...customAmortizations];
+
+    // Initialize with current values if empty
+    if (newAmorts.length === 0 && result) {
+      result.installments.forEach((row, i) => {
+        newAmorts[i] = row.principal;
+      });
+    }
+
+    // 1. Calculate what was paid *before* this installment
+    let paidBefore = 0;
+    for (let i = 0; i < index; i++) {
+      paidBefore += newAmorts[i] || 0;
+    }
+
+    // 2. Cap the new value to available balance
+    const available = totalPrincipal - paidBefore;
+    const finalVal = Math.max(0, Math.min(newVal, available));
+    newAmorts[index] = finalVal;
+
+    // 3. Redistribute the remainder among subsequent months
+    const totalPaidNow = paidBefore + finalVal;
+    const remainingToDistribute = totalPrincipal - totalPaidNow;
+    const remainingMonths = numMonths - 1 - index;
+
+    if (remainingMonths > 0) {
+      const share = remainingToDistribute / remainingMonths;
+      for (let i = index + 1; i < numMonths; i++) {
+        newAmorts[i] = share;
+      }
+    }
+
+    setCustomAmortizations(newAmorts);
   };
 
   const resetSimulation = () => {
@@ -60,6 +118,8 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
     setDays('30');
     setIsInstallment(false);
     setInstallmentMonths('1');
+    setFrequency('monthly');
+    setCustomAmortizations([]);
     setResult(null);
   };
 
@@ -69,7 +129,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
         <div>
           <h1 className="text-3xl font-black tracking-tight text-[#1a3a5c]">Simulador de Crédito</h1>
           <p className="text-muted-foreground font-medium">
-            Análise inteligente baseada no montante e prazo solicitados
+            Análise inteligente baseada no montante e parcelamento desejado
           </p>
         </div>
         <Button variant="outline" onClick={resetSimulation} className="border-[#1a3a5c] text-[#1a3a5c] hover:bg-blue-50">
@@ -79,7 +139,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
 
       <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-start">
         {/* Formulário de Simulação (Left Column) */}
-        <div className="w-full lg:w-[300px] shrink-0 space-y-4">
+        <div className="w-full lg:w-[320px] shrink-0 space-y-4">
           <Card className="border-0 shadow-xl overflow-hidden">
             <div className="bg-[#1a3a5c] p-4 text-white">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -94,94 +154,117 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                     id="amount"
                     type="number"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => {
+                      setAmount(e.target.value);
+                      setCustomAmortizations([]); // Reset custom when amount changes
+                    }}
                     className="pl-12 text-lg font-bold border-2 focus-visible:ring-[#1a3a5c]"
                   />
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-400">MT</span>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="days" className="font-bold text-gray-700">Prazo de Pagamento (Dias)</Label>
-                <Select value={days} onValueChange={setDays}>
-                  <SelectTrigger className="border-2 font-medium">
-                    <SelectValue placeholder="Selecione os dias" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7">7 dias</SelectItem>
-                    <SelectItem value="15">15 dias</SelectItem>
-                    <SelectItem value="21">21 dias</SelectItem>
-                    <SelectItem value="30">30 dias</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {!isInstallment && (
+                <div className="space-y-2 animate-in fade-in duration-300">
+                  <Label htmlFor="days" className="font-bold text-gray-700">Prazo de Pagamento (Dias)</Label>
+                  <Select value={days} onValueChange={setDays}>
+                    <SelectTrigger className="border-2 font-medium">
+                      <SelectValue placeholder="Selecione os dias" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="7">7 dias</SelectItem>
+                      <SelectItem value="15">15 dias</SelectItem>
+                      <SelectItem value="21">21 dias</SelectItem>
+                      <SelectItem value="30">30 dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Analysis Badge replaced Tier Selection */}
               {result && (
-                <div className="p-4 rounded-xl bg-blue-50/50 border-2 border-dashed border-blue-200 space-y-2">
+                <div className="p-4 rounded-xl bg-blue-50/50 border-2 border-dashed border-blue-200 space-y-2 text-[#1a3a5c]">
                   <div className="flex items-center justify-between">
-                    <Label className="font-bold text-[#1a3a5c] text-xs uppercase tracking-wider">Perfil Identificado</Label>
+                    <Label className="font-bold text-xs uppercase tracking-wider">Perfil Identificado</Label>
                     <Badge className="bg-[#1a3a5c] text-white">Opção {result.option}</Badge>
                   </div>
-                  <p className="text-[11px] text-gray-600 leading-relaxed font-medium">
+                  <p className="text-[11px] leading-relaxed font-medium">
                     {result.option === 'A' && "Crédito Geral: Aplicável para valores até 4.000 MT com juros de 30%."}
                     {result.option === 'B' && "Plano Especial: Juros reduzidos de 20% para pagamentos em até 15 dias."}
                     {result.option === 'C' && "Vencimento Fixo: Plano padrão para montantes 5.000+ MT com juros de 30%."}
                   </p>
-                  {result.option === 'B' && (
-                    <div className="bg-orange-50 p-2 rounded-lg border border-orange-100 mt-2">
-                      <p className="text-[10px] text-orange-700 flex items-center gap-1">
-                        <AlertCircle className="h-3 w-3" />
-                        <strong>Atenção:</strong> Se passar de 15 dias, os juros saltam para 30%.
-                      </p>
-                    </div>
-                  )}
                 </div>
               )}
 
               {/* Installments Toggle */}
-              {maxInstallments > 1 && (
-                <div className="pt-4 border-t space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-0.5">
-                      <Label className="font-bold text-gray-700">Pagamento Parcelado</Label>
-                      <p className="text-xs text-muted-foreground">
-                        {result?.option === 'A' ? 'Dividir em prestações semanais' : 'Dividir em prestações mensais'}
-                      </p>
-                    </div>
-                    <Switch
-                      checked={isInstallment}
-                      onCheckedChange={setIsInstallment}
-                    />
+              <div className="pt-4 border-t space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="font-bold text-gray-700">Pagamento Parcelado</Label>
+                    <p className="text-xs text-muted-foreground">
+                      {Number(amount) <= 4000 ? 'Dividir em prestações curtas' : 'Dividir em prestações mensais'}
+                    </p>
                   </div>
+                  <Switch
+                    checked={isInstallment}
+                    onCheckedChange={(val) => {
+                      setIsInstallment(val);
+                      if (!val) setCustomAmortizations([]);
+                    }}
+                  />
+                </div>
 
-                  {isInstallment && (
-                    <div className="space-y-2 animate-in slide-in-from-top-2 duration-200">
+                {isInstallment && (
+                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-200">
+                    {Number(amount) <= 4000 ? (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold text-gray-500 uppercase">Frequência</Label>
+                        <Select value={frequency} onValueChange={(val: any) => setFrequency(val)}>
+                          <SelectTrigger className="font-medium border-2">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Diário</SelectItem>
+                            <SelectItem value="2-days">A cada 2 dias</SelectItem>
+                            <SelectItem value="3-days">A cada 3 dias</SelectItem>
+                            <SelectItem value="weekly">Semanal</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-2">
                       <Label htmlFor="months" className="text-xs font-bold text-gray-500 uppercase">
-                        Número de {result?.option === 'A' ? 'Semanas' : 'Prestações'}
+                        Número de {frequency === 'monthly' ? 'Parcelas' : 'Prestações'}
                       </Label>
                       <Select value={installmentMonths} onValueChange={setInstallmentMonths}>
                         <SelectTrigger className="font-bold border-2 h-12">
-                          <SelectValue placeholder={result?.option === 'A' ? 'Semanas' : 'Meses'} />
+                          <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
                           {[...Array(maxInstallments)].map((_, i) => (
                             <SelectItem key={i + 1} value={(i + 1).toString()}>
-                              {i + 1} {result?.option === 'A' ? (i === 0 ? 'Semana' : 'Semanas') : (i === 0 ? 'Mês' : 'Meses')}
+                              {i + 1} {frequency === 'monthly' ? (i === 0 ? 'Mês' : 'Meses') : (i === 0 ? 'Vez' : 'Vezes')}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
-                      <p className="text-[10px] text-amber-600 font-medium flex gap-1 items-center bg-amber-50 p-2 rounded-lg">
-                        <Info className="h-3 w-3" />
-                        {result?.option === 'A'
-                          ? "Pagamentos semanais recomendados para facilitar a quitação dentro dos 30 dias."
-                          : "Prestações mensais fixas com juros de 30%."}
-                      </p>
                     </div>
-                  )}
-                </div>
-              )}
+
+                    <div className="bg-amber-50 p-3 rounded-lg border border-amber-100 flex gap-2">
+                      <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-amber-800 font-bold uppercase">Ajuda Inteligente</p>
+                        <p className="text-[10px] text-amber-700 font-medium leading-tight">
+                          {frequency === 'monthly'
+                            ? "Estamos usando o sistema de Amortização Price. O juro é calculado sobre o que sobra da dívida. Você pode editar os valores na tabela ao lado para pagar mais rápido e economizar juros!"
+                            : "Na Opção A, você pode parcelar o valor total (Capital + 30%) com flexibilidade total dentro de 30 dias."}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -199,7 +282,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">Total a Pagar</p>
-                      <p className="text-base md:text-lg font-black text-[#1a3a5c] truncate">MT {result.totalToPay.toLocaleString()}</p>
+                      <p className="text-base md:text-lg font-black text-[#1a3a5c] truncate">MT {Math.round(result.totalToPay).toLocaleString()}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -211,7 +294,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">Juros Totais</p>
-                      <p className="text-base md:text-lg font-black text-[#d37c22] truncate">MT {result.totalInterest.toLocaleString()}</p>
+                      <p className="text-base md:text-lg font-black text-[#d37c22] truncate">MT {Math.round(result.totalInterest).toLocaleString()}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -223,14 +306,10 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">
-                        {isInstallment
-                          ? (result.option === 'A' ? 'Semanal' : 'Mensal')
-                          : 'Vencimento'}
+                        {isInstallment ? 'Primeira Parcela' : 'Vencimento'}
                       </p>
                       <p className="text-base md:text-lg font-black text-green-600 truncate">
-                        MT {isInstallment
-                          ? result.installments[0].total.toLocaleString()
-                          : result.totalToPay.toLocaleString()}
+                        MT {Math.round(result.installments[0].total).toLocaleString()}
                       </p>
                     </div>
                   </CardContent>
@@ -244,9 +323,9 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <TableIcon className="h-5 w-5 text-[#1a3a5c]" />
-                        Cronograma Financeiro
+                        Cronograma de Amortização
                       </CardTitle>
-                      <CardDescription>Visualização detalhada do seu compromisso</CardDescription>
+                      <CardDescription>Edite o capital para simular pagamentos maiores</CardDescription>
                     </div>
                     <Badge variant="outline" className="bg-[#1a3a5c] text-white border-0 font-bold px-3 py-1">
                       PLANO {result.option}
@@ -257,40 +336,55 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                   <Table>
                     <TableHeader className="bg-gray-50">
                       <TableRow>
-                        <TableHead className="w-16 font-bold text-[#1a3a5c]">Nº</TableHead>
-                        <TableHead className="font-bold text-[#1a3a5c]">
-                          {result.option === 'A' ? 'Semana/Data' : 'Mês/Data'}
-                        </TableHead>
-                        <TableHead className="font-bold text-[#1a3a5c]">Capital</TableHead>
-                        <TableHead className="font-bold text-[#1a3a5c]">
-                          Juros ({result.option === 'B' && Number(days) <= 15 ? '20%' : '30%'})
-                        </TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c]">Nº</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c]">Data</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c]">Saldo (MT)</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c] min-w-[120px]">Capital (MT)</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c]">Juros ({Math.round(result.interestRate)}%)</TableHead>
                         <TableHead className="text-right font-bold text-[#1a3a5c]">Total Parcela</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {result.installments.map((row) => (
-                        <TableRow key={row.installmentNumber} className="hover:bg-blue-50/30 transition-colors">
-                          <TableCell className="font-bold">{row.installmentNumber}ª</TableCell>
-                          <TableCell className="text-xs font-medium text-gray-500">
+                      {result.installments.map((row, idx) => (
+                        <TableRow key={idx} className="hover:bg-blue-50/30 transition-colors">
+                          <TableCell className="font-bold">{idx + 1}ª</TableCell>
+                          <TableCell className="text-xs font-medium text-gray-500 whitespace-nowrap">
                             {new Date(row.date).toLocaleDateString('pt-MZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                           </TableCell>
-                          <TableCell className="font-medium">MT {row.principal.toLocaleString()}</TableCell>
-                          <TableCell className="font-medium text-orange-600">+ MT {row.interest.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-black text-green-700">MT {row.total.toLocaleString()}</TableCell>
+                          <TableCell className="text-xs font-bold text-gray-400">
+                            MT {Math.round(row.balanceBefore).toLocaleString()}
+                          </TableCell>
+                          <TableCell>
+                            <div className="relative group">
+                              <Input
+                                type="number"
+                                value={Math.round(row.principal)}
+                                onChange={(e) => updateCustomAmortization(idx, e.target.value)}
+                                disabled={idx === result.installments.length - 1}
+                                className={cn(
+                                  "h-8 py-0 font-bold border-transparent bg-transparent hover:border-gray-200 focus:bg-white focus:border-[#1a3a5c] transition-all",
+                                  idx === result.installments.length - 1 && "opacity-60 cursor-not-allowed"
+                                )}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium text-orange-600 text-sm">
+                            + MT {Math.round(row.interest).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-right font-black text-green-700">
+                            MT {Math.round(row.total).toLocaleString()}
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
                 </CardContent>
                 <div className="bg-[#1a3a5c] p-6 flex flex-col items-center">
-                  <div className="flex items-center gap-2 text-white/70 text-[10px] mb-4 text-center max-w-sm">
+                  <div className="flex items-center gap-2 text-white/70 text-[10px] mb-4 text-center max-w-md">
                     <Info className="h-3 w-3 shrink-0" />
                     <span>
                       {isInstallment
-                        ? (result.option === 'A'
-                          ? "A Opção A permite flexibilidade semanal para quitação do capital e juros fixos de 30%."
-                          : "Prestações fixas mensais. Nestes valores parcelados você poderá pagar o exacto valor, acima ou o total do valor disponível.")
+                        ? "O valor dos juros é recalculado automaticamente se você aumentar o capital amortizado. Quanto mais você amortiza hoje, menos juros paga amanhã."
                         : "Pagamento único em regime de juro fixo para o período selecionado."}
                     </span>
                   </div>
@@ -304,6 +398,8 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                           option: result.option,
                           isInstallment,
                           installments: Number(installmentMonths),
+                          frequency,
+                          customAmortizations,
                           totalToPay: result.totalToPay
                         });
                       }
@@ -319,7 +415,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
               <Calculator className="h-16 w-16 text-gray-300 mb-4" />
               <h3 className="text-xl font-bold text-gray-400">Pronto para Simular</h3>
               <p className="text-gray-400 max-w-xs mx-auto text-sm">
-                Ajuste o montante e o prazo para que nossa análise inteligente determine o melhor plano para você.
+                Ajuste o montante e o parcelamento para ver sua economia de juros em tempo real.
               </p>
             </div>
           )}
@@ -379,7 +475,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
           </CardContent>
         </Card>
       </div>
-    </div >
+    </div>
   );
 };
 

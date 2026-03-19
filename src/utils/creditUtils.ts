@@ -5,6 +5,7 @@ export type CreditOption = 'A' | 'B' | 'C';
 export interface AmortizationRow {
   installmentNumber: number;
   date: string;
+  balanceBefore: number;
   principal: number;
   interest: number;
   total: number;
@@ -21,6 +22,38 @@ export interface SimulationResult {
   installments: AmortizationRow[];
 }
 
+export interface AmortizationLoanData {
+  remaining_amount: number;
+  installments: number;
+  remaining_installments: number;
+  amortization_plan?: AmortizationRow[];
+}
+
+/**
+ * Calculates the amount to settle today with interest waiver.
+ * Formula: Remaining Principal + Interest of the Current Month.
+ */
+export const calculateSmartSettlement = (loan: AmortizationLoanData) => {
+  if (!loan.amortization_plan || loan.amortization_plan.length === 0) {
+    return loan.remaining_amount;
+  }
+
+  // Determine current month index
+  const paidCount = Number(loan.installments) - Number(loan.remaining_installments || 0);
+  const currentIndex = paidCount + 1;
+
+  // Remaining Principal = Sum of principal from current month to end
+  const remainingPrincipal = loan.amortization_plan
+    .filter(row => row.installmentNumber >= currentIndex)
+    .reduce((sum, row) => sum + Number(row.principal || 0), 0);
+
+  // Interest of the CURRENT month (fair to pay for the time elapsed)
+  const currentInterest = loan.amortization_plan
+    .find(row => row.installmentNumber === currentIndex)?.interest || 0;
+
+  return Math.round(remainingPrincipal + currentInterest);
+};
+
 /**
  * Calculates interest for Option B (20% until day 15, then 30% jump)
  */
@@ -28,10 +61,6 @@ export const calculateOptionBInterest = (amount: number, days: number): number =
   if (days <= 15) {
     return amount * 0.20;
   }
-  // If it jumps, it's 30% total or just for the period? 
-  // User said: "vencimento 30 dias juros 30%... opcao B ate dia 15 juros de 20% apartir de dia 16 juros 30%"
-  // This implies if you pass day 15, the rate for the whole term or just the period?
-  // Usually in microcredit, it's 30% for the full 30 days if you go over the promo period.
   return amount * 0.30;
 };
 
@@ -59,58 +88,92 @@ export const getAvailableOptions = (amount: number, days: number): CreditOption[
 
 /**
  * Generates an amortization plan.
- * Frequency 'weekly': Total 30% interest flat, split across X periods (usually 4 weeks).
- * Frequency 'monthly': 30% interest recapitalized on remaining balance.
+ * @param principal The amount borrowed
+ * @param count Number of installments
+ * @param frequency 'daily' | '2-days' | '3-days' | 'weekly' | 'monthly'
+ * @param customCapitalAmortizations Optional array of specific capital amounts to pay back each period
  */
 export const generateAmortizationPlan = (
   principal: number,
   count: number,
-  frequency: 'weekly' | 'monthly' = 'monthly',
-  startDate: Date = new Date()
+  frequency: 'daily' | '2-days' | '3-days' | 'weekly' | 'monthly' = 'monthly',
+  startDate: Date = new Date(),
+  customCapitalAmortizations?: number[]
 ): AmortizationRow[] => {
   const plan: AmortizationRow[] = [];
   let remainingBalance = principal;
+  const rate = 0.30; // Base monthly rate (30%)
 
-  if (frequency === 'weekly') {
-    // Option A behavior: Total interest is 30% of principal.
+  if (frequency !== 'monthly') {
+    // Option A behavior: Total interest is FIXED 30% of principal.
     // "Semanais... valor estipulado... 1000 MT + 30% = 1300 / 4"
-    const totalInterest = principal * 0.30;
+    const totalInterest = principal * rate;
     const totalToPay = principal + totalInterest;
-    const perPeriod = totalToPay / count;
-    const principalPerPeriod = principal / count;
-    const interestPerPeriod = totalInterest / count;
 
     for (let i = 1; i <= count; i++) {
+      let principalPerPeriod = principal / count;
+      let interestPerPeriod = totalInterest / count;
+
+      // Handle custom amortizations or force last installment remainder
+      if (i === count) {
+        principalPerPeriod = remainingBalance;
+        // Total interest is fixed (30% of principal). 
+        // We ensure interestPerPeriod is the remainder of totalInterest.
+        const paidInterest = plan.reduce((acc, row) => acc + row.interest, 0);
+        interestPerPeriod = totalInterest - paidInterest;
+      } else if (customCapitalAmortizations && customCapitalAmortizations[i - 1] !== undefined) {
+        principalPerPeriod = Math.min(customCapitalAmortizations[i - 1], remainingBalance);
+        interestPerPeriod = (principalPerPeriod / principal) * totalInterest;
+      }
+
+      let daysToAdd = i * 7; // weekly
+      if (frequency === 'daily') daysToAdd = i;
+      if (frequency === '2-days') daysToAdd = i * 2;
+      if (frequency === '3-days') daysToAdd = i * 3;
+
       plan.push({
         installmentNumber: i,
-        date: format(addDays(startDate, i * 7), 'yyyy-MM-dd'),
+        date: format(addDays(startDate, daysToAdd), 'yyyy-MM-dd'),
+        balanceBefore: remainingBalance,
         principal: principalPerPeriod,
         interest: interestPerPeriod,
-        total: perPeriod,
+        total: principalPerPeriod + interestPerPeriod,
         remainingBalance: Math.max(0, remainingBalance - principalPerPeriod)
       });
       remainingBalance -= principalPerPeriod;
     }
   } else {
-    // Option B/C behavior: FIXED Interest based on initial principal (Equal Installments)
-    const monthlyRate = 0.30;
-    const totalInterest = principal * monthlyRate * count;
-    const totalToPay = principal + totalInterest;
-    const perPeriod = totalToPay / count;
-    const principalPerPeriod = principal / count;
-    const interestPerPeriod = totalInterest / count;
+    // Option B/C/D behavior: Interest on REMAINING BALANCE (Price Formula or Custom)
+    const pmt = principal * (rate * Math.pow(1 + rate, count)) / (Math.pow(1 + rate, count) - 1);
 
     for (let i = 1; i <= count; i++) {
+      const interestForPeriod = remainingBalance * rate;
+      let principalForPeriod: number;
+
+      if (i === count) {
+        // Last installment MUST clear the debt
+        principalForPeriod = remainingBalance;
+      } else if (customCapitalAmortizations && customCapitalAmortizations[i - 1] !== undefined) {
+        // User explicitly chose how much capital to pay (capped at remaining)
+        principalForPeriod = Math.min(customCapitalAmortizations[i - 1], remainingBalance);
+      } else {
+        // Use Price Formula to determine principal for this period
+        principalForPeriod = pmt - interestForPeriod;
+      }
+
+      const totalForPeriod = principalForPeriod + interestForPeriod;
+
       plan.push({
         installmentNumber: i,
         date: format(addDays(startDate, i * 30), 'yyyy-MM-dd'),
-        principal: principalPerPeriod,
-        interest: interestPerPeriod,
-        total: perPeriod,
-        remainingBalance: Math.max(0, remainingBalance - principalPerPeriod)
+        balanceBefore: remainingBalance,
+        principal: principalForPeriod,
+        interest: interestForPeriod,
+        total: totalForPeriod,
+        remainingBalance: Math.max(0, remainingBalance - principalForPeriod)
       });
 
-      remainingBalance -= principalPerPeriod;
+      remainingBalance -= principalForPeriod;
     }
   }
 
@@ -118,14 +181,16 @@ export const generateAmortizationPlan = (
 };
 
 /**
- * Main simulation function - Intelligent Edition 2.0
+ * Main simulation function - Intelligent Edition 3.0 (Guardian Optimized)
  */
 export const simulateCredit = (
   amount: number,
   days: number,
   option: CreditOption | undefined,
   isInstallment: boolean,
-  installmentCount: number = 1
+  installmentCount: number = 1,
+  frequency: 'daily' | '2-days' | '3-days' | 'weekly' | 'monthly' = 'monthly',
+  customAmortizations?: number[]
 ): SimulationResult => {
   const autoOption = getBestOption(amount, days);
 
@@ -139,23 +204,19 @@ export const simulateCredit = (
   let totalToPay = 0;
 
   if (isInstallment && installmentCount > 1) {
-    if (autoOption === 'A') {
-      // Option A: Weekly installments (Fixed 30% total)
-      installments = generateAmortizationPlan(amount, installmentCount, 'weekly');
-    } else {
-      // Option B/C: Monthly installments (30% Monthly Recapitalization)
-      installments = generateAmortizationPlan(amount, installmentCount, 'monthly');
-    }
+    // Pass the frequency to the plan generator
+    installments = generateAmortizationPlan(amount, installmentCount, frequency, new Date(), customAmortizations);
     totalInterest = installments.reduce((acc, row) => acc + row.interest, 0);
     totalToPay = amount + totalInterest;
   } else {
-    // Single payment
+    // Single payment logic
     totalInterest = amount * baseInterestRate;
     totalToPay = amount + totalInterest;
 
     installments = [{
       installmentNumber: 1,
       date: format(addDays(new Date(), days), 'yyyy-MM-dd'),
+      balanceBefore: amount, // For single payment, balanceBefore is the principal
       principal: amount,
       interest: totalInterest,
       total: totalToPay,
@@ -175,9 +236,9 @@ export const simulateCredit = (
 };
 
 export const getInstallmentLimits = (amount: number): number => {
-  if (amount <= 4000) return 4; // 4 weeks
+  if (amount <= 4000) return 30; // Up to 30 days (daily)
   if (amount >= 5000 && amount <= 9000) return 2; // 2 months
-  if (amount >= 10000 && amount <= 50000) return 3; // 3 months
+  if (amount >= 10000 && amount <= 50000) return 4; // 4 months
   if (amount >= 51000) return 6; // 6 months
   return 1;
 };

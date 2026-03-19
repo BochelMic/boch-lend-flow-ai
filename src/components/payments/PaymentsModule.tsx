@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { DollarSign, Receipt, Clock, CheckCircle, Printer, Check, Info, TrendingDown, Calendar, ArrowUpRight } from 'lucide-react';
+import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight } from 'lucide-react';
+import { calculateSmartSettlement } from '@/utils/creditUtils';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -245,13 +246,14 @@ const PaymentsModule = () => {
   const handlePrintReceipt = (payment: Payment) => {
     const cData = payment.client_data || {};
     const html = generateReceiptHTML({
-      number: `REC-${payment.id.slice(0, 8).toUpperCase()}`,
-      date: payment.payment_date,
+      number: 'REC-' + payment.id.substring(0, 8).toUpperCase(),
+      date: new Date(payment.payment_date).toLocaleDateString('pt-MZ'),
       clientName: payment.loan_client_name || 'Cliente',
+      clientEmail: cData.email,
       clientPhone: cData.phone,
-      clientDocument: cData.document_type ? `${cData.document_type}: ${cData.document_number}` : undefined,
+      clientDocument: cData.id_number || (cData.document_type ? `${cData.document_type}: ${cData.document_number}` : undefined),
       clientNuit: cData.nuit,
-      clientAddress: [cData.neighborhood, cData.district, cData.province].filter(Boolean).join(', ') || undefined,
+      clientAddress: cData.address || [cData.neighborhood, cData.district, cData.province].filter(Boolean).join(', ') || undefined,
       amount: Number(payment.amount),
       paymentMethod: payment.payment_method || 'cash',
       description: payment.notes || 'Pagamento de prestação de microcrédito',
@@ -339,17 +341,50 @@ const PaymentsModule = () => {
               </div>
 
               {selectedLoan && (
-                <div className="animate-in slide-in-from-top-2 duration-300">
+                <div className="animate-in slide-in-from-top-2 duration-300 space-y-3">
+                  {/* Smart Settlement Suggestion */}
+                  {(() => {
+                    const smartVal = calculateSmartSettlement(selectedLoan);
+                    const discount = selectedLoan.remaining_amount - smartVal;
+
+                    if (discount > 10) { // Only show if there's a meaningful discount
+                      return (
+                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">💡 Liquidação Inteligente</span>
+                            <Badge className="bg-amber-500 text-white text-[9px] border-0">DESCONTO DE JUROS</Badge>
+                          </div>
+                          <p className="text-xs text-amber-900 mb-3 font-medium">
+                            O cliente pode encerrar a dívida hoje pagando apenas o capital + juro do mês atual.
+                            <strong> Economia de MZN {discount.toLocaleString()}</strong>.
+                          </p>
+                          <Button
+                            type="button"
+                            className="w-full h-10 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-md border-0"
+                            onClick={() => setFormData({
+                              ...formData,
+                              amount: String(smartVal),
+                              notes: `Liquidação antecipada inteligente (Desconto de MZN ${discount.toLocaleString()} em juros futuros).`
+                            })}
+                          >
+                            Usar Valor de Liquidação (MZN {smartVal.toLocaleString()})
+                          </Button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <Button
                     type="button"
                     variant="outline"
                     className="w-full h-12 border-2 border-dashed border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group active:scale-[0.98]"
-                    onClick={() => setFormData({ ...formData, amount: String(selectedLoan.remaining_amount), notes: 'Liquidação total do saldo devedor.' })}
+                    onClick={() => setFormData({ ...formData, amount: String(selectedLoan.remaining_amount), notes: 'Liquidação total do saldo devedor (valor integral).' })}
                   >
                     <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
                       <DollarSign className="h-4 w-4" />
                     </div>
-                    Liquidar Saldo Total (MZN {selectedLoan.remaining_amount.toLocaleString()})
+                    Liquidar Saldo Total Nominal (MZN {selectedLoan.remaining_amount.toLocaleString()})
                   </Button>
                 </div>
               )}
