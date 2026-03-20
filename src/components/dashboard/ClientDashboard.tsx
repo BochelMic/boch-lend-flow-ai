@@ -12,11 +12,13 @@ import {
   Clock,
   AlertTriangle,
   TrendingUp,
+  TrendingDown,
   FileText,
   Phone,
   MessageCircle,
   Lock,
-  RefreshCw
+  RefreshCw,
+  Info
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { useClientAccess } from '@/hooks/useClientAccess';

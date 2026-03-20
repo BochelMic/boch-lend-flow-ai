@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import {
   Calculator, TrendingUp, AlertCircle, CheckCircle,
-  Table as TableIcon, Calendar, Percent, Info
+  Table as TableIcon, Calendar, Percent, Info, ChevronRight
 } from 'lucide-react';
 import {
   simulateCredit,
@@ -124,22 +124,26 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
   };
 
   return (
-    <div className={cn("w-full space-y-6 overflow-x-hidden", className)}>
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight text-[#1a3a5c]">Simulador de Crédito</h1>
-          <p className="text-muted-foreground font-medium">
+    <div className={cn("w-full space-y-6 overflow-x-hidden px-4 sm:px-6 md:px-0", className)}>
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="text-center sm:text-left">
+          <h1 className="text-2xl md:text-3xl font-black tracking-tight text-[#1a3a5c]">Simulador de Crédito</h1>
+          <p className="text-sm text-muted-foreground font-medium">
             Análise inteligente baseada no montante e parcelamento desejado
           </p>
         </div>
-        <Button variant="outline" onClick={resetSimulation} className="border-[#1a3a5c] text-[#1a3a5c] hover:bg-blue-50">
+        <Button
+          variant="outline"
+          onClick={resetSimulation}
+          className="w-full sm:w-auto border-[#1a3a5c] text-[#1a3a5c] hover:bg-blue-50 h-10 px-6 font-bold"
+        >
           Reiniciar
         </Button>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 items-start">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-5 items-start">
         {/* Formulário de Simulação (Left Column) */}
-        <div className="w-full lg:w-[320px] shrink-0 space-y-4">
+        <div className="w-full md:w-[300px] shrink-0 space-y-4">
           <Card className="border-0 shadow-xl overflow-hidden">
             <div className="bg-[#1a3a5c] p-4 text-white">
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -274,41 +278,41 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
           {result ? (
             <>
               {/* Summary Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 md:gap-3">
                 <Card className="border-0 shadow-md bg-white border-l-4 border-l-[#1a3a5c]">
-                  <CardContent className="p-3 md:p-4 flex items-center gap-2 md:gap-4">
-                    <div className="p-2 bg-blue-50 rounded-full text-[#1a3a5c] flex-shrink-0">
-                      <Calendar className="h-4 w-4" />
+                  <CardContent className="p-2 md:p-4 flex items-center gap-2">
+                    <div className="p-1.5 md:p-2 bg-blue-50 rounded-full text-[#1a3a5c] flex-shrink-0">
+                      <Calendar className="h-3.5 w-3.5 md:h-4 md:w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">Total a Pagar</p>
-                      <p className="text-base md:text-lg font-black text-[#1a3a5c] truncate">MT {Math.round(result.totalToPay).toLocaleString()}</p>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-0.5 truncate">Total a Pagar</p>
+                      <p className="text-sm md:text-lg font-black text-[#1a3a5c] truncate">MT {Math.round(result.totalToPay).toLocaleString()}</p>
                     </div>
                   </CardContent>
                 </Card>
 
                 <Card className="border-0 shadow-md bg-white border-l-4 border-l-[#d37c22]">
-                  <CardContent className="p-3 md:p-4 flex items-center gap-2 md:gap-4">
-                    <div className="p-2 bg-orange-50 rounded-full text-[#d37c22] flex-shrink-0">
-                      <Percent className="h-4 w-4" />
+                  <CardContent className="p-2 md:p-4 flex items-center gap-2">
+                    <div className="p-1.5 md:p-2 bg-orange-50 rounded-full text-[#d37c22] flex-shrink-0">
+                      <Percent className="h-3.5 w-3.5 md:h-4 md:w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">Juros Totais</p>
-                      <p className="text-base md:text-lg font-black text-[#d37c22] truncate">MT {Math.round(result.totalInterest).toLocaleString()}</p>
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-0.5 truncate">Juros Totais</p>
+                      <p className="text-sm md:text-lg font-black text-[#d37c22] truncate">MT {Math.round(result.totalInterest).toLocaleString()}</p>
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="border-0 shadow-md bg-white border-l-4 border-l-green-600">
-                  <CardContent className="p-3 md:p-4 flex items-center gap-2 md:gap-4">
-                    <div className="p-2 bg-green-50 rounded-full text-green-600 flex-shrink-0">
-                      <TrendingUp className="h-4 w-4" />
+                <Card className="border-0 shadow-md bg-white border-l-4 border-l-green-600 col-span-2 sm:col-span-1">
+                  <CardContent className="p-2 md:p-4 flex items-center gap-2">
+                    <div className="p-1.5 md:p-2 bg-green-50 rounded-full text-green-600 flex-shrink-0">
+                      <TrendingUp className="h-3.5 w-3.5 md:h-4 md:w-4" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-1 truncate">
-                        {isInstallment ? 'Primeira Parcela' : 'Vencimento'}
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tight leading-none mb-0.5 truncate">
+                        {isInstallment ? '1ª Parcela' : 'Vencimento'}
                       </p>
-                      <p className="text-base md:text-lg font-black text-green-600 truncate">
+                      <p className="text-sm md:text-lg font-black text-green-600 truncate">
                         MT {Math.round(result.installments[0].total).toLocaleString()}
                       </p>
                     </div>
@@ -319,42 +323,47 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
               {/* Amortization Table */}
               <Card className="border-0 shadow-xl overflow-hidden">
                 <CardHeader className="bg-gray-50/50 pb-4">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <CardTitle className="text-lg flex items-center gap-2">
                         <TableIcon className="h-5 w-5 text-[#1a3a5c]" />
-                        Cronograma de Amortização
+                        Cronograma
                       </CardTitle>
-                      <CardDescription>Edite o capital para simular pagamentos maiores</CardDescription>
+                      <CardDescription className="text-xs">Edite o capital para antecipar pagamentos</CardDescription>
                     </div>
-                    <Badge variant="outline" className="bg-[#1a3a5c] text-white border-0 font-bold px-3 py-1">
-                      PLANO {result.option}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase sm:hidden flex items-center gap-1">
+                        <ChevronRight className="h-3 w-3" /> Deslize para ver
+                      </span>
+                      <Badge variant="outline" className="bg-[#1a3a5c] text-white border-0 font-bold px-3 py-1 ml-auto">
+                        {result.option}
+                      </Badge>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0 overflow-x-auto">
-                  <Table>
+                  <Table className="w-full">
                     <TableHeader className="bg-gray-50">
                       <TableRow>
-                        <TableHead className="font-bold text-[#1a3a5c]">Nº</TableHead>
-                        <TableHead className="font-bold text-[#1a3a5c]">Data</TableHead>
-                        <TableHead className="font-bold text-[#1a3a5c]">Saldo (MT)</TableHead>
-                        <TableHead className="font-bold text-[#1a3a5c] min-w-[120px]">Capital (MT)</TableHead>
-                        <TableHead className="font-bold text-[#1a3a5c]">Juros ({Math.round(result.interestRate)}%)</TableHead>
-                        <TableHead className="text-right font-bold text-[#1a3a5c]">Total Parcela</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c] text-[10px] sm:text-xs px-1 sm:px-2 w-8 sm:w-10">Nº</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c] text-[10px] sm:text-xs px-1 sm:px-2">Data</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c] text-[10px] sm:text-xs px-1 sm:px-2">Saldo</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c] text-[10px] sm:text-xs px-1 sm:px-2">Capital</TableHead>
+                        <TableHead className="font-bold text-[#1a3a5c] text-[10px] sm:text-xs px-1 sm:px-2">Juros</TableHead>
+                        <TableHead className="text-right font-bold text-[#1a3a5c] text-[10px] sm:text-xs px-1 sm:px-2">Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {result.installments.map((row, idx) => (
                         <TableRow key={idx} className="hover:bg-blue-50/30 transition-colors">
-                          <TableCell className="font-bold">{idx + 1}ª</TableCell>
-                          <TableCell className="text-xs font-medium text-gray-500 whitespace-nowrap">
-                            {new Date(row.date).toLocaleDateString('pt-MZ', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                          <TableCell className="font-bold px-1 sm:px-2 text-[10px] sm:text-xs">{idx + 1}ª</TableCell>
+                          <TableCell className="text-[10px] sm:text-xs font-medium text-gray-500 whitespace-nowrap px-1 sm:px-2">
+                            {new Date(row.date).toLocaleDateString('pt-MZ', { day: '2-digit', month: '2-digit' })}
                           </TableCell>
-                          <TableCell className="text-xs font-bold text-gray-400">
-                            MT {Math.round(row.balanceBefore).toLocaleString()}
+                          <TableCell className="text-[10px] sm:text-xs font-bold text-gray-400 px-1 sm:px-2">
+                            {Math.round(row.balanceBefore).toLocaleString()}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="px-1 sm:px-2">
                             <div className="relative group">
                               <Input
                                 type="number"
@@ -362,17 +371,17 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                                 onChange={(e) => updateCustomAmortization(idx, e.target.value)}
                                 disabled={idx === result.installments.length - 1}
                                 className={cn(
-                                  "h-8 py-0 font-bold border-transparent bg-transparent hover:border-gray-200 focus:bg-white focus:border-[#1a3a5c] transition-all",
+                                  "h-6 sm:h-7 py-0 px-1 text-[10px] sm:text-xs font-bold border-transparent bg-transparent hover:border-gray-200 focus:bg-white focus:border-[#1a3a5c] transition-all",
                                   idx === result.installments.length - 1 && "opacity-60 cursor-not-allowed"
                                 )}
                               />
                             </div>
                           </TableCell>
-                          <TableCell className="font-medium text-orange-600 text-sm">
-                            + MT {Math.round(row.interest).toLocaleString()}
+                          <TableCell className="font-medium text-orange-600 text-[10px] sm:text-xs px-1 sm:px-2">
+                            {Math.round(row.interest).toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-right font-black text-green-700">
-                            MT {Math.round(row.total).toLocaleString()}
+                          <TableCell className="text-right font-black text-green-700 text-[10px] sm:text-xs px-1 sm:px-2 whitespace-nowrap">
+                            {Math.round(row.total).toLocaleString()}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -423,7 +432,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
       </div>
 
       {/* Guia de Opções (SEO & Clarity) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pb-12">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-6 pb-8">
         <Card className="border-0 shadow-md bg-white hover:shadow-lg transition-all duration-300 border-t-2 border-t-transparent hover:border-t-[#1a3a5c]">
           <CardHeader className="p-4 pb-2">
             <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-[#1a3a5c] mb-2 font-black">A</div>

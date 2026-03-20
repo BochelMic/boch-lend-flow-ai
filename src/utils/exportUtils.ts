@@ -524,7 +524,6 @@ export const printDocument = (htmlContent: string) => {
       // as input is now guaranteed sanitized via sanitizeHtml helper above.
       const winDoc = printWindow.document;
       winDoc.open();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (winDoc as any)['write'](htmlContent);
       winDoc.close();
       printWindow.focus();

@@ -28,12 +28,12 @@ const fmt = (v: number) => v.toLocaleString('pt-MZ', { minimumFractionDigits: 0 
 
 async function getAllGestorIds(): Promise<string[]> {
     console.log('[notifyEvent] Fetching gestor IDs via RPC...');
-    const { data, error } = await supabase.rpc('get_gestors_for_notification');
+    const { data, error } = await supabase.rpc('get_gestors_for_notification' as any);
     if (error) {
         console.error('[notifyEvent] Error fetching gestors:', error);
         return [];
     }
-    const ids = (data || []).map((r: { user_id: string }) => r.user_id);
+    const ids = ((data as any) || []).map((r: { user_id: string }) => r.user_id);
     console.log('[notifyEvent] Found gestors to notify:', ids);
     return ids;
 }
@@ -47,15 +47,15 @@ async function insertNotifications(entries: Array<{
     link_url?: string;
 }>) {
     if (entries.length === 0) {
-        console.warn('[notifyEvent] No entries to insert.');
+        console.warn('[notifyEvent] ⚠️ No entries to insert. Check gestor IDs or target user.');
         return;
     }
-    console.log('[notifyEvent] Attempting to insert:', entries);
+    console.log(`[notifyEvent] 📤 Attempting to insert ${entries.length} notifications:`, entries.map(e => ({ to: e.user_id, title: e.title })));
     const { error } = await supabase.from('notifications').insert(entries);
     if (error) {
-        console.error('[notifyEvent] FAILED to insert notifications:', error);
+        console.error('[notifyEvent] ❌ FAILED to insert notifications:', error);
     } else {
-        console.log('[notifyEvent] ✅ Success: Notifications inserted and should be live.');
+        console.log('[notifyEvent] ✅ Success: Notifications inserted in DB.');
     }
 }
 

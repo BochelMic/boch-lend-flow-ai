@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight } from 'lucide-react';
+import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight, ChevronRight } from 'lucide-react';
 import { calculateSmartSettlement } from '@/utils/creditUtils';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
@@ -487,16 +487,23 @@ const PaymentsModule = () => {
             <Card className="border-0 shadow-xl rounded-3xl overflow-hidden bg-white animate-in slide-in-from-right-10 duration-500">
               <CardHeader className="bg-gray-50/80 p-6 border-b border-gray-100 flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-sm font-black text-[#1a3a5c] uppercase tracking-widest flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-[#d37c22]" /> Plano de Pagamento Alvo
-                  </CardTitle>
-                  <CardDescription className="text-[10px] text-gray-500 mt-1 font-medium">Clique em "Usar Valor" para amortizar parcelas específicas</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm font-black text-[#1a3a5c] uppercase tracking-widest flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-[#d37c22]" /> Plano Alvo
+                      </CardTitle>
+                      <CardDescription className="text-[9px] text-gray-500 mt-0.5 font-medium">Use os valores para amortizar</CardDescription>
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase md:hidden flex items-center gap-1">
+                      <ChevronRight className="h-3 w-3" /> Deslize
+                    </span>
+                  </div>
                 </div>
                 <Badge variant="outline" className="text-gray-400 font-bold h-6">Interactive List</Badge>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="max-h-[500px] overflow-y-auto">
-                  <table className="w-full text-left text-sm">
+              <CardContent className="p-0 overflow-x-auto scrollbar-thin">
+                <div className="max-h-[500px]">
+                  <table className="w-full text-left text-sm min-w-[500px]">
                     <thead className="bg-gray-100 text-gray-500 sticky top-0 z-20">
                       <tr>
                         <th className="px-6 py-4 font-black text-[10px] uppercase">Parcela</th>
@@ -664,10 +671,10 @@ const PaymentsModule = () => {
               <div className="flex justify-between text-xs"><span className="text-gray-400 font-bold">Metodo:</span> <span className="font-black text-gray-800 uppercase">{lastSavedPayment?.payment_method}</span></div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button
                 variant="outline"
-                className="h-14 rounded-2xl font-bold border-gray-200 text-gray-500"
+                className="h-12 sm:h-14 rounded-2xl font-bold border-gray-200 text-gray-500 order-2 sm:order-1"
                 onClick={() => setShowSuccessDialog(false)}
               >
                 Fechar

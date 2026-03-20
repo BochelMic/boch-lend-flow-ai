@@ -9,9 +9,9 @@ import { notifyEvent } from '@/utils/notifyEvent';
 import { supabase } from '@/integrations/supabase/client';
 import {
   CheckCircle, XCircle, Clock, User, DollarSign, Calendar,
-  MessageSquare, Phone, MapPin, ChevronLeft, Briefcase,
+  MessageSquare, Phone, MapPin, ChevronLeft, ChevronRight, Briefcase,
   Shield, Home, FileText, Image as ImageIcon, ExternalLink, Mail, Printer, Download,
-  Wallet, Loader2
+  Wallet, Loader2, AlertTriangle, RefreshCw
 } from 'lucide-react';
 import { generateCreditRequestPdf } from '../../utils/creditRequestPdf';
 
@@ -626,7 +626,7 @@ const CreditRequestManager = () => {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 rounded-full bg-[#1a3a5c] text-white flex items-center justify-center text-lg font-bold">
-                  {r.client_name[0]?.toUpperCase()}
+                  {(r.client_name || "C")[0]?.toUpperCase()}
                 </div>
                 <div>
                   <h2 className="text-xl font-bold">{r.client_name}</h2>
@@ -739,9 +739,14 @@ const CreditRequestManager = () => {
 
               {r.is_installment && r.amortization_plan && r.amortization_plan.length > 0 && (
                 <div className="mt-4 border rounded-xl overflow-hidden shadow-sm bg-white">
-                  <div className="bg-gray-50 p-2.5 border-b flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    <span className="text-xs font-bold text-gray-700 uppercase">Plano de Amortização Simulado</span>
+                  <div className="bg-gray-50 p-2.5 border-b flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-gray-400" />
+                      <span className="text-xs font-bold text-gray-700 uppercase">Plano de Amortização</span>
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase md:hidden flex items-center gap-1">
+                      <ChevronRight className="h-3 w-3" /> Deslize
+                    </span>
                   </div>
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
@@ -971,7 +976,7 @@ const CreditRequestManager = () => {
         <p className="text-sm text-muted-foreground">{isGestor ? 'Aprovar e rejeitar pedidos' : 'Visualizar pedidos'}</p>
       </div>
 
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
         {([
           { key: 'all' as const, label: 'Todos', count: requests.length, color: 'bg-gray-100 text-gray-800' },
           { key: 'pending' as const, label: 'Pendentes', count: requests.filter(r => r.status === 'pending').length, color: 'bg-amber-100 text-amber-800' },
@@ -999,7 +1004,7 @@ const CreditRequestManager = () => {
               <CardContent className="p-4 md:p-5">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-[#1a3a5c] text-white flex items-center justify-center font-bold">{r.client_name[0]?.toUpperCase()}</div>
+                    <div className="w-10 h-10 rounded-full bg-[#1a3a5c] text-white flex items-center justify-center font-bold">{(r.client_name || "C")[0]?.toUpperCase()}</div>
                     <div>
                       <p className="font-semibold">{r.client_name}</p>
                       <p className="text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString('pt-MZ')}</p>

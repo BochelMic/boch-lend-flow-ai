@@ -82,7 +82,7 @@ const StablePDFViewer = React.memo(({
                     pageNumber={pageNumber}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
-                    width={Math.min(window.innerWidth - 32, 800)}
+                    width={Math.min((typeof window !== 'undefined' ? window.innerWidth : 800) - 32, 800)}
                     className="border border-gray-100"
                 />
             </div>

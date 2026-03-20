@@ -169,10 +169,10 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
     observations: '', truthDeclaration: false,
     docFrontUrl: '', docBackUrl: '',
     guaranteePhotos: [] as string[],
-    creditOption: 'B' as CreditOption,
-    isInstallment: false,
+    is_installment: false,
     installmentMonths: 1,
     amortizationPlan: null as any,
+    term: 30, // Default term in days
   };
 
   const [currentStep, setCurrentStep] = useState(() => {
@@ -232,6 +232,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
         creditOption: initialData.option || baseState.creditOption,
         isInstallment: initialData.isInstallment !== undefined ? initialData.isInstallment : baseState.isInstallment,
         installmentMonths: initialData.installments || initialData.installmentMonths || baseState.installmentMonths,
+        term: initialData.days || baseState.term,
       };
     }
 
@@ -614,32 +615,34 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
     try {
       const address = `${form.neighborhood}, ${form.district}, ${form.province}`;
 
-      // Try to create/update client record (non-blocking)
-      // 1. Try to create/update client record (non-blocking, short timeout)
+      // 1. Try to create/update client record (non-blocking)
       if (user) {
-        // We use a separate async execution to not block the main request
         (async () => {
           try {
-            // Check existence first
+            const clientData = {
+              user_id: user.id,
+              name: form.fullName,
+              email: form.email || user.email,
+              phone: form.phone || null,
+              address,
+              id_number: form.documentNumber || null,
+              status: 'active',
+              updated_at: new Date().toISOString()
+            };
+
             const { data: existingClient } = await supabase
               .from('clients')
               .select('id')
               .eq('user_id', user.id)
               .maybeSingle();
 
-            if (!existingClient) {
-              await supabase.from('clients').insert({
-                user_id: user.id,
-                name: form.fullName,
-                email: form.email || user.email,
-                phone: form.phone,
-                address,
-                id_number: form.documentNumber,
-                status: 'active',
-              });
+            if (existingClient) {
+              await supabase.from('clients').update(clientData).eq('id', existingClient.id);
+            } else {
+              await supabase.from('clients').insert(clientData);
             }
           } catch (e) {
-            console.warn("Non-critical error creating client record (timed out or connection error)", e);
+            console.warn("Non-critical error syncing client record", e);
           }
         })();
       }
@@ -676,15 +679,16 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
         guarantee_type: form.guaranteeType || null,
         guarantee_mode: form.guaranteeMode || null,
         observations: form.observations || null,
-        doc_front_url: form.docFrontUrl,
-        doc_back_url: form.docBackUrl,
-        guarantee_photos: form.guaranteePhotos,
+        doc_front_url: form.docFrontUrl || null,
+        doc_back_url: form.docBackUrl || null,
+        guarantee_photos: form.guaranteePhotos || [],
         credit_option: form.creditOption,
         is_installment: form.isInstallment,
         installment_months: form.installmentMonths,
         amortization_plan: form.amortizationPlan,
+        term: form.term || 30,
         interest_rate_at_request: form.creditOption === 'B'
-          ? (form.isInstallment || parseFloat(form.requestedAmount) > 15 ? 30 : 20)
+          ? (form.isInstallment || form.term > 15 ? 30 : 20)
           : 30
       };
 

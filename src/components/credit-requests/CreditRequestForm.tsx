@@ -105,6 +105,49 @@ const CreditRequestForm = ({ initialData }: { initialData?: any }) => {
 
       if (error) throw error;
 
+      // 1. Sync client data (non-blocking)
+      if (user) {
+        (async () => {
+          try {
+            const clientData = {
+              user_id: user.id,
+              name: formData.clientName,
+              email: formData.clientEmail,
+              phone: formData.clientPhone || null,
+              address: formData.clientAddress || null,
+              status: 'active',
+              updated_at: new Date().toISOString()
+            };
+
+            const { data: existingClient } = await supabase
+              .from('clients')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (existingClient) {
+              await supabase.from('clients').update(clientData).eq('id', existingClient.id);
+            } else {
+              await supabase.from('clients').insert(clientData);
+            }
+          } catch (e) {
+            console.warn("Non-critical error syncing client record", e);
+          }
+        })();
+      }
+
+      // 2. Notify Admin
+      try {
+        await notifyEvent('NEW_CREDIT_REQUEST', {
+          clientName: formData.clientName,
+          amount: parseFloat(formData.amount),
+          fromUserId: user?.id || null,
+          agentUserId: user?.role === 'agente' ? user.id : null,
+        });
+      } catch (notifyErr) {
+        console.warn('Error sending notification (non-blocking):', notifyErr);
+      }
+
       // Reset form
       setFormData({
         clientName: user?.name || '',
