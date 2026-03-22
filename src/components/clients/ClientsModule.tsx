@@ -36,7 +36,7 @@ const ClientsModule = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: ''
+    name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '', password: ''
   });
 
   useEffect(() => {
@@ -69,32 +69,93 @@ const ClientsModule = () => {
       toast({ title: 'Erro', description: 'Nome é obrigatório.', variant: 'destructive' });
       return;
     }
+    setLoading(true);
 
     try {
-      const clientData: any = {
-        name: formData.name,
-        email: formData.email || null,
-        phone: formData.phone || null,
-        address: formData.address || null,
-        id_number: formData.document || null,
-        status: 'active',
-      };
-
-      // Se for agente, associar o cliente ao agente
+      // If user is agent, they must provide email and password to auto-create user auth
       if (user?.role === 'agente') {
-        clientData.agent_id = user.id;
+        if (!formData.email || !formData.password) {
+          toast({ title: 'Erro', description: 'Email e Senha são obrigatórios para registar o cliente no sistema.', variant: 'destructive' });
+          setLoading(false);
+          return;
+        }
+
+        // 1. Call the Edge Function exactly like the Admin does (Name, Email, Password, Role)
+        const { data: funcData, error: funcError } = await supabase.functions.invoke('create-user', {
+          body: {
+            email: formData.email,
+            password: formData.password,
+            name: formData.name,
+            role: 'cliente'
+          }
+        });
+
+        if (funcError) {
+          console.error('[ClientsModule] Edge Function Invocation Error:', funcError);
+          let detail = funcError.message;
+          try {
+            if (funcError.context && typeof funcError.context.text === 'function') {
+              const bodyText = await funcError.context.text();
+              try {
+                const bodyJson = JSON.parse(bodyText);
+                detail = bodyJson.error || bodyJson.message || bodyText;
+              } catch (e) {
+                detail = bodyText;
+              }
+            }
+          } catch (e) { }
+          throw new Error(`Erro ao criar utilizador: ${detail}`);
+        }
+
+        if (funcData && funcData.success === false) {
+          console.error('[ClientsModule] Edge Function Logic Error:', funcData.error);
+          throw new Error(funcData.error || 'Erro desconhecido na criação do utilizador');
+        }
+
+        // 2. The database trigger has now created the 'clients' record, but without agent_id or phone.
+        // We use a secure RPC (Remote Procedure Call) to bypass RLS and link this client to the agent.
+        const { error: rpcError } = await supabase.rpc('link_agent_to_client', {
+          p_client_email: formData.email,
+          p_client_phone: formData.phone || null,
+          p_client_id_number: formData.document || null,
+          p_client_address: formData.address || null
+        });
+
+        if (rpcError) {
+          console.error('[ClientsModule] Failed to link client to agent via RPC:', rpcError);
+          // Don't throw, since the user was created. Just warn.
+          toast({ title: 'Aviso', description: 'Cliente criado, mas houve um erro ao associá-lo à sua conta.', variant: 'destructive' });
+        } else {
+          toast({ title: 'Sucesso', description: 'Cliente e utilizador criados com sucesso!' });
+        }
+      } else {
+        // Normal Gestor flow (just creates client record)
+        const clientData: any = {
+          name: formData.name,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          address: formData.address || null,
+          id_number: formData.document || null,
+          status: 'active',
+        };
+
+        const { error } = await supabase.from('clients').insert(clientData);
+        if (error) throw error;
+        toast({ title: 'Sucesso', description: 'Cliente cadastrado com sucesso!' });
       }
 
-      const { error } = await supabase.from('clients').insert(clientData);
-      if (error) throw error;
-
-      toast({ title: 'Sucesso', description: 'Cliente cadastrado com sucesso!' });
-      setFormData({ name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '' });
+      setFormData({ name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '', password: '' });
       setActiveTab('list');
       loadClients();
     } catch (error: any) {
       console.error('Error creating client:', error);
-      toast({ title: 'Erro', description: error.message || 'Erro ao cadastrar cliente.', variant: 'destructive' });
+      // Clean up common supabase errors
+      let msg = error.message || 'Erro ao cadastrar cliente.';
+      if (msg.includes('User already exists')) msg = 'Já existe um utilizador com este email no sistema.';
+
+      toast({ title: 'Erro', description: msg, variant: 'destructive' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -252,13 +313,14 @@ const ClientsModule = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm">Email</Label>
+                    <Label htmlFor="email" className="text-sm">Email {user?.role === 'agente' ? '*' : ''}</Label>
                     <Input
                       id="email"
                       type="email"
                       placeholder="email@exemplo.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      required={user?.role === 'agente'}
                     />
                   </div>
                   <div className="space-y-2">
@@ -270,27 +332,45 @@ const ClientsModule = () => {
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="document" className="text-sm">Documento (BI)</Label>
-                    <Input
-                      id="document"
-                      placeholder="Número do BI"
-                      value={formData.document}
-                      onChange={(e) => setFormData({ ...formData, document: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="address" className="text-sm">Endereço</Label>
-                    <Input
-                      id="address"
-                      placeholder="Endereço completo"
-                      value={formData.address}
-                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    />
-                  </div>
+                  {user?.role === 'agente' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="password" className="text-sm">Senha de Acesso (Login) *</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        placeholder="Mínimo 6 caracteres"
+                        value={formData.password}
+                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                        required
+                        minLength={6}
+                      />
+                    </div>
+                  )}
+                  {user?.role !== 'agente' && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="document" className="text-sm">Documento (BI)</Label>
+                        <Input
+                          id="document"
+                          placeholder="Número do BI"
+                          value={formData.document}
+                          onChange={(e) => setFormData({ ...formData, document: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="address" className="text-sm">Endereço</Label>
+                        <Input
+                          id="address"
+                          placeholder="Endereço completo"
+                          value={formData.address}
+                          onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
-                <Button type="submit" className="w-full">
-                  Cadastrar Cliente
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Processando...' : 'Cadastrar Cliente'}
                 </Button>
               </form>
             </CardContent>

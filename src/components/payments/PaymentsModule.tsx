@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight, ChevronRight } from 'lucide-react';
+import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight, ChevronRight, RefreshCw } from 'lucide-react';
 import { calculateSmartSettlement } from '@/utils/creditUtils';
 import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
@@ -76,11 +76,17 @@ const PaymentsModule = () => {
 
   const loadPayments = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('payments')
-        .select('*, loans(clients(*))')
+        .select('*, loans!inner(agent_id, clients(*))')
         .order('created_at', { ascending: false })
         .limit(50);
+
+      if (user?.role === 'agente') {
+        query = query.eq('loans.agent_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -105,10 +111,11 @@ const PaymentsModule = () => {
 
   const loadActiveLoans = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('loans')
         .select(`
           id, 
+          agent_id,
           remaining_amount, 
           total_amount, 
           installments, 
@@ -120,6 +127,12 @@ const PaymentsModule = () => {
         `)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
+
+      if (user?.role === 'agente') {
+        query = query.eq('agent_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -304,181 +317,158 @@ const PaymentsModule = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        {/* Registrar Pagamento */}
-        {/* Registrar Pagamento - LEFT (5/12) */}
-        <Card className="xl:col-span-5 border-0 shadow-2xl rounded-3xl overflow-hidden xl:sticky xl:top-8 bg-white border-l-4 border-l-[#1a3a5c]">
-          <CardHeader className="bg-[#1a3a5c] p-6 text-white pb-8">
-            <div className="flex items-center justify-between mb-2">
-              <Badge className="bg-[#d37c22] text-white border-0 font-bold uppercase text-[9px]">Nova Transação</Badge>
-              <Receipt className="h-6 w-6 opacity-30" />
-            </div>
-            <CardTitle className="text-xl md:text-2xl font-bold">Registar Recebimento</CardTitle>
-            <CardDescription className="text-blue-100/70 text-xs">Insira os dados do valor que deu entrada na caixa</CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 md:p-8 -mt-4 bg-white rounded-t-3xl relative z-10 space-y-5">
-            <form className="space-y-6" onSubmit={handleSubmit}>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Empréstimo Activado *</label>
-                <Select value={formData.loanId} onValueChange={(v) => {
-                  const loan = activeLoans.find(l => l.id === v);
-                  setFormData({ ...formData, loanId: v, amount: '' });
-                }}>
-                  <SelectTrigger className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner focus:ring-2 ring-[#d37c22]/20">
-                    <SelectValue placeholder="Selecione o Cliente..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
-                    {activeLoans.map(loan => (
-                      <SelectItem key={loan.id} value={loan.id} className="rounded-xl py-3 px-4 focus:bg-amber-50">
-                        <div className="flex flex-col items-start gap-1">
-                          <span className="font-bold text-gray-800">{loan.client_name}</span>
-                          <span className="text-[10px] text-gray-500">Saldo Actual: <strong className="text-red-500">MZN {loan.remaining_amount.toLocaleString()}</strong></span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      <div className={cn("grid grid-cols-1 gap-4 md:gap-6", user?.role !== 'agente' ? "lg:grid-cols-2" : "grid-cols-1")}>
+        {/* Registrar Pagamento - Hiddent for Agents */}
+        {user?.role !== 'agente' && (
+          <Card className="xl:col-span-5 border-0 shadow-2xl rounded-3xl overflow-hidden xl:sticky xl:top-8 bg-white border-l-4 border-l-[#1a3a5c]">
+            <CardHeader className="bg-[#1a3a5c] p-6 text-white pb-8">
+              <div className="flex items-center justify-between mb-2">
+                <Badge className="bg-[#d37c22] text-white border-0 font-bold uppercase text-[9px]">Nova Transação</Badge>
+                <Receipt className="h-6 w-6 opacity-30" />
               </div>
-
-              {selectedLoan && (
-                <div className="animate-in slide-in-from-top-2 duration-300 space-y-3">
-                  {/* Smart Settlement Suggestion */}
-                  {(() => {
-                    const smartVal = calculateSmartSettlement(selectedLoan);
-                    const discount = selectedLoan.remaining_amount - smartVal;
-
-                    if (discount > 10) { // Only show if there's a meaningful discount
-                      return (
-                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-2">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">💡 Liquidação Inteligente</span>
-                            <Badge className="bg-amber-500 text-white text-[9px] border-0">DESCONTO DE JUROS</Badge>
-                          </div>
-                          <p className="text-xs text-amber-900 mb-3 font-medium">
-                            O cliente pode encerrar a dívida hoje pagando apenas o capital + juro do mês atual.
-                            <strong> Economia de MZN {discount.toLocaleString()}</strong>.
-                          </p>
-                          <Button
-                            type="button"
-                            className="w-full h-10 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-md border-0"
-                            onClick={() => setFormData({
-                              ...formData,
-                              amount: String(smartVal),
-                              notes: `Liquidação antecipada inteligente (Desconto de MZN ${discount.toLocaleString()} em juros futuros).`
-                            })}
-                          >
-                            Usar Valor de Liquidação (MZN {smartVal.toLocaleString()})
-                          </Button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-12 border-2 border-dashed border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group active:scale-[0.98]"
-                    onClick={() => setFormData({ ...formData, amount: String(selectedLoan.remaining_amount), notes: 'Liquidação total do saldo devedor (valor integral).' })}
-                  >
-                    <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
-                      <DollarSign className="h-4 w-4" />
-                    </div>
-                    Liquidar Saldo Total Nominal (MZN {selectedLoan.remaining_amount.toLocaleString()})
-                  </Button>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <CardTitle className="text-xl md:text-2xl font-bold">Registar Recebimento</CardTitle>
+              <CardDescription className="text-blue-100/70 text-xs">Insira os dados do valor que deu entrada na caixa</CardDescription>
+            </CardHeader>
+            <CardContent className="p-6 md:p-8 -mt-4 bg-white rounded-t-3xl relative z-10 space-y-5">
+              <form className="space-y-6" onSubmit={handleSubmit}>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Valor MT *</label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner pl-12 font-black text-xl text-[#2e7d32]"
-                      placeholder="0.00"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                    />
-                    <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Data Entrada</label>
-                  <Input
-                    type="date"
-                    className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner font-bold"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Metodo Pago</label>
-                  <Select value={formData.method} onValueChange={(v) => setFormData({ ...formData, method: v })}>
-                    <SelectTrigger className="h-12 border-gray-200 rounded-xl bg-gray-50/50">
-                      <SelectValue />
+                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Empréstimo Activado *</label>
+                  <Select value={formData.loanId} onValueChange={(v) => {
+                    const loan = activeLoans.find(l => l.id === v);
+                    setFormData({ ...formData, loanId: v, amount: '' });
+                  }}>
+                    <SelectTrigger className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner focus:ring-2 ring-[#d37c22]/20">
+                      <SelectValue placeholder="Selecione o Cliente..." />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="cash">💵 Dinheiro / Mão</SelectItem>
-                      <SelectItem value="transfer">🏛️ T. Bancária</SelectItem>
-                      <SelectItem value="mpesa">📱 M-Pesa</SelectItem>
-                      <SelectItem value="check">📄 Cheque</SelectItem>
+                    <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                      {activeLoans.map(loan => (
+                        <SelectItem key={loan.id} value={loan.id} className="rounded-xl py-3 px-4 focus:bg-amber-50">
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="font-bold text-gray-800">{loan.client_name}</span>
+                            <span className="text-[10px] text-gray-500">Saldo Actual: <strong className="text-red-500">MZN {loan.remaining_amount.toLocaleString()}</strong></span>
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Referência</label>
-                  <Input
-                    className="h-12 border-gray-200 rounded-xl bg-gray-50/50 italic placeholder:text-gray-300"
-                    placeholder="Nº Talão, Parcela..."
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  />
-                </div>
-              </div>
 
-              {selectedLoan && (
-                <div className="p-5 bg-gradient-to-br from-green-50 to-emerald-50 rounded-3xl border border-emerald-100 shadow-sm space-y-4 animate-in zoom-in duration-300">
-                  <div className="flex justify-between items-center text-[10px] text-emerald-800 font-bold uppercase tracking-widest opacity-80">
-                    <span className="flex items-center gap-2"><Info className="h-4 w-4" /> Resumo do Crédito</span>
-                    <Badge className="bg-emerald-600 text-white border-0 px-2 py-0.5">{selectedLoan.credit_option || 'Padrao'}</Badge>
-                  </div>
-                  <div className="flex justify-between items-end border-b border-emerald-200/50 pb-3">
-                    <div className="space-y-1">
-                      <span className="text-sm font-medium text-emerald-900">Limite em Aberto:</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="font-black text-xl text-emerald-900 leading-none">MZN {selectedLoan.remaining_amount.toLocaleString()}</span>
-                      <p className="text-[9px] text-emerald-600 font-bold">Dívida Total Actual</p>
-                    </div>
-                  </div>
-                  {selectedLoan.is_installment && (
-                    <div className="flex justify-between items-center text-emerald-700">
-                      <div className="flex items-center gap-2">
-                        <div className="p-2 bg-emerald-100 rounded-lg"><TrendingDown className="h-4 w-4" /></div>
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold leading-tight">Valor da {selectedLoan.credit_option === 'A' ? 'Semana' : 'Parcela'}</span>
-                          <span className="text-[9px] opacity-70 italic tracking-tighter">Sugestão de amortização</span>
-                        </div>
+                {selectedLoan && (
+                  <div className="animate-in slide-in-from-top-2 duration-300 space-y-3">
+                    {/* Smart Settlement Suggestion */}
+                    {(() => {
+                      const smartVal = calculateSmartSettlement(selectedLoan);
+                      const discount = selectedLoan.remaining_amount - smartVal;
+
+                      if (discount > 10) { // Only show if there's a meaningful discount
+                        return (
+                          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-2">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">💡 Liquidação Inteligente</span>
+                              <Badge className="bg-amber-500 text-white text-[9px] border-0">DESCONTO DE JUROS</Badge>
+                            </div>
+                            <p className="text-xs text-amber-900 mb-3 font-medium">
+                              O cliente pode encerrar a dívida hoje pagando apenas o capital + juro do mês atual.
+                              <strong> Economia de MZN {discount.toLocaleString()}</strong>.
+                            </p>
+                            <Button
+                              type="button"
+                              className="w-full h-10 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs shadow-md border-0"
+                              onClick={() => setFormData({
+                                ...formData,
+                                amount: String(smartVal),
+                                notes: `Liquidação antecipada inteligente (Desconto de MZN ${discount.toLocaleString()} em juros futuros).`
+                              })}
+                            >
+                              Usar Valor de Liquidação (MZN {smartVal.toLocaleString()})
+                            </Button>
+                          </div>
+                        );
+                      }
+                      return null;
+                    })()}
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-12 border-2 border-dashed border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group active:scale-[0.98]"
+                      onClick={() => setFormData({ ...formData, amount: String(selectedLoan.remaining_amount), notes: 'Liquidação total do saldo devedor (valor integral).' })}
+                    >
+                      <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
+                        <DollarSign className="h-4 w-4" />
                       </div>
-                      <span className="font-black text-lg">
-                        MZN {(selectedLoan.amortization_plan?.find(p => p.installmentNumber === (selectedLoan.installments - selectedLoan.remaining_installments + 1))?.total || monthlyPayment).toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
+                      Liquidar Saldo Total Nominal (MZN {selectedLoan.remaining_amount.toLocaleString()})
+                    </Button>
+                  </div>
+                )}
 
-              <Button type="submit" disabled={!formData.loanId || !formData.amount} className="w-full h-16 text-lg font-black bg-[#d37c22] hover:bg-[#b0661a] text-white shadow-xl shadow-orange-500/20 rounded-2xl transition-all group active:scale-95">
-                Confirmar Recebimento <ArrowUpRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1 group-hover:-translate-y-1" />
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Valor MT *</label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        step="0.01"
+                        className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner pl-12 font-black text-xl text-[#2e7d32]"
+                        placeholder="0.00"
+                        value={formData.amount}
+                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                      />
+                      <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Data Entrada</label>
+                    <Input
+                      type="date"
+                      className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner font-bold"
+                      value={formData.date}
+                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Metodo Pago</label>
+                    <Select value={formData.method} onValueChange={(v) => setFormData({ ...formData, method: v })}>
+                      <SelectTrigger className="h-12 border-gray-200 rounded-xl bg-gray-50/50">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="cash">💵 Dinheiro / Mão</SelectItem>
+                        <SelectItem value="transfer">🏛️ T. Bancária</SelectItem>
+                        <SelectItem value="mpesa">📱 M-Pesa</SelectItem>
+                        <SelectItem value="check">📄 Cheque</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Referência</label>
+                    <Input
+                      className="h-12 border-gray-200 rounded-xl bg-gray-50/50 italic placeholder:text-gray-300"
+                      placeholder="Nº Talão, Parcela..."
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                <Button
+                  type="submit"
+                  disabled={loading || !formData.loanId || !formData.amount}
+                  className="w-full h-16 bg-gradient-to-r from-[#1a3a5c] to-[#2a5a8c] hover:from-[#122a44] hover:to-[#1a3a5c] text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition-all flex items-center justify-center gap-3 group active:scale-[0.98]"
+                >
+                  {loading ? (
+                    <><RefreshCw className="h-6 w-6 animate-spin" /> Processando...</>
+                  ) : (
+                    <><span className="text-xl">Confirmar Recebimento</span><ChevronRight className="h-6 w-6 group-hover:translate-x-1 transition-transform" /></>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Info & History - RIGHT (7/12) */}
         <div className="xl:col-span-7 space-y-8">
@@ -487,19 +477,12 @@ const PaymentsModule = () => {
             <Card className="border-0 shadow-xl rounded-3xl overflow-hidden bg-white animate-in slide-in-from-right-10 duration-500">
               <CardHeader className="bg-gray-50/80 p-6 border-b border-gray-100 flex flex-row items-center justify-between">
                 <div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-sm font-black text-[#1a3a5c] uppercase tracking-widest flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-[#d37c22]" /> Plano Alvo
-                      </CardTitle>
-                      <CardDescription className="text-[9px] text-gray-500 mt-0.5 font-medium">Use os valores para amortizar</CardDescription>
-                    </div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase md:hidden flex items-center gap-1">
-                      <ChevronRight className="h-3 w-3" /> Deslize
-                    </span>
-                  </div>
+                  <CardTitle className="text-sm font-black text-[#1a3a5c] uppercase tracking-widest flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-[#d37c22]" /> Plano Alvo
+                  </CardTitle>
+                  <CardDescription className="text-[9px] text-gray-500 mt-0.5 font-medium">Use os valores para amortizar</CardDescription>
                 </div>
-                <Badge variant="outline" className="text-gray-400 font-bold h-6">Interactive List</Badge>
+                <Badge variant="outline" className="text-gray-400 font-bold h-6 text-[8px]">Interactive List</Badge>
               </CardHeader>
               <CardContent className="p-0 overflow-x-auto scrollbar-thin">
                 <div className="max-h-[500px]">

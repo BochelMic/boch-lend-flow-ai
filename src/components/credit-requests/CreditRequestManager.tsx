@@ -11,7 +11,7 @@ import {
   CheckCircle, XCircle, Clock, User, DollarSign, Calendar,
   MessageSquare, Phone, MapPin, ChevronLeft, ChevronRight, Briefcase,
   Shield, Home, FileText, Image as ImageIcon, ExternalLink, Mail, Printer, Download,
-  Wallet, Loader2, AlertTriangle, RefreshCw
+  Wallet, Loader2, AlertTriangle, RefreshCw, Plus
 } from 'lucide-react';
 import { generateCreditRequestPdf } from '../../utils/creditRequestPdf';
 
@@ -971,9 +971,16 @@ const CreditRequestManager = () => {
   // List View
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Pedidos de Crédito</h1>
-        <p className="text-sm text-muted-foreground">{isGestor ? 'Aprovar e rejeitar pedidos' : 'Visualizar pedidos'}</p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Pedidos de Crédito</h1>
+          <p className="text-sm text-muted-foreground">{isGestor ? 'Aprovar e rejeitar pedidos' : 'Visualizar pedidos'}</p>
+        </div>
+        {user?.role === 'cliente' && (
+          <Button onClick={() => window.location.href = '/agente/credit-form'} className="bg-[#1a3a5c] hover:bg-[#122a44] text-white">
+            <Plus className="h-4 w-4 mr-2" /> Novo Pedido
+          </Button>
+        )}
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">

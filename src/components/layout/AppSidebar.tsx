@@ -130,7 +130,6 @@ export function AppSidebar() {
         { name: 'Relatórios', href: '/gestor/reports', icon: BarChart3, permission: 'all' },
         { name: 'Contratos', href: '/gestor/contratos', icon: PenLine, permission: 'all' },
         { name: 'Pagamentos', href: '/gestor/pagamentos', icon: CreditCard, permission: 'all' },
-        { name: 'Faturas/Recibos', href: '/gestor/faturas', icon: Receipt, permission: 'all' },
         chatItem,
         { name: 'Administração', href: '/gestor/admin', icon: Shield, permission: 'all' },
         { name: 'Subsistemas', href: '/gestor/subsistemas', icon: Shield, permission: 'all' },
@@ -140,7 +139,6 @@ export function AppSidebar() {
       return [
         { name: 'Dashboard', href: '/agente/dashboard', icon: LayoutDashboard, permission: 'clientes' },
         { name: 'Pedidos', href: '/agente/credit-requests', icon: FormInput, permission: 'clientes' },
-        { name: 'Novo Pedido', href: '/agente/credit-form', icon: FormInput, permission: 'emprestimos' },
         { name: 'Clientes', href: '/agente/clientes', icon: Users, permission: 'clientes' },
         { name: 'Empréstimos', href: '/agente/emprestimos', icon: CreditCard, permission: 'emprestimos' },
         { name: 'Cobranças', href: '/agente/cobrancas', icon: Phone, permission: 'cobrancas' },

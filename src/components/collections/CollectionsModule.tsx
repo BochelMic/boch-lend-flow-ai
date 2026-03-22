@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Phone, MessageSquare, Mail, Calendar, AlertTriangle, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface OverdueLoan {
   id: string;
@@ -20,6 +21,7 @@ interface OverdueLoan {
 }
 
 const CollectionsModule = () => {
+  const { user } = useAuth();
   const [overdue, setOverdue] = useState<OverdueLoan[]>([]);
   const [totalOverdue, setTotalOverdue] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -31,11 +33,17 @@ const CollectionsModule = () => {
   const loadCollections = async () => {
     try {
       // Buscar empréstimos ativos/em atraso com dados dos clientes
-      const { data: loans, error } = await supabase
+      let query = supabase
         .from('loans')
         .select('*, clients(name, phone)')
         .in('status', ['active', 'overdue'])
         .gt('remaining_amount', 0);
+
+      if (user?.role === 'agente') {
+        query = query.eq('agent_id', user.id);
+      }
+
+      const { data: loans, error } = await query;
 
       if (error) throw error;
 

@@ -197,7 +197,7 @@ const Header = () => {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
                             <p className={cn(
-                              'text-xs font-semibold truncate',
+                              'text-xs font-semibold',
                               !notif.read ? 'text-foreground' : 'text-muted-foreground'
                             )}>
                               {notif.title}
@@ -206,7 +206,7 @@ const Header = () => {
                               {formatTime(notif.timestamp)}
                             </span>
                           </div>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">{notif.body}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed prose prose-sm break-words whitespace-pre-wrap">{notif.body}</p>
                         </div>
 
                         {/* Dot não lida */}

@@ -233,6 +233,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
         isInstallment: initialData.isInstallment !== undefined ? initialData.isInstallment : baseState.isInstallment,
         installmentMonths: initialData.installments || initialData.installmentMonths || baseState.installmentMonths,
         term: initialData.days || baseState.term,
+        amortizationPlan: initialData.amortizationPlan || baseState.amortizationPlan,
       };
     }
 
@@ -242,6 +243,29 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
   // Calculate Amortization Plan automatically - Intelligent Selection
   useEffect(() => {
     const amount = parseFloat(form.requestedAmount);
+
+    // GUARDIAN FIX: If the user inputs match the imported simulation exactly, 
+    // keep the highly-customized schedule from the Simulator instead of strictly recalculating it.
+    if (
+      initialData?.amortizationPlan &&
+      amount === Number(initialData.amount) &&
+      form.isInstallment === initialData.isInstallment &&
+      Number(form.installmentMonths) === Number(initialData.installments || initialData.installmentMonths)
+    ) {
+      setForm(prev => {
+        // Only update if it's different to avoid infinite loops
+        if (JSON.stringify(prev.amortizationPlan) !== JSON.stringify(initialData.amortizationPlan)) {
+          return {
+            ...prev,
+            creditOption: initialData.option,
+            amortizationPlan: initialData.amortizationPlan
+          };
+        }
+        return prev;
+      });
+      return;
+    }
+
     // Use days from simulation if available, default to 30
     const days = initialData?.days || 30;
 
@@ -255,7 +279,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
         amortizationPlan: sim.installments
       }));
     }
-  }, [form.requestedAmount, form.isInstallment, form.installmentMonths]);
+  }, [form.requestedAmount, form.isInstallment, form.installmentMonths, initialData]);
 
   // Save form data to localStorage on changes
   useEffect(() => {
@@ -614,37 +638,49 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
 
     try {
       const address = `${form.neighborhood}, ${form.district}, ${form.province}`;
+      let resolvedAgentId = user?.role === 'agente' ? user.id : null;
+      let resolvedUserId = user?.id || null;
 
-      // 1. Try to create/update client record (non-blocking)
+      // Se The User IS an Agente or Gestor submitting ON BEHALF of the client,
+      // the request's user_id cannot be the agent's ID. We let it be null so the backend
+      // gracefully binds it to the correct client via phone/email on approval.
+      if (user?.role === 'agente' || user?.role === 'gestor') {
+        resolvedUserId = null;
+      }
+
+      // 1. Try to create/update client record and resolve agent_id
       if (user) {
-        (async () => {
-          try {
-            const clientData = {
-              user_id: user.id,
-              name: form.fullName,
-              email: form.email || user.email,
-              phone: form.phone || null,
-              address,
-              id_number: form.documentNumber || null,
-              status: 'active',
-              updated_at: new Date().toISOString()
-            };
+        try {
+          const clientData: any = {
+            user_id: user.role === 'cliente' ? user.id : undefined,
+            name: form.fullName,
+            email: form.email || (user.role === 'cliente' ? user.email : null),
+            phone: form.phone || null,
+            address,
+            id_number: form.documentNumber || null,
+            status: 'active',
+            updated_at: new Date().toISOString()
+          };
 
-            const { data: existingClient } = await supabase
-              .from('clients')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle();
+          // Try to find the actual client by email (super robust fallback)
+          const { data: existingClient } = await supabase
+            .from('clients')
+            .select('id, agent_id, user_id')
+            .eq('email', form.email)
+            .maybeSingle();
 
-            if (existingClient) {
-              await supabase.from('clients').update(clientData).eq('id', existingClient.id);
-            } else {
-              await supabase.from('clients').insert(clientData);
-            }
-          } catch (e) {
-            console.warn("Non-critical error syncing client record", e);
+          if (existingClient) {
+            if (existingClient.agent_id) resolvedAgentId = existingClient.agent_id;
+            if (existingClient.user_id && resolvedUserId === null) resolvedUserId = existingClient.user_id;
+            // Non-blocking update
+            supabase.from('clients').update(clientData).eq('id', existingClient.id).then();
+          } else if (user.role === 'cliente') {
+            // Non-blocking insert only if it's the client themselves
+            supabase.from('clients').insert(clientData).then();
           }
-        })();
+        } catch (e) {
+          console.warn("Non-critical error syncing client record", e);
+        }
       }
 
       // Submit credit request with retry
@@ -657,8 +693,8 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
         purpose: form.creditPurpose,
         term: 1,
         status: 'pending',
-        user_id: user?.id || null,
-        agent_id: user?.role === 'agente' ? user.id : null,
+        user_id: resolvedUserId,
+        agent_id: resolvedAgentId,
         birth_date: form.birthDate || null,
         gender: form.gender || null,
         document_type: form.documentType || null,
@@ -737,7 +773,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
           clientName: form.fullName,
           amount: parseFloat(form.requestedAmount),
           fromUserId: user?.id || null,
-          agentUserId: user?.role === 'agente' ? user.id : null,
+          agentUserId: resolvedAgentId,
         });
       } catch (notifyErr) {
         console.warn('Notification error (non-blocking):', notifyErr);
@@ -1374,14 +1410,14 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {form.amortizationPlan.map((row: any) => (
-                          <TableRow key={row.installmentNumber} className="h-10 hover:bg-gray-50 transition-colors">
-                            <TableCell className="py-2 text-xs font-bold">{row.installmentNumber}</TableCell>
+                        {form.amortizationPlan && Array.isArray(form.amortizationPlan) && form.amortizationPlan.map((row: any, idx: number) => (
+                          <TableRow key={row.installmentNumber || idx} className="h-10 hover:bg-gray-50 transition-colors">
+                            <TableCell className="py-2 text-xs font-bold">{row.installmentNumber || idx + 1}</TableCell>
                             <TableCell className="py-2 text-[10px]">
-                              {new Date(row.date).toLocaleDateString('pt-MZ')}
+                              {row.date ? new Date(row.date).toLocaleDateString('pt-MZ') : '---'}
                             </TableCell>
                             <TableCell className="py-2 text-right text-xs font-black text-green-700">
-                              MT {row.total.toLocaleString()}
+                              MT {(row.total || 0).toLocaleString()}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1389,7 +1425,9 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
                     </Table>
                     <div className="p-3 bg-[#1b5e20]/5 text-center">
                       <p className="text-[10px] font-bold text-[#1b5e20]">
-                        Total a Pagar: MT {form.amortizationPlan.reduce((acc: number, r: any) => acc + r.total, 0).toLocaleString()}
+                        Total a Pagar: MT {(form.amortizationPlan && Array.isArray(form.amortizationPlan)
+                          ? form.amortizationPlan.reduce((acc: number, r: any) => acc + (Number(r.total) || 0), 0)
+                          : 0).toLocaleString()}
                       </p>
                     </div>
                   </div>

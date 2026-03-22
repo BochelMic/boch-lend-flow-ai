@@ -103,6 +103,7 @@ const ContractModule = () => {
     const [saving, setSaving] = useState(false);
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [loanInstallments, setLoanInstallments] = useState(1);
+    const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
     // Signature state
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -174,8 +175,21 @@ const ContractModule = () => {
         if (!user) return;
         setLoading(true);
         try {
-            let query = supabase.from('contracts').select('*, credit_requests(agent_id)').order('created_at', { ascending: false });
-            if (!isAdmin) query = query.eq('client_id', user.id);
+            let query = supabase.from('contracts').select('*, credit_requests!inner(agent_id)').order('created_at', { ascending: false });
+
+            if (user.role === 'cliente') {
+                query = query.eq('client_id', user.id);
+                // Also check if they have pending credit requests waiting for approval
+                const { count } = await supabase.from('credit_requests')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id)
+                    .eq('status', 'pending');
+                setPendingRequestsCount(count || 0);
+            } else if (user.role === 'agente') {
+                // Return contracts where the request belongs to the agent
+                query = query.eq('credit_requests.agent_id', user.id);
+            }
+
             const { data } = await query;
             setContracts(data || []);
 
@@ -425,10 +439,22 @@ const ContractModule = () => {
 
             // Notify all admins automatically via shared helper
             try {
+                let agentIdToNotify = selectedContract.credit_requests?.agent_id || null;
+
+                // Fallback: If agent_id is missing from the joined query, fetch it directly
+                if (!agentIdToNotify && selectedContract.credit_request_id) {
+                    const { data: rq } = await supabase
+                        .from('credit_requests')
+                        .select('agent_id')
+                        .eq('id', selectedContract.credit_request_id)
+                        .maybeSingle();
+                    if (rq) agentIdToNotify = rq.agent_id;
+                }
+
                 await notifyEvent('CONTRACT_SIGNED', {
                     clientName: selectedContract.client_name,
                     fromUserId: user?.id || selectedContract.client_id,
-                    agentUserId: selectedContract.credit_requests?.agent_id || null
+                    agentUserId: agentIdToNotify
                 });
             } catch (notifyErr) {
                 console.error("Erro ao notificar gestores:", notifyErr);
@@ -1072,19 +1098,38 @@ const ContractModule = () => {
             ) : contracts.length === 0 ? (
                 <Card className="border-0 shadow-md">
                     <CardContent className="py-12 px-6 text-center text-muted-foreground space-y-4">
-                        <div className="bg-gray-50 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <FileText className="h-10 w-10 opacity-20" />
-                        </div>
-                        <div className="space-y-1">
-                            <p className="text-lg font-bold text-gray-800">Nenhum contrato encontrado</p>
-                            <p className="text-sm max-w-xs mx-auto">
-                                Se você tem um pedido aprovado mas não vê o contrato aqui,
-                                o seu pedido pode não estar vinculado à sua conta.
-                            </p>
-                        </div>
-                        <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 text-xs text-blue-800 leading-relaxed max-w-sm mx-auto">
-                            <strong>Dica:</strong> Certifique-se de que o Telefone e Email no seu perfil são os mesmos que usou no pedido de crédito.
-                        </div>
+                        {pendingRequestsCount > 0 ? (
+                            <>
+                                <div className="bg-amber-50 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-2">
+                                    <Clock className="h-10 w-10 text-amber-500" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-lg font-bold text-amber-800">Pedido em Aprovação...</p>
+                                    <p className="text-sm max-w-sm mx-auto text-amber-700">
+                                        Detectámos que já solicitou um crédito! O seu pedido encontra-se <strong>Pendente</strong> e está na fila para aprovação de um Administrador.
+                                    </p>
+                                </div>
+                                <div className="bg-amber-50/80 p-4 rounded-xl border border-amber-200 text-xs text-amber-800 leading-relaxed max-w-sm mx-auto">
+                                    <strong>Nota:</strong> O seu documento de contrato só será gerado e ficará disponível para assinatura <strong>após a aprovação</strong> do seu pedido pela equipa de gestão.
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="bg-gray-50 h-20 w-20 rounded-full flex items-center justify-center mx-auto mb-2">
+                                    <FileText className="h-10 w-10 opacity-20" />
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-lg font-bold text-gray-800">Nenhum contrato encontrado</p>
+                                    <p className="text-sm max-w-xs mx-auto">
+                                        Se você tem um pedido aprovado mas não vê o contrato aqui,
+                                        o seu pedido pode não estar vinculado à sua conta.
+                                    </p>
+                                </div>
+                                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100/50 text-xs text-blue-800 leading-relaxed max-w-sm mx-auto">
+                                    <strong>Dica:</strong> Certifique-se de que o Telefone e Email no seu perfil são os mesmos que usou no pedido de crédito.
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
             ) : (

@@ -408,8 +408,8 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
                           isInstallment,
                           installments: Number(installmentMonths),
                           frequency,
-                          customAmortizations,
-                          totalToPay: result.totalToPay
+                          totalToPay: result.totalToPay,
+                          amortizationPlan: result.installments
                         });
                       }
                     }}
