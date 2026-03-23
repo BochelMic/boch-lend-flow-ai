@@ -204,12 +204,14 @@ const CreditRequestManager = () => {
     }
     setInjecting(true);
     try {
+      let finalAgentId = request.agent_id;
+
       // 1. Find or create client record
       let clientId: string | null = null;
       console.log('[INJECT] Step 1: Looking for client with user_id:', request.user_id);
 
       const { data: existingClient, error: clientLookupErr } = await supabase
-        .from('clients').select('id').eq('user_id', request.user_id).limit(1);
+        .from('clients').select('id, agent_id').eq('user_id', request.user_id).limit(1);
 
       if (clientLookupErr) {
         console.error('[INJECT] Error looking up client by user_id:', clientLookupErr);
@@ -223,6 +225,13 @@ const CreditRequestManager = () => {
 
       if (existingClient && existingClient.length > 0) {
         clientId = existingClient[0].id;
+        // RECOVERY: If request has no agent_id, use the one from the client record
+        if (!finalAgentId && existingClient[0].agent_id) {
+          finalAgentId = existingClient[0].agent_id;
+          console.log('[INJECT] Recovered agent_id from client record:', finalAgentId);
+          await supabase.from('credit_requests').update({ agent_id: finalAgentId }).eq('id', request.id);
+        }
+
         console.log('[INJECT] Found existing client by user_id:', clientId);
         // Sync address and other info to ensure receipts are complete
         await supabase.from('clients').update({
@@ -233,19 +242,27 @@ const CreditRequestManager = () => {
       } else {
         if (request.client_phone) {
           const { data: byPhone, error: phoneErr } = await supabase
-            .from('clients').select('id').eq('phone', request.client_phone).limit(1);
+            .from('clients').select('id, agent_id').eq('phone', request.client_phone).limit(1);
           if (phoneErr) console.warn('[INJECT] Error looking up by phone:', phoneErr);
           if (byPhone && byPhone.length > 0) {
             clientId = byPhone[0].id;
+            if (!finalAgentId && byPhone[0].agent_id) {
+              finalAgentId = byPhone[0].agent_id;
+              await supabase.from('credit_requests').update({ agent_id: finalAgentId }).eq('id', request.id);
+            }
             console.log('[INJECT] Found client by phone:', clientId);
           }
         }
         if (!clientId && request.client_name) {
           const { data: byName, error: nameErr } = await supabase
-            .from('clients').select('id').ilike('name', request.client_name).limit(1);
+            .from('clients').select('id, agent_id').ilike('name', request.client_name).limit(1);
           if (nameErr) console.warn('[INJECT] Error looking up by name:', nameErr);
           if (byName && byName.length > 0) {
             clientId = byName[0].id;
+            if (!finalAgentId && byName[0].agent_id) {
+              finalAgentId = byName[0].agent_id;
+              await supabase.from('credit_requests').update({ agent_id: finalAgentId }).eq('id', request.id);
+            }
             console.log('[INJECT] Found client by name:', clientId);
           }
         }
@@ -258,7 +275,7 @@ const CreditRequestManager = () => {
             address: fullAddress,
             id_number: request.document_number,
             user_id: request.user_id,
-            agent_id: request.agent_id,
+            agent_id: finalAgentId,
             status: 'active',
           }).select('id').single();
           if (clientErr) {
@@ -339,7 +356,7 @@ const CreditRequestManager = () => {
         p_total_amount: Number(request.amortization_plan
           ? request.amortization_plan.reduce((acc: number, row: AmortizationRow) => acc + (Number(row.total) || 0), 0)
           : request.amount * 1.3),
-        p_agent_id: request.agent_id || null,
+        p_agent_id: finalAgentId || null, // Use finalAgentId here
         p_start_date: startDate.toISOString(),
         p_end_date: endDate.toISOString(),
         p_credit_option: request.credit_option || 'A',

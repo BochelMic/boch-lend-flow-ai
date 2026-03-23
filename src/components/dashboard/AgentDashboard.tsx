@@ -69,7 +69,14 @@ const AgentDashboard = () => {
         .select('*, clients(name)')
         .eq('agent_id', user!.id);
 
-      const pendingLoans = loans?.filter(l => l.status === 'pending').length || 0;
+      // Pedidos de crédito pendentes do agente
+      const { data: requests } = await supabase
+        .from('credit_requests')
+        .select('id')
+        .eq('agent_id', user!.id)
+        .eq('status', 'pending');
+
+      const pendingLoans = (loans?.filter(l => l.status === 'pending').length || 0) + (requests?.length || 0);
       const overdueClients = loans?.filter(l => l.status === 'overdue').length || 0;
       const totalDebt = loans?.reduce((sum, l) => sum + Number(l.remaining_amount), 0) || 0;
 

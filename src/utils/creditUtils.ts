@@ -48,8 +48,8 @@ export const calculateSmartSettlement = (loan: AmortizationLoanData) => {
     .reduce((sum, row) => sum + Number(row.principal || 0), 0);
 
   // Interest of the CURRENT month (fair to pay for the time elapsed)
-  const currentInterest = loan.amortization_plan
-    .find(row => row.installmentNumber === currentIndex)?.interest || 0;
+  const currentInstallment = loan.amortization_plan.find(row => row.installmentNumber === currentIndex);
+  const currentInterest = currentInstallment ? Number(currentInstallment.interest || 0) : 0;
 
   return Math.round(remainingPrincipal + currentInterest);
 };

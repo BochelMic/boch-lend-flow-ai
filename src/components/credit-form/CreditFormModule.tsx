@@ -38,12 +38,21 @@ const CreditFormModule = () => {
     try {
       const { data: client } = await supabase
         .from('clients')
-        .select('id, id_number, phone, address')
+        .select('id, id_number, phone, address, agent_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (client) {
         setHasCompletedProfile(!!(client.id_number && client.phone));
+
+        // Merge agent_id into simulationData for better propagation
+        if (client.agent_id) {
+          setSimulationData((prev: any) => ({
+            ...(prev || {}),
+            agentId: client.agent_id
+          }));
+        }
+
         const { data: activeLoans } = await supabase
           .from('loans')
           .select('remaining_amount')
@@ -73,7 +82,8 @@ const CreditFormModule = () => {
     setFlowStep('simulate');
   };
 
-  if (isGestor || isAgent) {
+  // Only restrict Gestor/Agent if NOT starting a new application flow (no location.state)
+  if ((isGestor || isAgent) && !location.state && flowStep === 'simulate' && !simulationData) {
     return (
       <div className="container mx-auto p-4 md:p-6 space-y-6">
         <div>

@@ -224,15 +224,18 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
       }
     }
 
-    // Override with initialData from simulation if available
+    // Override with initialData from simulation / navigation if available
     if (initialData) {
       return {
         ...baseState,
+        fullName: initialData.fullName || baseState.fullName,
+        email: initialData.email || baseState.email,
+        phone: initialData.phone || baseState.phone,
         requestedAmount: initialData.amount?.toString() || baseState.requestedAmount,
-        creditOption: initialData.option || baseState.creditOption,
+        creditOption: initialData.option || (initialData.creditOption as CreditOption) || baseState.creditOption,
         isInstallment: initialData.isInstallment !== undefined ? initialData.isInstallment : baseState.isInstallment,
         installmentMonths: initialData.installments || initialData.installmentMonths || baseState.installmentMonths,
-        term: initialData.days || baseState.term,
+        term: initialData.days || initialData.term || baseState.term,
         amortizationPlan: initialData.amortizationPlan || baseState.amortizationPlan,
       };
     }
@@ -662,21 +665,54 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
             updated_at: new Date().toISOString()
           };
 
-          // Try to find the actual client by email (super robust fallback)
-          const { data: existingClient } = await supabase
-            .from('clients')
-            .select('id, agent_id, user_id')
-            .eq('email', form.email)
-            .maybeSingle();
+          // ALWAYS look up in 'clients' table to resolve agent_id and link record
+          let existingClientRecord: any = null;
 
-          if (existingClient) {
-            if (existingClient.agent_id) resolvedAgentId = existingClient.agent_id;
-            if (existingClient.user_id && resolvedUserId === null) resolvedUserId = existingClient.user_id;
-            // Non-blocking update
-            supabase.from('clients').update(clientData).eq('id', existingClient.id).then();
+          // Priority 1: Search by user_id if logged in
+          if (user.role === 'cliente') {
+            const { data: byUser } = await supabase
+              .from('clients')
+              .select('id, user_id, agent_id')
+              .eq('user_id', user.id)
+              .maybeSingle();
+            if (byUser) existingClientRecord = byUser;
+          }
+
+          // Priority 2: Search by email/phone if not found yet
+          if (!existingClientRecord) {
+            const { data: byContact } = await supabase
+              .from('clients')
+              .select('id, user_id, agent_id')
+              .or(`email.eq.${form.email},phone.eq.${form.phone}`)
+              .maybeSingle();
+            if (byContact) existingClientRecord = byContact;
+          }
+
+          if (existingClientRecord) {
+            if (existingClientRecord.user_id) resolvedUserId = existingClientRecord.user_id;
+
+            // LINKAGE: If record has no user_id but we are a logged-in client, link it
+            if (!existingClientRecord.user_id && user.role === 'cliente') {
+              clientData.user_id = user.id;
+              resolvedUserId = user.id;
+            }
+
+            // Only overwrite resolvedAgentId if the client already has an agent associated
+            if (existingClientRecord.agent_id) resolvedAgentId = existingClientRecord.agent_id;
+          }
+
+          if (existingClientRecord) {
+            // Non-blocking update (silent fail on RLS/403)
+            supabase.from('clients').update(clientData).eq('id', existingClientRecord.id)
+              .then(({ error }) => {
+                if (error) console.warn("[Sync] Clients update failed (likely RLS):", error.message);
+              });
           } else if (user.role === 'cliente') {
-            // Non-blocking insert only if it's the client themselves
-            supabase.from('clients').insert(clientData).then();
+            // Non-blocking insert only if it's the client themselves (silent fail on RLS/403)
+            supabase.from('clients').insert(clientData)
+              .then(({ error }) => {
+                if (error) console.warn("[Sync] Clients insert failed (likely RLS):", error.message);
+              });
           }
         } catch (e) {
           console.warn("Non-critical error syncing client record", e);

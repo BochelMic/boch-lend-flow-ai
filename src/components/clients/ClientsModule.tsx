@@ -86,7 +86,9 @@ const ClientsModule = () => {
             email: formData.email,
             password: formData.password,
             name: formData.name,
-            role: 'cliente'
+            role: 'cliente',
+            agent_id: user?.id,
+            phone: formData.phone || null
           }
         });
 
@@ -112,7 +114,7 @@ const ClientsModule = () => {
           throw new Error(funcData.error || 'Erro desconhecido na criação do utilizador');
         }
 
-        // 2. The database trigger has now created the 'clients' record, but without agent_id or phone.
+        // 2. The database trigger has now created the 'clients' record.
         // We use a secure RPC (Remote Procedure Call) to bypass RLS and link this client to the agent.
         const { error: rpcError } = await supabase.rpc('link_agent_to_client', {
           p_client_email: formData.email,
@@ -270,16 +272,17 @@ const ClientsModule = () => {
                         </ClientProfileDialog>
                         <Button variant="outline" size="sm" className="text-xs" onClick={() => {
                           const prefix = user?.role === 'gestor' ? '/gestor' : '/agente';
-                          navigate(`${prefix}/emprestimos`);
+                          navigate(`${prefix}/credit-form`, {
+                            state: {
+                              clientId: client.id,
+                              fullName: client.name,
+                              email: client.email,
+                              phone: client.phone,
+                              agentId: client.agent_id
+                            }
+                          });
                         }}>
-                          <CreditCard className="mr-1 h-3 w-3" />
-                          Histórico
-                        </Button>
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => {
-                          const prefix = user?.role === 'gestor' ? '/gestor' : '/agente';
-                          navigate(`${prefix}/emprestimos`);
-                        }}>
-                          <Plus className="mr-1 h-3 w-3" />
+                          <CreditCard className="h-3 w-3 mr-1" />
                           Empréstimo
                         </Button>
                       </div>

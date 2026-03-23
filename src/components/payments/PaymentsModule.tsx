@@ -56,7 +56,7 @@ const PaymentsModule = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    loanId: '', amount: '', method: 'cash', date: new Date().toISOString().split('T')[0], notes: ''
+    loanId: '', amount: '', method: 'cash', date: new Date().toISOString().split('T')[0], notes: '', isLiquidation: false
   });
 
   useEffect(() => {
@@ -184,7 +184,8 @@ const PaymentsModule = () => {
         p_payment_date: formData.date,
         p_notes: formData.notes || null,
         p_received_by: user?.id || null,
-        p_installment_number: null // Desambiguação explícita para RPC
+        p_installment_number: null,
+        p_is_liquidation: formData.isLiquidation
       });
 
       if (rpcError) throw rpcError;
@@ -228,8 +229,8 @@ const PaymentsModule = () => {
         }
       }
 
-      toast({ title: 'Sucesso', description: 'Pagamento registrado com sucesso!' });
-      setFormData({ loanId: '', amount: '', method: 'cash', date: new Date().toISOString().split('T')[0], notes: '' });
+      toast({ title: 'Sucesso', description: isFullyPaid ? 'Empréstimo Liquidado com Sucesso!' : 'Pagamento registrado com sucesso!' });
+      setFormData({ loanId: '', amount: '', method: 'cash', date: new Date().toISOString().split('T')[0], notes: '', isLiquidation: false });
 
       // Assinar para recarregar as tabelas e mostrar o alerta com botão do recibo
       loadPayments();
@@ -335,7 +336,7 @@ const PaymentsModule = () => {
                   <label className="text-[10px] font-black uppercase tracking-widest text-[#1a3a5c]">Empréstimo Activado *</label>
                   <Select value={formData.loanId} onValueChange={(v) => {
                     const loan = activeLoans.find(l => l.id === v);
-                    setFormData({ ...formData, loanId: v, amount: '' });
+                    setFormData({ ...formData, loanId: v, amount: '', isLiquidation: false });
                   }}>
                     <SelectTrigger className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner focus:ring-2 ring-[#d37c22]/20">
                       <SelectValue placeholder="Selecione o Cliente..." />
@@ -377,6 +378,7 @@ const PaymentsModule = () => {
                               onClick={() => setFormData({
                                 ...formData,
                                 amount: String(smartVal),
+                                isLiquidation: true,
                                 notes: `Liquidação antecipada inteligente (Desconto de MZN ${discount.toLocaleString()} em juros futuros).`
                               })}
                             >
@@ -392,7 +394,12 @@ const PaymentsModule = () => {
                       type="button"
                       variant="outline"
                       className="w-full h-12 border-2 border-dashed border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group active:scale-[0.98]"
-                      onClick={() => setFormData({ ...formData, amount: String(selectedLoan.remaining_amount), notes: 'Liquidação total do saldo devedor (valor integral).' })}
+                      onClick={() => setFormData({
+                        ...formData,
+                        amount: String(selectedLoan.remaining_amount),
+                        isLiquidation: true,
+                        notes: 'Liquidação total do saldo devedor (valor integral).'
+                      })}
                     >
                       <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
                         <DollarSign className="h-4 w-4" />

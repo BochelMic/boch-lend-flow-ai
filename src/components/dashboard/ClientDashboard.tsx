@@ -446,9 +446,9 @@ const ClientDashboard = () => {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <p className="text-xs text-blue-200 uppercase tracking-wider font-semibold mb-1">Valor para fechar hoje</p>
-                  <p className="text-3xl font-black">MZN {calculateSmartSettlement(loanData).toLocaleString()}</p>
+                  <p className="text-3xl font-black">MZN {(calculateSmartSettlement(loanData) || 0).toLocaleString()}</p>
                   <p className="text-[10px] text-orange-300 mt-1 flex items-center gap-1">
-                    <Info className="h-3 w-3" /> Poupança estimada de MZN {(loanData.remaining_amount - calculateSmartSettlement(loanData)).toLocaleString()} em juros.
+                    <Info className="h-3 w-3" /> Poupança estimada de MZN {Math.max(0, (Number(loanData.remaining_amount) || 0) - (calculateSmartSettlement(loanData) || 0)).toLocaleString()} em juros.
                   </p>
                 </div>
                 <Link to="/chat" className="md:w-auto w-full">

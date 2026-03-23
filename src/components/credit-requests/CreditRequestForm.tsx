@@ -40,10 +40,10 @@ const CreditRequestForm = ({ initialData }: { initialData?: any }) => {
   const { toast } = useToast();
 
   const [formData, setFormData] = useState({
-    clientName: user?.name || '',
-    clientEmail: user?.email || '',
-    clientPhone: '',
-    clientAddress: '',
+    clientName: initialData?.fullName || (user?.role === 'cliente' ? user?.name : '') || '',
+    clientEmail: initialData?.email || (user?.role === 'cliente' ? user?.email : '') || '',
+    clientPhone: initialData?.phone || '',
+    clientAddress: initialData?.address || '',
     amount: initialData?.amount?.toString() || '5000',
     purpose: '',
     days: initialData?.days?.toString() || '30'
@@ -100,7 +100,7 @@ const CreditRequestForm = ({ initialData }: { initialData?: any }) => {
         interest_rate_at_request: result?.monthlyInterestRate ? result.monthlyInterestRate * 100 : 30,
         status: 'pending',
         user_id: user?.id || null,
-        agent_id: user?.role === 'agente' ? user?.id : null,
+        agent_id: initialData?.agentId || (user?.role === 'agente' ? user?.id : null),
       });
 
       if (error) throw error;
