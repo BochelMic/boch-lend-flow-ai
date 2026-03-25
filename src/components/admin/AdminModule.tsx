@@ -61,44 +61,91 @@ const AdminDashboard = () => {
 
   const loadClients = async () => {
     setLoadingClients(true);
-    console.log("Iniciando carregamento de dados do painel...");
+    console.log("Carregando clientes para limpeza...");
     try {
-      const { data, error } = await supabase
+      // 1. PRIMARY SOURCE: Fetch all records from the `clients` table
+      const { data: clientRecords, error: clientsError } = await supabase
         .from('clients')
         .select('*');
-      if (error) throw error;
-      setClients(data || []);
+      if (clientsError) throw clientsError;
 
-      const activeCount = data?.filter(c => c.status === 'active').length || 0;
+      // 2. ORPHAN DETECTION: Find users with role='cliente' but no client record
+      const { data: roles } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .eq('role', 'cliente');
+
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, name, email, created_at');
+
+      const clientUserIds = new Set((clientRecords || []).map(c => c.user_id).filter(Boolean));
+      const profilesMap = new Map((profiles || []).map(p => [p.id, p]));
+
+      // Orphans: have role='cliente' in user_roles but NO record in clients table
+      const orphanUsers = (roles || [])
+        .filter(r => !clientUserIds.has(r.user_id))
+        .map(r => {
+          const profile = profilesMap.get(r.user_id);
+          return profile ? {
+            id: r.user_id,
+            client_id: null,
+            name: profile.name || 'Sem Nome',
+            email: profile.email || 'N/A',
+            phone: 'N/A',
+            user_id: r.user_id,
+            status: 'órfão',
+            created_at: profile.created_at,
+            is_orphan: true
+          } : null;
+        })
+        .filter(Boolean);
+
+      // 3. MERGE: Real clients + Orphans
+      const realClients = (clientRecords || []).map(c => ({
+        id: c.id,
+        client_id: c.id,
+        name: c.name,
+        email: c.email || 'N/A',
+        phone: c.phone || 'N/A',
+        user_id: c.user_id,
+        status: c.status,
+        created_at: c.created_at,
+        is_orphan: false
+      }));
+
+      const allClients = [...realClients, ...orphanUsers];
+      setClients(allClients);
+
+      const activeCount = realClients.filter(c => c.status === 'active').length;
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const newCount = data?.filter(c => new Date(c.created_at) > thirtyDaysAgo).length || 0;
+      const newCount = realClients.filter(c => new Date(c.created_at) > thirtyDaysAgo).length;
 
-      console.log(`Clientes carregados: ${data?.length}, Ativos: ${activeCount}`);
+      console.log(`Clientes: ${realClients.length}, Órfãos: ${orphanUsers.length}, Total: ${allClients.length}`);
 
-      // Fetch monthly revenue from payments
+      // Stats fetching
       const startOfMonth = new Date();
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
-      const { data: payments, error: payError } = await supabase
+      const { data: payments } = await supabase
         .from('payments')
         .select('amount')
         .gte('created_at', startOfMonth.toISOString());
 
       let totalRevenue = 0;
-      if (!payError && payments) {
+      if (payments) {
         totalRevenue = payments.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
       }
 
-      // Fetch engagement (clients with active loans)
-      const { count: activeLoans, error: loanError } = await supabase
+      const { count: activeLoans } = await supabase
         .from('loans')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
 
-      const engagementRate = (data && data.length > 0)
-        ? Math.min(Math.round(((activeLoans || 0) / data.length) * 100), 100)
+      const engagementRate = (realClients.length > 0)
+        ? Math.min(Math.round(((activeLoans || 0) / realClients.length) * 100), 100)
         : 0;
 
       const formattedRevenue = new Intl.NumberFormat('pt-MZ', {
@@ -116,7 +163,7 @@ const AdminDashboard = () => {
 
     } catch (error: any) {
       console.error("Erro no loadClients:", error);
-      toast({ title: "Erro", description: "Falha ao atualizar estatísticas: " + error.message, variant: "destructive" });
+      toast({ title: "Erro", description: "Falha ao carregar clientes: " + error.message, variant: "destructive" });
     } finally {
       setLoadingClients(false);
     }
@@ -129,15 +176,41 @@ const AdminDashboard = () => {
     }
 
     try {
-      const { error } = await supabase.rpc('delete_clients_bulk', {
-        client_ids: selectedClients
-      });
+      // Separate real clients (have client_id) from orphans (only have user_id)
+      const selectedData = clients.filter(c => selectedClients.includes(c.id));
+      const realClientIds = selectedData.filter(c => c.client_id && !c.is_orphan).map(c => c.client_id);
+      const orphanUserIds = selectedData.filter(c => c.is_orphan).map(c => c.user_id);
 
-      if (error) throw error;
+      console.log("Excluindo - Clientes reais:", realClientIds, "Órfãos:", orphanUserIds);
+
+      // 1. Delete real clients using the EXISTING RPC
+      if (realClientIds.length > 0) {
+        const { error } = await supabase.rpc('delete_clients_bulk', {
+          client_ids: realClientIds
+        });
+        if (error) {
+          console.error("Erro RPC delete_clients_bulk:", error);
+          throw new Error("Falha ao excluir clientes: " + (error.message || error.details));
+        }
+      }
+
+      // 2. Delete orphans directly (no client record to cascade from)
+      if (orphanUserIds.length > 0) {
+        // Delete their credit requests
+        await supabase.from('credit_requests').delete().in('user_id', orphanUserIds);
+        // Delete their chat messages
+        await supabase.from('chat_messages').delete().in('sender_id', orphanUserIds);
+        await supabase.from('chat_messages').delete().in('receiver_id', orphanUserIds);
+        // Delete their notifications
+        await supabase.from('notifications').delete().in('user_id', orphanUserIds);
+        // Delete profiles and roles
+        await supabase.from('user_roles').delete().in('user_id', orphanUserIds);
+        await supabase.from('profiles').delete().in('id', orphanUserIds);
+      }
 
       toast({
         title: "Dados Apagados",
-        description: `${selectedClients.length} registos removidos com sucesso.`,
+        description: `${selectedClients.length} cliente(s) removidos com sucesso.`,
       });
       setSelectedClients([]);
       setDeleteConfirmText('');
@@ -145,8 +218,8 @@ const AdminDashboard = () => {
     } catch (error: any) {
       console.error("Erro na exclusão:", error);
       toast({
-        title: "Erro Crítico",
-        description: "Falha na base de dados: " + (error.details || error.message || "Contacte o suporte"),
+        title: "Erro na Exclusão",
+        description: error.message || "Falha na base de dados.",
         variant: "destructive"
       });
     }
@@ -338,7 +411,7 @@ const AdminDashboard = () => {
                           </TableCell>
                           <TableCell className="font-medium">
                             {client.name}
-                            <div className="text-xs text-muted-foreground">{client.user_id || 'Sem Usuário'}</div>
+                            <div className="text-xs text-muted-foreground font-mono">{client.id}</div>
                           </TableCell>
                           <TableCell>
                             <div className="text-sm">{client.email || 'N/A'}</div>

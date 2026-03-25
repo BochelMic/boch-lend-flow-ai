@@ -34,6 +34,28 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
   const [customAmortizations, setCustomAmortizations] = useState<number[]>([]);
   const [result, setResult] = useState<SimulationResult | null>(null);
 
+  const SIMULATOR_STORAGE_KEY = 'bochel_simulator_draft';
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(SIMULATOR_STORAGE_KEY);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.amount) setAmount(data.amount);
+        if (data.days) setDays(data.days);
+        if (data.isInstallment !== undefined) setIsInstallment(data.isInstallment);
+        if (data.installmentMonths) setInstallmentMonths(data.installmentMonths);
+        if (data.frequency) setFrequency(data.frequency);
+        if (data.customAmortizations) setCustomAmortizations(data.customAmortizations);
+      } catch (e) {
+        console.error('Error loading simulator draft:', e);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
   // Sync frequency with option
   useEffect(() => {
     const numAmount = Number(amount);
@@ -47,7 +69,19 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
   // Auto-calculate simulation whenever inputs change
   useEffect(() => {
     handleSimulate();
-  }, [amount, days, isInstallment, installmentMonths, frequency, customAmortizations]);
+    // Save to localStorage whenever inputs change
+    if (isLoaded) {
+      const data = {
+        amount,
+        days,
+        isInstallment,
+        installmentMonths,
+        frequency,
+        customAmortizations
+      };
+      localStorage.setItem(SIMULATOR_STORAGE_KEY, JSON.stringify(data));
+    }
+  }, [amount, days, isInstallment, installmentMonths, frequency, customAmortizations, isLoaded]);
 
   const maxInstallments = getInstallmentLimits(Number(amount));
 
@@ -121,6 +155,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
     setFrequency('monthly');
     setCustomAmortizations([]);
     setResult(null);
+    localStorage.removeItem(SIMULATOR_STORAGE_KEY);
   };
 
   return (

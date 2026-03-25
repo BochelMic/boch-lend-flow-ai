@@ -8,6 +8,7 @@ interface User {
     role: 'gestor' | 'agente' | 'cliente';
     permissions: string[];
     avatar_url?: string | null;
+    empresa_id?: string | null;
 }
 
 const rolePermissions: Record<string, string[]> = {
@@ -39,7 +40,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const setUserFromSession = (authUser: any, role: 'gestor' | 'agente' | 'cliente', name?: string, avatar_url?: string | null) => {
+    const setUserFromSession = (
+        authUser: any,
+        role: 'gestor' | 'agente' | 'cliente',
+        name?: string,
+        avatar_url?: string | null,
+        empresa_id?: string | null
+    ) => {
         setUser({
             id: authUser.id,
             name: name || authUser.user_metadata?.name || authUser.email || '',
@@ -47,6 +54,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             role,
             permissions: rolePermissions[role] || [],
             avatar_url: avatar_url || null,
+            empresa_id: empresa_id || authUser.user_metadata?.empresa_id || null,
         });
         setIsAuthenticated(true);
         setLoading(false);
@@ -63,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             const rolePromise = supabase
                 .from('user_roles')
-                .select('role')
+                .select('role, empresa_id')
                 .eq('user_id', authUser.id)
                 .maybeSingle();
 
@@ -80,8 +88,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const role = (roleData?.role || authUser.user_metadata?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
             const name = profile?.name || authUser.user_metadata?.name || authUser.email || '';
             const avatar = profile?.avatar_url || null;
+            const empresaId = roleData?.empresa_id || authUser.user_metadata?.empresa_id || null;
 
-            setUserFromSession(authUser, role, name, avatar);
+            setUserFromSession(authUser, role, name, avatar, empresaId);
         } catch (error) {
             console.error("Error loading profile, using session metadata:", error);
             // Fallback: use metadata from the auth session itself

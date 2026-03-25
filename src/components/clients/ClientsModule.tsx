@@ -88,7 +88,8 @@ const ClientsModule = () => {
             name: formData.name,
             role: 'cliente',
             agent_id: user?.id,
-            phone: formData.phone || null
+            phone: formData.phone || null,
+            empresa_id: user?.empresa_id
           }
         });
 

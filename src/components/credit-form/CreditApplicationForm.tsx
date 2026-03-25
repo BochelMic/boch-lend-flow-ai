@@ -209,7 +209,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
   const [hasExistingData, setHasExistingData] = useState(false);
   const [isSimplifiedForm, setIsSimplifiedForm] = useState(false);
 
-  // Form data with localStorage persistence
+  // Form data with localStorage + Cloud persistence
   const [form, setForm] = useState(() => {
     let baseState = initialFormState;
     if (typeof window !== 'undefined') {
@@ -224,8 +224,8 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
       }
     }
 
-    // Override with initialData from simulation / navigation if available
-    if (initialData) {
+    // Override with initialData from simulation if it contains ACTUAL new data (not just defaults)
+    if (initialData && (initialData.amount || initialData.option)) {
       return {
         ...baseState,
         fullName: initialData.fullName || baseState.fullName,
@@ -288,11 +288,24 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
   useEffect(() => {
     try {
       localStorage.setItem('bochel_credit_form_data', JSON.stringify(form));
+
+      // Auto-save to Supabase if logged in
+      if (user?.id && !isPublicAccess) {
+        const saveDraftToCloud = async () => {
+          await supabase
+            .from('profiles')
+            .update({ draft_data: form })
+            .eq('id', user.id);
+        };
+
+        // Debounce cloud save to avoid excessive API calls
+        const timer = setTimeout(saveDraftToCloud, 2000);
+        return () => clearTimeout(timer);
+      }
     } catch (e) {
-      // Might fail if storage is full or restricted
       console.warn("Could not save form data:", e);
     }
-  }, [form]);
+  }, [form, user?.id, isPublicAccess]);
 
   // Save current step to localStorage on changes
   useEffect(() => {
@@ -305,7 +318,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Check existing credit requests on mount (only once)
+  // Check existing credit requests and load Cloud Draft on mount
   useEffect(() => {
     if (!user?.id || isPublicAccess) {
       setCheckingStatus(false);
@@ -314,7 +327,36 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
     // Only run once — prevents re-check on TOKEN_REFRESHED events
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
-    checkUserStatus();
+
+    const initializeData = async () => {
+      await checkUserStatus();
+
+      // Try to load Cloud Draft if localStorage is empty or outdated
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('draft_data')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.draft_data) {
+          const cloudDraft = profile.draft_data as any;
+          // Only use cloud draft if it's more complete or local is empty
+          const localSaved = localStorage.getItem('bochel_credit_form_data');
+          if (!localSaved) {
+            setForm(prev => ({ ...prev, ...cloudDraft }));
+            toast({
+              title: "Progresso Recuperado",
+              description: "Continuamos de onde você parou no seu último acesso.",
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Error loading cloud draft:", e);
+      }
+    };
+
+    initializeData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
@@ -799,9 +841,17 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
 
       if (lastError) throw lastError;
 
-      // Clear localStorage after successful submission
+      // Clear localStorage and Cloud Draft after successful submission
       localStorage.removeItem('bochel_credit_form_data');
       localStorage.removeItem('bochel_credit_form_step');
+      localStorage.removeItem('bochel_simulator_draft');
+
+      if (user?.id) {
+        supabase.from('profiles').update({ draft_data: null }).eq('id', user.id)
+          .then(({ error }) => {
+            if (error) console.warn("Could not clear cloud draft:", error.message);
+          });
+      }
 
       // 4. Send notifications using the new helper
       try {

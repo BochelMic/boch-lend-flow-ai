@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Users, 
-  UserPlus, 
-  Shield, 
-  UserCheck, 
+import {
+  Users,
+  UserPlus,
+  Shield,
+  UserCheck,
   User,
   Trash2,
   Edit,
@@ -82,7 +82,7 @@ const UserManagementModule = () => {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('user_id, name, email');
-    
+
     if (!profiles) return;
 
     const { data: roles } = await supabase
@@ -90,7 +90,7 @@ const UserManagementModule = () => {
       .select('user_id, role');
 
     const roleMap = new Map((roles || []).map((r: any) => [r.user_id, r.role]));
-    
+
     const usersWithRoles: SystemUser[] = profiles.map((p: any) => ({
       id: p.user_id,
       name: p.name,
@@ -126,6 +126,7 @@ const UserManagementModule = () => {
         email: newUser.email.trim(),
         password: newUser.password,
         role: newUser.role,
+        empresa_id: currentUser?.empresa_id
       },
     });
 
@@ -163,7 +164,7 @@ const UserManagementModule = () => {
     // Delete profile and role (auth user remains but has no profile/role)
     await supabase.from('user_roles').delete().eq('user_id', userId);
     await supabase.from('profiles').delete().eq('user_id', userId);
-    
+
     toast({
       title: "Usuário Excluído",
       description: `${userName} foi removido do sistema.`,
@@ -198,8 +199,8 @@ const UserManagementModule = () => {
     }
   };
 
-  const filteredUsers = filter === 'all' 
-    ? users 
+  const filteredUsers = filter === 'all'
+    ? users
     : users.filter(u => u.role === filter);
 
   const stats = {
@@ -219,7 +220,7 @@ const UserManagementModule = () => {
             Cadastrar e gerenciar usuários do sistema
           </p>
         </div>
-        
+
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="h-8 md:h-9">
@@ -239,7 +240,7 @@ const UserManagementModule = () => {
                 <Label className="text-xs">Nome Completo *</Label>
                 <Input
                   value={newUser.name}
-                  onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                   placeholder="Nome do usuário"
                   className="h-9 text-sm"
                 />
@@ -249,16 +250,16 @@ const UserManagementModule = () => {
                 <Input
                   type="email"
                   value={newUser.email}
-                  onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                   placeholder="email@exemplo.com"
                   className="h-9 text-sm"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Tipo de Usuário *</Label>
-                <Select 
-                  value={newUser.role} 
-                  onValueChange={(value: 'gestor' | 'agente' | 'cliente') => setNewUser({...newUser, role: value})}
+                <Select
+                  value={newUser.role}
+                  onValueChange={(value: 'gestor' | 'agente' | 'cliente') => setNewUser({ ...newUser, role: value })}
                 >
                   <SelectTrigger className="h-9 text-sm">
                     <SelectValue />
@@ -291,7 +292,7 @@ const UserManagementModule = () => {
                   <Input
                     type={showPassword ? "text" : "password"}
                     value={newUser.password}
-                    onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                     placeholder="Mínimo 6 caracteres"
                     className="h-9 text-sm pr-9"
                   />
@@ -394,8 +395,8 @@ const UserManagementModule = () => {
           ) : (
             <div className="space-y-2">
               {filteredUsers.map((user) => (
-                <div 
-                  key={user.id} 
+                <div
+                  key={user.id}
                   className="flex items-center justify-between p-2 md:p-3 border rounded-lg hover:bg-muted/30 transition-colors"
                 >
                   <div className="flex items-center gap-2 md:gap-3 min-w-0 flex-1">
@@ -405,8 +406,8 @@ const UserManagementModule = () => {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-xs md:text-sm font-medium truncate">{user.name}</p>
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className={`text-[10px] px-1.5 py-0 ${getRoleBadgeVariant(user.role)}`}
                         >
                           {getRoleLabel(user.role)}
@@ -417,7 +418,7 @@ const UserManagementModule = () => {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {user.id !== currentUser?.id && (
                       <AlertDialog>
@@ -430,13 +431,13 @@ const UserManagementModule = () => {
                           <AlertDialogHeader>
                             <AlertDialogTitle className="text-base">Excluir Usuário</AlertDialogTitle>
                             <AlertDialogDescription className="text-xs">
-                              Tem certeza que deseja excluir <strong>{user.name}</strong>? 
+                              Tem certeza que deseja excluir <strong>{user.name}</strong>?
                               Esta ação não pode ser desfeita.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel className="h-8 text-xs">Cancelar</AlertDialogCancel>
-                            <AlertDialogAction 
+                            <AlertDialogAction
                               className="h-8 text-xs bg-destructive hover:bg-destructive/90"
                               onClick={() => handleDeleteUser(user.id, user.name)}
                             >

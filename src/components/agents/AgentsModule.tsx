@@ -130,34 +130,20 @@ const AgentsModule = () => {
     }
 
     try {
-      // Register through Supabase auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: newAgent.email,
-        password: newAgent.password,
-        options: {
-          data: {
-            name: newAgent.name,
-            role: 'agente'
-          }
+      // Create user via Edge Function (Standardized way)
+      const { data, error: funcError } = await supabase.functions.invoke('create-user', {
+        body: {
+          name: newAgent.name,
+          email: newAgent.email,
+          password: newAgent.password,
+          role: 'agente',
+          phone: newAgent.phone,
+          empresa_id: user?.empresa_id
         }
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Create profile
-        await supabase.from('profiles').insert({
-          user_id: authData.user.id,
-          name: newAgent.name,
-          email: newAgent.email,
-        });
-
-        // Create role
-        await supabase.from('user_roles').insert({
-          user_id: authData.user.id,
-          role: 'agente',
-        });
-      }
+      if (funcError) throw funcError;
+      if (data && data.success === false) throw new Error(data.error);
 
       toast({
         title: "Sucesso",
