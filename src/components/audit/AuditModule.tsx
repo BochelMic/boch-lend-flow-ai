@@ -112,7 +112,7 @@ const AuditModule = () => {
         </TabsList>
 
         <TabsContent value="dashboard" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             <Card>
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -169,7 +169,7 @@ const AuditModule = () => {
                 <CardDescription>Últimas ações registradas no sistema</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {auditLogs.slice(0, 5).map((log) => (
                     <div key={log.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div className="flex items-center space-x-3">
@@ -228,7 +228,7 @@ const AuditModule = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div>
                     <Label htmlFor="filterUser">Usuário</Label>
                     <Select onValueChange={(value) => setFilters({...filters, user: value})}>
@@ -288,28 +288,30 @@ const AuditModule = () => {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <div className="grid grid-cols-6 gap-4 p-3 bg-gray-50 rounded font-medium">
-                    <span>Usuário</span>
-                    <span>Ação</span>
-                    <span>Detalhes</span>
-                    <span>Data/Hora</span>
-                    <span>IP</span>
-                    <span>Status</span>
-                  </div>
-                  {auditLogs.map((log) => (
-                    <div key={log.id} className="grid grid-cols-6 gap-4 p-3 border-b items-center">
-                      <span className="font-medium">{log.user}</span>
-                      <span>{log.action}</span>
-                      <span className="text-sm text-gray-600">{log.details}</span>
-                      <span className="text-sm">{log.timestamp}</span>
-                      <span className="text-sm font-mono">{log.ip}</span>
-                      <div className="flex items-center space-x-2">
-                        {getStatusIcon(log.status)}
-                        <span className="text-sm">{log.status}</span>
-                      </div>
+                <div className="overflow-x-auto border rounded-md">
+                  <div className="min-w-[800px] space-y-2 p-1">
+                    <div className="grid grid-cols-6 gap-4 p-3 bg-gray-50 rounded font-medium">
+                      <span>Usuário</span>
+                      <span>Ação</span>
+                      <span>Detalhes</span>
+                      <span>Data/Hora</span>
+                      <span>IP</span>
+                      <span>Status</span>
                     </div>
-                  ))}
+                    {auditLogs.map((log) => (
+                      <div key={log.id} className="grid grid-cols-6 gap-4 p-3 border-b items-center hover:bg-gray-50 transition-colors">
+                        <span className="font-medium">{log.user}</span>
+                        <span>{log.action}</span>
+                        <span className="text-sm text-gray-600">{log.details}</span>
+                        <span className="text-sm">{log.timestamp}</span>
+                        <span className="text-sm font-mono">{log.ip}</span>
+                        <div className="flex items-center space-x-2">
+                          {getStatusIcon(log.status)}
+                          <span className="text-sm">{log.status}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </CardContent>

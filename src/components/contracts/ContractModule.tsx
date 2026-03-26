@@ -1060,18 +1060,28 @@ const ContractModule = () => {
     // Contract list view
     return (
         <div className="container mx-auto p-4 md:p-6 space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Contratos</h1>
-                    <p className="text-sm text-muted-foreground">
-                        {isAdmin ? 'Gerencie contratos de crédito' : 'Seus contratos de crédito'}
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#1a3a5c]">Gestão de Contratos</h1>
+                    <p className="text-muted-foreground text-sm md:text-base">
+                        Visualize, assine e gerencie os contratos de microcrédito
                     </p>
                 </div>
+                {!isAdmin && pendingRequestsCount > 0 && (
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <p className="text-sm text-muted-foreground text-center sm:text-left">
+                            Ainda não tem um contrato? Solicite um novo crédito.
+                        </p>
+                        <Button onClick={() => navigate('/credit-request')} className="bg-[#d37c22] hover:bg-[#b0661a] text-white w-full sm:w-auto">
+                            Solicitar Novo Crédito
+                        </Button>
+                    </div>
+                )}
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-3">
-                <Card className="border-0 shadow-sm">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 gap-4">
+                <Card className="bg-white border-0 shadow-md">
                     <CardContent className="p-4 text-center">
                         <p className="text-xs text-amber-600">Pendentes</p>
                         <p className="text-2xl font-bold text-amber-600">{contracts.filter(c => c.status === 'pending').length}</p>
@@ -1089,6 +1099,14 @@ const ContractModule = () => {
                         <p className="text-2xl font-bold text-blue-600">{contracts.filter(c => c.status === 'completed').length}</p>
                     </CardContent>
                 </Card>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <CardTitle className="text-[#1a3a5c]">Lista de Contratos</CardTitle>
+                <div className="relative w-full sm:max-w-xs">
+                    <FileText className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input placeholder="Pesquisar contrato..." className="pl-10 h-10" />
+                </div>
             </div>
 
             {loading ? (

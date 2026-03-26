@@ -23,11 +23,11 @@ import {
   ArrowRight
 } from 'lucide-react';
 import MetricCard from './MetricCard';
-import CashFlowChart from './CashFlowChart';
 import RiskAnalysis from './RiskAnalysis';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import WalletInjectionModal from '../admin/WalletInjectionModal';
+import AuditModule from '../components/audit/AuditModule';
 import { Button } from '../ui/button';
 
 const Dashboard = () => {
@@ -412,22 +412,7 @@ const Dashboard = () => {
 
 
       {/* Gráficos e análises */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <Card>
-          <CardHeader className="p-4 md:p-6">
-            <CardTitle className="flex items-center text-base md:text-lg">
-              <PieChart className="mr-2 h-4 w-4 md:h-5 md:w-5" />
-              Fluxo de Caixa
-            </CardTitle>
-            <CardDescription className="text-xs md:text-sm">
-              Movimentações dos últimos 6 meses
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-3 md:p-6 pt-0">
-            <CashFlowChart />
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 gap-4 md:gap-6">
         <Card>
           <CardHeader className="p-4 md:p-6">
             <CardTitle className="flex items-center text-base md:text-lg">

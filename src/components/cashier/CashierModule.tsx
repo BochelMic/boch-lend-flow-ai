@@ -48,14 +48,14 @@ const CashierModule = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Caixa e Tesouraria</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Caixa e Tesouraria</h1>
+          <p className="text-muted-foreground text-sm md:text-base">
             Controle o fluxo de caixa e movimentações financeiras
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline">
             <FileText className="mr-2 h-4 w-4" />
             Fecho de Caixa
@@ -67,7 +67,7 @@ const CashierModule = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2">
@@ -127,12 +127,12 @@ const CashierModule = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Movimentações do Dia</CardTitle>
-                <Input 
-                  type="date" 
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-48"
-                />
+                  <Input 
+                    type="date" 
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                    className="w-full sm:w-48 mt-2 sm:mt-0"
+                  />
               </div>
               <CardDescription>
                 Histórico de todas as movimentações financeiras
@@ -183,7 +183,7 @@ const CashierModule = () => {
             </CardHeader>
             <CardContent>
               <form className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="receipt-type">Tipo de Entrada</Label>
                     <Select>
@@ -220,7 +220,7 @@ const CashierModule = () => {
                     <Label htmlFor="receipt-date">Data</Label>
                     <Input id="receipt-date" type="date" />
                   </div>
-                  <div className="col-span-2 space-y-2">
+                  <div className="col-span-1 sm:col-span-2 space-y-2">
                     <Label htmlFor="receipt-description">Descrição</Label>
                     <Input id="receipt-description" placeholder="Descrição da entrada" />
                   </div>
@@ -243,7 +243,7 @@ const CashierModule = () => {
             </CardHeader>
             <CardContent>
               <form className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="disbursement-type">Tipo de Saída</Label>
                     <Select>
@@ -280,7 +280,7 @@ const CashierModule = () => {
                     <Label htmlFor="disbursement-date">Data</Label>
                     <Input id="disbursement-date" type="date" />
                   </div>
-                  <div className="col-span-2 space-y-2">
+                  <div className="col-span-1 sm:col-span-2 space-y-2">
                     <Label htmlFor="disbursement-description">Descrição</Label>
                     <Input id="disbursement-description" placeholder="Descrição da saída" />
                   </div>
@@ -303,7 +303,7 @@ const CashierModule = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Período do Fecho</Label>
                     <Select>
@@ -325,7 +325,7 @@ const CashierModule = () => {
 
                 <div className="border-t pt-4">
                   <h3 className="font-semibold mb-4">Resumo do Período</h3>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span>Saldo Inicial:</span>

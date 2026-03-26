@@ -74,7 +74,6 @@ const GestorApp = () => {
         <Route path="/settings/*" element={<SettingsModule />} />
         <Route path="/credit-form/*" element={<CreditFormModule />} />
         <Route path="/subsistemas/*" element={<SubsystemsControl />} />
-        <Route path="/cashflow/*" element={<CashFlowModule />} />
         <Route path="/notifications/*" element={<NotificationsModule />} />
         <Route path="/chat/*" element={<ChatModule />} />
         <Route path="/contratos/*" element={<ContractModule />} />
