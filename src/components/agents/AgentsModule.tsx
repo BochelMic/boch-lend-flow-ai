@@ -1,15 +1,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { UserCheck, Plus, Target, DollarSign, TrendingUp, MapPin, Lock } from 'lucide-react';
+import { UserCheck, Plus, Target, DollarSign, TrendingUp, Trash2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +17,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 interface Agent {
   id: string;
@@ -38,6 +48,8 @@ const AgentsModule = () => {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [newAgent, setNewAgent] = useState({
     name: '',
     email: '',
@@ -163,6 +175,53 @@ const AgentsModule = () => {
     }
   };
 
+  const handleDeleteAgents = async () => {
+    if (deleteConfirmText !== 'ELIMINAR') {
+      toast({ title: "Erro", description: "Por favor, digite 'ELIMINAR' para confirmar.", variant: "destructive" });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.rpc('delete_agents_bulk', {
+        agent_user_ids: selectedAgents
+      });
+
+      if (error) {
+        console.error('Erro RPC delete_agents_bulk:', error);
+        throw new Error(error.message || 'Falha ao eliminar agentes.');
+      }
+
+      const deletedNames = agents
+        .filter(a => selectedAgents.includes(a.id))
+        .map(a => a.name)
+        .join(', ');
+
+      toast({
+        title: "Agentes Eliminados",
+        description: `${selectedAgents.length} agente(s) removidos: ${deletedNames}. Os clientes foram transferidos para a gestão directa.`,
+      });
+
+      setSelectedAgents([]);
+      setDeleteConfirmText('');
+      loadAgents();
+    } catch (error: any) {
+      console.error('Erro na exclusão de agentes:', error);
+      toast({
+        title: "Erro na Exclusão",
+        description: error.message || "Falha na base de dados.",
+        variant: "destructive"
+      });
+    }
+  };
+
+
+
+  const toggleAgentSelection = (id: string) => {
+    setSelectedAgents(prev =>
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
   const getPerformanceColor = (performance: number) => {
     if (performance >= 90) return 'text-green-600';
     if (performance >= 75) return 'text-yellow-600';
@@ -281,9 +340,67 @@ const AgentsModule = () => {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Agentes Cadastrados</CardTitle>
-          <CardDescription>Lista completa dos agentes de campo</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <div>
+            <CardTitle>Agentes Cadastrados</CardTitle>
+            <CardDescription>Lista completa dos agentes de campo</CardDescription>
+          </div>
+          <div className="flex space-x-2">
+            <Button variant="outline" size="sm" onClick={() => { setLoading(true); loadAgents(); }} disabled={loading}>
+              <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+
+            {selectedAgents.length > 0 && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Eliminar Selecionados ({selectedAgents.length})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5" /> Atenção: Ação Irreversível
+                    </AlertDialogTitle>
+                    <AlertDialogDescription asChild>
+                      <div>
+                        <p>
+                          Isto irá eliminar permanentemente <strong>{selectedAgents.length}</strong> agente(s) selecionado(s) e os seus dados de conta (perfil, sessões, notificações).
+                        </p>
+                        <div className="mt-3 p-3 bg-amber-50 rounded-md border border-amber-100">
+                          <p className="text-sm font-semibold text-amber-900 mb-1">⚠️ O que acontece aos clientes:</p>
+                          <p className="text-sm text-amber-800">
+                            Os clientes criados por estes agentes <strong>NÃO serão apagados</strong>. Serão transferidos para a gestão directa do gestor. Empréstimos, pagamentos e contratos permanecem intactos.
+                          </p>
+                        </div>
+                        <div className="mt-4 p-4 bg-red-50 rounded-md border border-red-100">
+                          <p className="text-sm font-semibold text-red-900 mb-2">Para confirmar, digite ELIMINAR abaixo:</p>
+                          <Input
+                            placeholder="ELIMINAR"
+                            value={deleteConfirmText}
+                            onChange={(e) => setDeleteConfirmText(e.target.value)}
+                            className="bg-white border-red-200"
+                          />
+                        </div>
+                      </div>
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => setDeleteConfirmText('')}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleDeleteAgents}
+                      className="bg-red-600 hover:bg-red-700"
+                      disabled={deleteConfirmText !== 'ELIMINAR'}
+                    >
+                      Confirmar Exclusão
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -296,11 +413,22 @@ const AgentsModule = () => {
               </div>
             ) : (
               agents.map((agent) => (
-                <div key={agent.id} className="border rounded-lg p-4 space-y-3">
+                <div
+                  key={agent.id}
+                  className={`border rounded-lg p-4 space-y-3 transition-colors ${
+                    selectedAgents.includes(agent.id) ? 'border-red-300 bg-red-50/50' : ''
+                  }`}
+                >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold">{agent.name}</h3>
-                      <p className="text-sm text-muted-foreground">{agent.email}</p>
+                    <div className="flex items-center gap-3">
+                      <Checkbox
+                        checked={selectedAgents.includes(agent.id)}
+                        onCheckedChange={() => toggleAgentSelection(agent.id)}
+                      />
+                      <div>
+                        <h3 className="font-semibold">{agent.name}</h3>
+                        <p className="text-sm text-muted-foreground">{agent.email}</p>
+                      </div>
                     </div>
                     <p className={`text-sm font-medium ${getPerformanceColor(agent.performance)}`}>
                       Performance: {agent.performance}%

@@ -452,6 +452,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_agents_bulk: {
+        Args: { agent_user_ids: string[] }
+        Returns: Json
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
