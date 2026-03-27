@@ -21,6 +21,7 @@ interface AuthContextType {
     isAuthenticated: boolean;
     user: User | null;
     loading: boolean;
+    connectionError: boolean;
     login: (email: string, password: string) => Promise<{ success: boolean; message: string }>;
     loginWithRoleValidation: (email: string, password: string, expectedRole: 'gestor' | 'agente' | 'cliente') => Promise<{ success: boolean; message: string }>;
     register: (data: { name: string; email: string; password: string; role: 'gestor' | 'agente' | 'cliente' }) => Promise<{ success: boolean; message: string }>;
@@ -39,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
+    const [connectionError, setConnectionError] = useState(false);
 
     const setUserFromSession = (
         authUser: any,
@@ -78,6 +80,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const profileResult = await withTimeout(profilePromise, 4000) as { data: { name: string; email: string } | null } | null;
             const roleResult = await withTimeout(rolePromise, 4000) as { data: { role: string } | null } | null;
 
+            // If both returned null, it's likely a network timeout
+            if (!profileResult && !roleResult) {
+                setConnectionError(true);
+            } else {
+                setConnectionError(false);
+            }
+
             const profile = profileResult?.data;
             const roleData = roleResult?.data;
 
@@ -111,10 +120,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const safetyTimeout = setTimeout(() => {
             if (mounted && !resolved) {
                 console.warn('Auth initialization timed out, proceeding without auth.');
+                setConnectionError(true);
                 setLoading(false);
                 resolved = true;
             }
         }, 8000);
+
+        // Auto-retry when connectivity returns
+        const handleOnline = () => {
+            if (connectionError || !isAuthenticated) {
+                console.log('[Auth] Connectivity restored, retrying...');
+                setConnectionError(false);
+                initializeSession();
+            }
+        };
 
         const initializeSession = async () => {
             try {
@@ -140,6 +159,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         initializeSession();
 
+        window.addEventListener('online', handleOnline);
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
             if (event === 'INITIAL_SESSION') return;
 
@@ -161,6 +182,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return () => {
             mounted = false;
             clearTimeout(safetyTimeout);
+            window.removeEventListener('online', handleOnline);
             subscription.unsubscribe();
         };
     }, []);
@@ -249,6 +271,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         isAuthenticated,
         user,
         loading,
+        connectionError,
         login,
         loginWithRoleValidation,
         register,
