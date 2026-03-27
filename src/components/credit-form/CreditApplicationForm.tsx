@@ -288,20 +288,6 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
   useEffect(() => {
     try {
       localStorage.setItem('bochel_credit_form_data', JSON.stringify(form));
-
-      // Auto-save to Supabase if logged in
-      if (user?.id && !isPublicAccess) {
-        const saveDraftToCloud = async () => {
-          await supabase
-            .from('profiles')
-            .update({ draft_data: form })
-            .eq('id', user.id);
-        };
-
-        // Debounce cloud save to avoid excessive API calls
-        const timer = setTimeout(saveDraftToCloud, 2000);
-        return () => clearTimeout(timer);
-      }
     } catch (e) {
       console.warn("Could not save form data:", e);
     }
@@ -330,30 +316,6 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
 
     const initializeData = async () => {
       await checkUserStatus();
-
-      // Try to load Cloud Draft if localStorage is empty or outdated
-      try {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('draft_data')
-          .eq('id', user.id)
-          .single();
-
-        if (profile?.draft_data) {
-          const cloudDraft = profile.draft_data as any;
-          // Only use cloud draft if it's more complete or local is empty
-          const localSaved = localStorage.getItem('bochel_credit_form_data');
-          if (!localSaved) {
-            setForm(prev => ({ ...prev, ...cloudDraft }));
-            toast({
-              title: "Progresso Recuperado",
-              description: "Continuamos de onde você parou no seu último acesso.",
-            });
-          }
-        }
-      } catch (e) {
-        console.warn("Error loading cloud draft:", e);
-      }
     };
 
     initializeData();
@@ -846,12 +808,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
       localStorage.removeItem('bochel_credit_form_step');
       localStorage.removeItem('bochel_simulator_draft');
 
-      if (user?.id) {
-        supabase.from('profiles').update({ draft_data: null }).eq('id', user.id)
-          .then(({ error }) => {
-            if (error) console.warn("Could not clear cloud draft:", error.message);
-          });
-      }
+
 
       // 4. Send notifications using the new helper
       try {

@@ -32,8 +32,8 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Helper: race a promise against a timeout
-const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T | null> =>
-    Promise.race([promise, new Promise<null>(resolve => setTimeout(() => resolve(null), ms))]);
+const withTimeout = <T,>(promise: PromiseLike<T>, ms: number): Promise<T | null> =>
+    Promise.race([Promise.resolve(promise), new Promise<null>(resolve => setTimeout(() => resolve(null), ms))]);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -65,21 +65,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Use individual timeouts on each query to prevent hanging
             const profilePromise = supabase
                 .from('profiles')
-                .select('name, email, avatar_url')
+                .select('name, email')
                 .eq('user_id', authUser.id)
                 .maybeSingle();
 
             const rolePromise = supabase
                 .from('user_roles')
-                .select('role, empresa_id')
+                .select('role')
                 .eq('user_id', authUser.id)
                 .maybeSingle();
 
-            // Race both queries against a 4s timeout
-            const [profileResult, roleResult] = await Promise.all([
-                withTimeout(profilePromise, 4000),
-                withTimeout(rolePromise, 4000),
-            ]);
+            const profileResult = await withTimeout(profilePromise, 4000) as { data: { name: string; email: string } | null } | null;
+            const roleResult = await withTimeout(rolePromise, 4000) as { data: { role: string } | null } | null;
 
             const profile = profileResult?.data;
             const roleData = roleResult?.data;
@@ -87,8 +84,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             // Determine role: from DB > from user_metadata > default
             const role = (roleData?.role || authUser.user_metadata?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
             const name = profile?.name || authUser.user_metadata?.name || authUser.email || '';
-            const avatar = profile?.avatar_url || null;
-            const empresaId = roleData?.empresa_id || authUser.user_metadata?.empresa_id || null;
+            const avatar = null;
+            const empresaId = authUser.user_metadata?.empresa_id || null;
 
             setUserFromSession(authUser, role, name, avatar, empresaId);
         } catch (error) {
@@ -193,9 +190,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             const roleResult = await withTimeout(
                 supabase.from('user_roles').select('role').eq('user_id', data.user.id).maybeSingle(),
                 5000
-            );
+            ) as { data: { role: string } | null } | null;
             userRole = roleResult?.data?.role;
-            console.log('[Auth] DB role query result:', roleResult?.data, 'role:', userRole);
         } catch (e) {
             console.warn('[Auth] Role query failed:', e);
         }

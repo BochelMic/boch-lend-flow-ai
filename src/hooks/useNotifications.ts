@@ -44,18 +44,15 @@ export function useNotifications(userId?: string) {
 
     // Heartbeat for PWA: refresh when user returns to app/tab
     const handleFocus = () => {
-      console.log('[Realtime] App focused, refreshing notifications...');
       refresh();
     };
 
     // Unlock audio on first interaction
     const unlockAudio = () => {
-      console.log('[Audio] User interacted, unlocking notification sounds...');
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioContextClass) {
         const tempCtx = new AudioContextClass();
         tempCtx.resume().then(() => {
-          console.log('[Audio] Context unlocked');
           tempCtx.close();
         });
       }
@@ -73,7 +70,6 @@ export function useNotifications(userId?: string) {
     // Use a unique suffix for this hook instance to allow multiple subscriptions (Header + MobileHeader)
     const instanceId = Math.random().toString(36).substring(7);
     const channelName = `notifs-live-${instanceId}`;
-    console.log(`[Realtime] Initializing channel: ${channelName} for user: ${userId}`);
 
     const channel = supabase
       .channel(channelName)
@@ -87,7 +83,6 @@ export function useNotifications(userId?: string) {
         (payload) => {
           const newNotif = payload.new as any;
           if (newNotif.user_id === userId) {
-            console.log('[Realtime] New notification matches current user!', newNotif);
             playNotificationSound();
             refresh();
           }
@@ -95,7 +90,7 @@ export function useNotifications(userId?: string) {
       )
       .subscribe((status, err) => {
         if (status === 'SUBSCRIBED') {
-          console.log(`[Realtime] ✅ Connected to ${channelName}`);
+          // Connected successfully
         }
         if (err) {
           console.error(`[Realtime] Subscription error for ${channelName}:`, err);
@@ -106,7 +101,6 @@ export function useNotifications(userId?: string) {
       });
 
     return () => {
-      console.log(`[Realtime] Cleaning up channel ${channelName}`);
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);

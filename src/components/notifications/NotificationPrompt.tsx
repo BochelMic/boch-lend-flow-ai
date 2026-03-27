@@ -102,7 +102,7 @@ export const NotificationPrompt = ({ userId }: { userId?: string }) => {
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogContent className="sm:max-w-md" hideCloseButton>
+            <DialogContent className="sm:max-w-md">
                 <div className="absolute right-4 top-4">
                     <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={handleDismiss}>
                         <X className="h-4 w-4" />
