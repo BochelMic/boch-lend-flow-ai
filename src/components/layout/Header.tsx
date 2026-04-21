@@ -3,7 +3,7 @@ import { Bell, User, LogOut, ChevronDown, MessageCircle, AlertTriangle, Check, T
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useClientAccess } from '../../hooks/useClientAccess';
 import { SidebarTrigger } from '../ui/sidebar';
@@ -291,3 +291,4 @@ const Header = () => {
 };
 
 export default Header;
+

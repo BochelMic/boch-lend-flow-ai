@@ -50,6 +50,7 @@ const AgentsModule = () => {
   const [loading, setLoading] = useState(true);
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [isCreatingAgent, setIsCreatingAgent] = useState(false);
   const [newAgent, setNewAgent] = useState({
     name: '',
     email: '',
@@ -141,6 +142,7 @@ const AgentsModule = () => {
       return;
     }
 
+    setIsCreatingAgent(true);
     try {
       // Create user via Edge Function (Standardized way)
       const { data, error: funcError } = await supabase.functions.invoke('create-user', {
@@ -172,6 +174,8 @@ const AgentsModule = () => {
         description: error.message || "Erro ao cadastrar agente.",
         variant: "destructive"
       });
+    } finally {
+      setIsCreatingAgent(false);
     }
   };
 
@@ -284,8 +288,15 @@ const AgentsModule = () => {
                   placeholder="Senha de acesso"
                 />
               </div>
-              <Button onClick={handleCreateAgent} className="w-full">
-                Cadastrar Agente
+              <Button onClick={handleCreateAgent} className="w-full" disabled={isCreatingAgent}>
+                {isCreatingAgent ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Cadastrando...
+                  </>
+                ) : (
+                  'Cadastrar Agente'
+                )}
               </Button>
             </div>
           </DialogContent>

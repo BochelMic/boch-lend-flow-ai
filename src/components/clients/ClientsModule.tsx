@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,11 +7,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Search, FileText, CreditCard, AlertCircle } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { Users, Plus, Search, FileText, CreditCard, AlertCircle, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { ClientProfileDialog } from '../profile/ClientProfileDialog';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Client {
   id: string;
@@ -27,24 +28,19 @@ interface Client {
 const ClientsModule = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('list');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '', password: ''
   });
 
-  useEffect(() => {
-    loadClients();
-  }, []);
-
-  const loadClients = async () => {
-    try {
+  const { data: clients = [], isLoading: isQueryLoading, refetch } = useQuery({
+    queryKey: ['clients', user?.role, user?.id],
+    queryFn: async () => {
       let query = supabase.from('clients').select('*').order('created_at', { ascending: false });
 
       // Agentes veem apenas seus clientes
@@ -54,14 +50,12 @@ const ClientsModule = () => {
 
       const { data, error } = await query;
       if (error) throw error;
-      setClients(data || []);
-    } catch (error) {
-      console.error('Error loading clients:', error);
-      toast({ title: 'Erro', description: 'Erro ao carregar clientes.', variant: 'destructive' });
-    } finally {
-      setLoading(false);
-    }
-  };
+      return data as Client[];
+    },
+    enabled: !!user,
+  });
+
+  const loading = isQueryLoading || isSubmitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,14 +63,14 @@ const ClientsModule = () => {
       toast({ title: 'Erro', description: 'Nome é obrigatório.', variant: 'destructive' });
       return;
     }
-    setLoading(true);
+    setIsSubmitting(true);
 
     try {
       // If user is agent, they must provide email and password to auto-create user auth
       if (user?.role === 'agente') {
         if (!formData.email || !formData.password) {
           toast({ title: 'Erro', description: 'Email e Senha são obrigatórios para registar o cliente no sistema.', variant: 'destructive' });
-          setLoading(false);
+          setIsSubmitting(false);
           return;
         }
 
@@ -98,25 +92,19 @@ const ClientsModule = () => {
           let detail = funcError.message;
           try {
             if (funcError.context && typeof funcError.context.text === 'function') {
-              const bodyText = await funcError.context.text();
-              try {
-                const bodyJson = JSON.parse(bodyText);
-                detail = bodyJson.error || bodyJson.message || bodyText;
-              } catch (e) {
-                detail = bodyText;
-              }
+              const text = await funcError.context.text();
+              console.error('Func error text:', text);
+              if (text.includes('already registered')) detail = 'Este email já está registado num utilizador.';
             }
-          } catch (e) { }
-          throw new Error(`Erro ao criar utilizador: ${detail}`);
+          } catch (e) {}
+          throw new Error(detail);
         }
 
-        if (funcData && funcData.success === false) {
-          console.error('[ClientsModule] Edge Function Logic Error:', funcData.error);
-          throw new Error(funcData.error || 'Erro desconhecido na criação do utilizador');
-        }
+        console.log('[ClientsModule] User successfully created via edge function:', funcData);
 
-        // 2. The database trigger has now created the 'clients' record.
-        // We use a secure RPC (Remote Procedure Call) to bypass RLS and link this client to the agent.
+        // 2. We MUST manually call link_agent_to_client RPC
+        // Because the 'create-user' edge function creates the auth user AND inserts into 'clients'
+        // But we want to explicitly make sure the agent is linked
         const { error: rpcError } = await supabase.rpc('link_agent_to_client', {
           p_client_email: formData.email,
           p_client_phone: formData.phone || null,
@@ -149,7 +137,7 @@ const ClientsModule = () => {
 
       setFormData({ name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '', password: '' });
       setActiveTab('list');
-      loadClients();
+      refetch();
     } catch (error: any) {
       console.error('Error creating client:', error);
       // Clean up common supabase errors
@@ -158,7 +146,7 @@ const ClientsModule = () => {
 
       toast({ title: 'Erro', description: msg, variant: 'destructive' });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -227,8 +215,22 @@ const ClientsModule = () => {
             <CardContent className="p-4 md:p-6 pt-0">
               <div className="space-y-3">
                 {loading ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>Carregando clientes...</p>
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div key={i} className="border border-border rounded-lg p-3 md:p-4 space-y-3">
+                        <div className="flex flex-col sm:flex-row justify-between gap-3">
+                          <div className="space-y-2 w-full max-w-sm">
+                            <Skeleton className="h-5 w-3/4" />
+                            <Skeleton className="h-4 w-1/2" />
+                            <Skeleton className="h-4 w-1/3" />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Skeleton className="h-9 w-24 rounded-md" />
+                            <Skeleton className="h-9 w-24 rounded-md" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : filteredClients.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
@@ -374,7 +376,14 @@ const ClientsModule = () => {
                   )}
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Processando...' : 'Cadastrar Cliente'}
+                  {loading ? (
+                    <>
+                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                      {user?.role === 'agente' ? 'Criando Utilizador e Cliente...' : 'Cadastrando...'}
+                    </>
+                  ) : (
+                    'Cadastrar Cliente'
+                  )}
                 </Button>
               </form>
             </CardContent>
@@ -386,3 +395,4 @@ const ClientsModule = () => {
 };
 
 export default ClientsModule;
+

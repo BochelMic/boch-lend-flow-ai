@@ -1,73 +1,50 @@
-# Welcome to your Lovable project
+# Bochel Microcrédito
 
-## Project info
+Sistema de gestão de microcrédito para Moçambique.
 
-**URL**: https://lovable.dev/projects/0a6e2f19-2697-4f15-a0c4-428a2e61560b
+## Tecnologias
 
-## How can I edit this code?
+- **Frontend:** React + TypeScript + Tailwind CSS + ShadCN UI
+- **Backend:** Supabase (PostgreSQL, Auth, Edge Functions, Realtime)
+- **PWA:** Service Worker com suporte offline e notificações push
 
-There are several ways of editing your application.
+## Desenvolvimento Local
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/0a6e2f19-2697-4f15-a0c4-428a2e61560b) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+npm install
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+O servidor de desenvolvimento inicia em `http://localhost:8080`.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+## Build de Produção
 
-**Use GitHub Codespaces**
+```bash
+npm run build
+npm run preview
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+## Variáveis de Ambiente
 
-## What technologies are used for this project?
+Crie um ficheiro `.env` na raiz:
 
-This project is built with:
+```
+VITE_SUPABASE_PROJECT_ID="<project_id>"
+VITE_SUPABASE_URL="https://<project_id>.supabase.co"
+VITE_SUPABASE_PUBLISHABLE_KEY="<anon_key>"
+VITE_VAPID_PUBLIC_KEY="<vapid_key>"
+```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Estrutura
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/0a6e2f19-2697-4f15-a0c4-428a2e61560b) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+```
+src/
+├── components/     # Componentes React (módulos do sistema)
+├── hooks/          # Custom hooks (auth, toast, etc.)
+├── integrations/   # Configuração Supabase
+├── pages/          # Páginas principais (GestorApp, AgentApp, ClientApp)
+└── lib/            # Utilitários
+supabase/
+├── functions/      # Edge Functions (create-user, delete-agents, send-notification)
+└── migrations/     # Migrações SQL
+```

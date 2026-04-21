@@ -74,6 +74,8 @@ const GestorDashboard = () => {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [isInjectionModalOpen, setIsInjectionModalOpen] = useState(false);
   const [interestGrowth, setInterestGrowth] = useState(0);
+  const [loadingWallet, setLoadingWallet] = useState(true);
+  const [dataError, setDataError] = useState(false);
 
   React.useEffect(() => {
     fetchWalletData();
@@ -81,6 +83,8 @@ const GestorDashboard = () => {
 
   const fetchWalletData = async () => {
     try {
+      setLoadingWallet(true);
+      setDataError(false);
       // Fetch balance
       const { data, error } = await supabase
         .from('company_wallet')
@@ -106,6 +110,9 @@ const GestorDashboard = () => {
       setInterestGrowth(totalGrowth * 0.23); // 23% is roughly the interest portion of 130% total
     } catch (error) {
       console.error('Error fetching wallet data:', error);
+      setDataError(true);
+    } finally {
+      setLoadingWallet(false);
     }
   };
 
@@ -135,6 +142,20 @@ const GestorDashboard = () => {
       </div>
 
       {/* Sistema de Carteira e Liquidez */}
+      {dataError && (
+        <div className="bg-warning/10 border-l-4 border-warning text-warning-foreground p-4 rounded-md shadow-sm mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-warning" />
+            <div>
+              <p className="font-bold text-sm">Falha ao carregar a carteira</p>
+              <p className="text-xs opacity-90">Houve um erro de conexão com a base de dados. O saldo não pôde ser verificado.</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={fetchWalletData} className="shrink-0 bg-white border-warning/30 hover:bg-warning/20">
+            Tentar Novamente
+          </Button>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="md:col-span-2 overflow-hidden border-0 shadow-large bg-white relative">
           <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full -mr-16 -mt-16 opacity-50" />
@@ -149,7 +170,8 @@ const GestorDashboard = () => {
                   <div className="flex items-center gap-3">
                     <h2 className="text-3xl font-black text-gray-900">
                       {showWalletBalance ? (
-                        walletBalance !== null ? `MZN ${walletBalance.toLocaleString()}` : <Loader2 className="h-7 w-7 animate-spin text-gray-300" />
+                        loadingWallet ? <Loader2 className="h-7 w-7 animate-spin text-gray-300" /> :
+                        walletBalance !== null ? `MZN ${walletBalance.toLocaleString()}` : 'N/A'
                       ) : (
                         '••••••••••••'
                       )}

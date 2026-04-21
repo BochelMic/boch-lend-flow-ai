@@ -53,6 +53,7 @@ const Dashboard = () => {
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [isInjectionModalOpen, setIsInjectionModalOpen] = useState(false);
   const [walletLedger, setWalletLedger] = useState<any[]>([]);
+  const [dataError, setDataError] = useState(false);
 
   useEffect(() => {
     loadStats();
@@ -61,15 +62,17 @@ const Dashboard = () => {
   const loadStats = async () => {
     try {
       // Clientes ativos
-      const { count: totalClients } = await supabase
+      const { count: totalClients, error: err1 } = await supabase
         .from('clients')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
+      if (err1) throw err1;
 
       // Empréstimos
-      const { data: loans } = await supabase
+      const { data: loans, error: err2 } = await supabase
         .from('loans')
         .select('amount, total_amount, remaining_amount, interest_rate, status');
+      if (err2) throw err2;
 
       const activeLoans = loans?.filter(l => l.status === 'active').length || 0;
       const pendingLoans = loans?.filter(l => l.status === 'pending').length || 0;
@@ -81,26 +84,30 @@ const Dashboard = () => {
       const defaultRate = loans && loans.length > 0 ? ((overdueLoans / loans.length) * 100) : 0;
 
       // Pagamentos
-      const { data: payments } = await supabase
+      const { data: payments, error: err3 } = await supabase
         .from('payments')
         .select('amount');
+      if (err3) throw err3;
       const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
       // Pedidos de crédito pendentes
-      const { count: creditRequests } = await supabase
+      const { count: creditRequests, error: err4 } = await supabase
         .from('credit_requests')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
+      if (err4) throw err4;
 
       // Notificações
-      const { count: notificationsSent } = await supabase
+      const { count: notificationsSent, error: err5 } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true });
+      if (err5) throw err5;
 
       // Mensagens
-      const { count: messagesReceived } = await supabase
+      const { count: messagesReceived, error: err6 } = await supabase
         .from('chat_messages')
         .select('*', { count: 'exact', head: true });
+      if (err6) throw err6;
 
       const roi = totalLoanAmount > 0 ? ((totalPaid / totalLoanAmount) * 100) : 0;
 
@@ -121,27 +128,33 @@ const Dashboard = () => {
       });
 
       // Fetch Wallet Balance
-      const { data: walletData } = await supabase
+      const { data: walletData, error: err7 } = await supabase
         .from('company_wallet')
         .select('balance')
         .single();
+      
+      // If error occurs here, log but don't fail entire dashboard
+      if (err7) console.warn('Wallet balance fetch error:', err7);
 
       if (walletData) {
         setWalletBalance(walletData.balance);
       }
 
       // Fetch Recent Ledger
-      const { data: ledgerData } = await supabase
+      const { data: ledgerData, error: err8 } = await supabase
         .from('wallet_ledger')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(5);
+        
+      if (err8) console.warn('Wallet ledger fetch error:', err8);
 
       if (ledgerData) {
         setWalletLedger(ledgerData);
       }
     } catch (error) {
       console.error('Error loading dashboard stats:', error);
+      setDataError(true);
     } finally {
       setLoading(false);
     }
@@ -161,6 +174,21 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      {dataError && (
+        <div className="bg-warning/10 border-l-4 border-warning text-warning-foreground p-4 rounded-md shadow-sm flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="h-5 w-5 text-warning" />
+            <div>
+              <p className="font-bold text-sm">Falha ao carregar dados do painel</p>
+              <p className="text-xs opacity-90">Houve um erro ao comunicar com a base de dados. Os números apresentados podem ser 0 ou desatualizados.</p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => { setLoading(true); loadStats(); }} className="shrink-0 bg-white border-warning/30 hover:bg-warning/20">
+            Tentar Novamente
+          </Button>
+        </div>
+      )}
+
       {/* Carteira e Ações Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
         <Card className="md:col-span-8 border-0 shadow-large overflow-hidden bg-gradient-to-br from-[#1a3a5c] to-[#0d1d2e] text-white">

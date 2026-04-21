@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, FileText, Calculator, MessageCircle, MoreHorizontal } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -183,3 +183,4 @@ export default function MobileBottomNav() {
         </>
     );
 }
+

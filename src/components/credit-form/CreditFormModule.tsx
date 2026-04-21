@@ -6,7 +6,7 @@ import CreditApplicationForm from './CreditApplicationForm';
 import CreditRequestForm from '../credit-requests/CreditRequestForm';
 import CreditRequestManager from '../credit-requests/CreditRequestManager';
 import CreditSimulatorModule from '../credit-simulator/CreditSimulatorModule';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation } from 'react-router-dom';
 
@@ -156,3 +156,4 @@ const CreditFormModule = () => {
 };
 
 export default CreditFormModule;
+

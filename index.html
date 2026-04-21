@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bochel Microcrédito</title>
     <meta name="description" content="Bochel Microcrédito - Soluções Financeiras" />
-    <meta name="author" content="Lovable" />
+    <meta name="author" content="Bochel Microcrédito" />
 
-    <meta property="og:title" content="boch-lend-flow-ai" />
-    <meta property="og:description" content="Lovable Generated Project" />
+    <meta property="og:title" content="Bochel Microcrédito" />
+    <meta property="og:description" content="Bochel Microcrédito - Soluções Financeiras para Moçambique" />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta property="og:image" content="/logo-bochel.png" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+    <meta name="twitter:site" content="@bochelmicrocredito" />
+    <meta name="twitter:image" content="/logo-bochel.png" />
     
     <!-- PWA Configuration – manifest dinâmico por perfil via JS -->
     <link id="pwa-manifest" rel="manifest" href="/manifest.json" />
@@ -55,7 +55,29 @@
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js');
+          navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
+            .then(reg => {
+              reg.onupdatefound = () => {
+                const installingWorker = reg.installing;
+                if (installingWorker) {
+                  installingWorker.onstatechange = () => {
+                    if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      // New update available, force it to activate
+                      console.log('New update available! Forcing reload...');
+                    }
+                  };
+                }
+              };
+            });
+
+          // Automatically reload the page when a new service worker takes over
+          let refreshing = false;
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!refreshing) {
+              refreshing = true;
+              window.location.reload();
+            }
+          });
         });
       }
     </script>

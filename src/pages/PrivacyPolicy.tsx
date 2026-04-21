@@ -92,7 +92,7 @@ const PrivacyPolicy = () => {
                     <h2 className="text-2xl font-bold text-[#0b3a20] mt-10 mb-5 pb-2 border-b border-gray-100">8. Contactos</h2>
                     <p className="mb-10 leading-relaxed text-[1.05rem] bg-gray-50 p-6 rounded-xl border border-gray-100">
                         No caso de dúvidas, solicitações ou exercício dos seus direitos, entre em contacto connosco através do email:<br />
-                        <a href="mailto:bochelmicrocredito@gmail.com" className="text-[#d37c22] font-bold hover:underline">bochelmicrocredito@gmail.com</a> ou visite as nossas instalações.
+                        <a href="mailto:bm@bochelmicrocredito.com" className="text-[#d37c22] font-bold hover:underline">bm@bochelmicrocredito.com</a> ou visite as nossas instalações.
                     </p>
                 </div>
             </div>

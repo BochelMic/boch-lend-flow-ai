@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -7,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CreditCard, Search, AlertTriangle, CheckCircle } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Loan {
   id: string;
@@ -36,19 +38,17 @@ const LoansModule = () => {
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [loans, setLoans] = useState<Loan[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadLoans();
-    loadClients();
-  }, []);
 
   const isAgent = user?.role === 'agente';
 
-  const loadLoans = async () => {
-    try {
+  useEffect(() => {
+    loadClients();
+  }, []);
+
+  const { data: loans = [], isLoading: loading, refetch: loadLoans } = useQuery({
+    queryKey: ['loans', user?.role, user?.id],
+    queryFn: async () => {
       let query = supabase
         .from('loans')
         .select('*, clients(name, agent_id)')
@@ -90,13 +90,10 @@ const LoansModule = () => {
           client_name: l.clients?.name || 'Cliente desconhecido',
         };
       });
-      setLoans(mapped);
-    } catch (error) {
-      console.error('Error loading loans:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return mapped as Loan[];
+    },
+    enabled: !!user,
+  });
 
   const loadClients = async () => {
     try {
@@ -162,7 +159,25 @@ const LoansModule = () => {
           <CardContent className="p-4 md:p-6 pt-0">
             <div className="space-y-4">
               {loading ? (
-                <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="border rounded-lg p-3 md:p-4 space-y-3">
+                      <div className="flex justify-between">
+                        <div className="space-y-2 w-1/3">
+                          <Skeleton className="h-5 w-full" />
+                          <Skeleton className="h-4 w-2/3" />
+                        </div>
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                        <Skeleton className="h-10 w-full" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : filteredLoans.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <CreditCard className="mx-auto h-12 w-12 opacity-50 mb-2" />
@@ -254,3 +269,4 @@ const LoansModule = () => {
 };
 
 export default LoansModule;
+

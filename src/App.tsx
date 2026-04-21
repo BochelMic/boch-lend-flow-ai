@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { InstallPWA } from "@/components/pwa/InstallPWA";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider } from "@/contexts/AuthContext";
 import FloatingWhatsApp from "./components/common/FloatingWhatsApp";
 import { Loader2 } from "lucide-react";
 

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { Lock, Mail, Loader2, Terminal } from 'lucide-react';
 
@@ -71,3 +71,4 @@ const GestorLoginForm = () => {
 };
 
 export default GestorLoginForm;
+

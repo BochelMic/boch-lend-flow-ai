@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { User, History, CreditCard, CheckCircle, AlertTriangle, Camera, Loader2 } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '../../integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { DropdownMenuItem } from '../ui/dropdown-menu';
@@ -258,3 +258,4 @@ export const ClientProfileDialog = ({ children, clientData }: ClientProfileDialo
         </Dialog>
     );
 };
+

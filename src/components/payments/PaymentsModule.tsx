@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight, ChevronRight, RefreshCw } from 'lucide-react';
 import { calculateSmartSettlement } from '@/utils/creditUtils';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { generateReceiptHTML, downloadDocumentAsPdf } from '../../utils/exportUtils';
@@ -419,7 +419,7 @@ const PaymentsModule = () => {
                         className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner pl-12 font-black text-xl text-[#2e7d32]"
                         placeholder="0.00"
                         value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, amount: e.target.value, isLiquidation: false })}
                       />
                       <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     </div>
@@ -689,3 +689,4 @@ const PaymentsModule = () => {
 };
 
 export default PaymentsModule;
+

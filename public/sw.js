@@ -5,13 +5,14 @@
 // - caches only a small app-shell list
 // - avoids caching Vite dev modules/scripts
 // - uses network-first for navigations
+// - NEVER caches API or Supabase requests
 
-const CACHE_NAME = 'boch-lend-v6';
+const CACHE_NAME = 'boch-lend-v8'; // Bumped cache version for production
 
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/lovable-uploads/15f313b6-814c-4267-a0b9-9f8375b0be63.png',
+  '/logo-bochel.png',
 ];
 
 // Install event - cache resources
@@ -48,6 +49,9 @@ function shouldBypassCache(request) {
   if (request.method !== 'GET') return true;
 
   const url = new URL(request.url);
+
+  // Exclude Supabase and other API endpoints from caching
+  if (url.hostname.includes('supabase.co')) return true;
 
   // Never cache cross-origin requests
   if (url.origin !== self.location.origin) return true;

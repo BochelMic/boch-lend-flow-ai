@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from '../ui/use-toast';
 import { User, Mail, Lock, ArrowRight, Loader2, ShieldCheck, Zap, Clock } from 'lucide-react';
 
@@ -228,3 +228,4 @@ const RegisterForm = ({ onSwitchToLogin }: RegisterFormProps) => {
 };
 
 export default RegisterForm;
+

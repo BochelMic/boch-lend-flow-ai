@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { Lock, Mail, ArrowRight, Loader2, Shield } from 'lucide-react';
 
@@ -79,3 +79,4 @@ const AgentLoginForm = () => {
 };
 
 export default AgentLoginForm;
+

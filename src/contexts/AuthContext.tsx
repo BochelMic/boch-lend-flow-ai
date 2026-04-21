@@ -77,15 +77,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                 .eq('user_id', authUser.id)
                 .maybeSingle();
 
-            const profileResult = await withTimeout(profilePromise, 4000) as { data: { name: string; email: string } | null } | null;
-            const roleResult = await withTimeout(rolePromise, 4000) as { data: { role: string } | null } | null;
+            const profileResult = await withTimeout(profilePromise, 10000) as { data: { name: string; email: string } | null } | null;
+            const roleResult = await withTimeout(rolePromise, 10000) as { data: { role: string } | null } | null;
 
-            // If both returned null, it's likely a network timeout
-            if (!profileResult && !roleResult) {
-                setConnectionError(true);
-            } else {
-                setConnectionError(false);
-            }
+            // Removing aggressive connection error flag. The safety timeout in useEffect handles overall hangs.
+            setConnectionError(false);
 
             const profile = profileResult?.data;
             const roleData = roleResult?.data;
@@ -116,15 +112,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         let mounted = true;
         let resolved = false;
 
-        // Safety timeout
+        // Safety timeout increased to 45s for production (good for slow networks)
         const safetyTimeout = setTimeout(() => {
             if (mounted && !resolved) {
-                console.warn('Auth initialization timed out, proceeding without auth.');
-                setConnectionError(true);
+                console.warn('[Auth] Initialization timed out after 45s. Proceeding with limited access.');
                 setLoading(false);
                 resolved = true;
             }
-        }, 8000);
+        }, 45000);
 
         // Auto-retry when connectivity returns
         const handleOnline = () => {

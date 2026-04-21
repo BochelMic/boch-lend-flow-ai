@@ -112,7 +112,44 @@ const SubsystemsControl = () => {
     }
   };
 
-  const loadModuleSettings = () => {
+  const loadModuleSettings = async () => {
+    // 1. Try to load from Supabase first
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('key, value')
+        .in('key', ['agent_modules', 'client_modules']);
+        
+      if (!error && data && data.length > 0) {
+        let loadedAgent = false;
+        let loadedClient = false;
+        
+        data.forEach((setting: any) => {
+          if (setting.key === 'agent_modules') {
+            try {
+              const parsed = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
+              setAgentModules(parsed);
+              localStorage.setItem('agent_modules', JSON.stringify(parsed));
+              loadedAgent = true;
+            } catch (e) { }
+          }
+          if (setting.key === 'client_modules') {
+            try {
+              const parsed = typeof setting.value === 'string' ? JSON.parse(setting.value) : setting.value;
+              setClientModules(parsed);
+              localStorage.setItem('client_modules', JSON.stringify(parsed));
+              loadedClient = true;
+            } catch (e) { }
+          }
+        });
+        
+        if (loadedAgent && loadedClient) return; // DB sync successful
+      }
+    } catch (dbError) {
+      console.warn('Could not load from DB, falling back to localStorage', dbError);
+    }
+
+    // 2. Fallback to localStorage if DB fetch failed or missing keys
     const agentSettings = localStorage.getItem('agent_modules');
     const clientSettings = localStorage.getItem('client_modules');
     if (agentSettings) setAgentModules(JSON.parse(agentSettings));
@@ -131,15 +168,29 @@ const SubsystemsControl = () => {
     });
   };
 
-  const saveAgentModules = (updated: typeof agentModules) => {
+  const saveAgentModules = async (updated: typeof agentModules) => {
     setAgentModules(updated);
-    localStorage.setItem('agent_modules', JSON.stringify(updated));
+    const jsonStr = JSON.stringify(updated);
+    localStorage.setItem('agent_modules', jsonStr);
+    
+    try {
+      await supabase.from('system_settings').upsert({ key: 'agent_modules', value: updated });
+    } catch (e) {
+      console.warn('Could not save to DB:', e);
+    }
     toast({ title: 'Configuração salva', description: 'Módulos do Agente actualizados.' });
   };
 
-  const saveClientModules = (updated: typeof clientModules) => {
+  const saveClientModules = async (updated: typeof clientModules) => {
     setClientModules(updated);
-    localStorage.setItem('client_modules', JSON.stringify(updated));
+    const jsonStr = JSON.stringify(updated);
+    localStorage.setItem('client_modules', jsonStr);
+    
+    try {
+      await supabase.from('system_settings').upsert({ key: 'client_modules', value: updated });
+    } catch (e) {
+      console.warn('Could not save to DB:', e);
+    }
     toast({ title: 'Configuração salva', description: 'Módulos do Cliente actualizados.' });
   };
 

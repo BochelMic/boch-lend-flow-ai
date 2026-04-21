@@ -534,7 +534,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
       });
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('TIMEOUT')), 20000)
+        setTimeout(() => reject(new Error('TIMEOUT')), 60000)
       );
 
       const { data: uploadData, error } = await Promise.race([uploadPromise, timeoutPromise]) as any;
@@ -776,9 +776,9 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
         try {
           console.log(`[Submit] Attempt ${attempt}/${MAX_ATTEMPTS} to insert credit_request`);
 
-          // Use a Promise.race for simple timeout (15s)
+          // Use a Promise.race for simple timeout (30s for slow mobile networks)
           const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('TIMEOUT')), 15000)
+            setTimeout(() => reject(new Error('TIMEOUT')), 30000)
           );
 
           const insertPromise = supabase.from('credit_requests').insert(requestData);

@@ -76,17 +76,6 @@ export function InstallPWA() {
     const handleBeforeInstallPrompt = (e: BeforeInstallPromptEvent) => {
       e.preventDefault();
       setDeferredPrompt(e);
-
-      // Mostrar apenas após login bem sucedido para ser mais profissional
-      if (user) {
-        // Pequeno delay para não assustar o utilizador logo ao entrar
-        const timer = setTimeout(() => {
-          if (!localStorage.getItem('pwa-install-dismissed')) {
-            setShowInstallButton(true);
-          }
-        }, 3000);
-        return () => clearTimeout(timer);
-      }
     };
 
     const handleAppInstalled = () => {
@@ -106,7 +95,16 @@ export function InstallPWA() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, [toast, appConfig.name, user]);
+  }, [toast, appConfig.name]);
+
+  useEffect(() => {
+    if (deferredPrompt && user && !localStorage.getItem('pwa-install-dismissed')) {
+      const timer = setTimeout(() => {
+        setShowInstallButton(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [deferredPrompt, user]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;

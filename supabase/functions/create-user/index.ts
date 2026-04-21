@@ -12,19 +12,57 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
 
-    const { email, password, name, role, agent_id, phone } = await req.json();
+    // --- In-function Authorization ---
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(JSON.stringify({ success: false, error: 'Token de autorização em falta.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Verify caller identity using their token
+    const supabaseCaller = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user: callerUser }, error: authError } = await supabaseCaller.auth.getUser();
+    if (authError || !callerUser) {
+      return new Response(JSON.stringify({ success: false, error: 'Sessão inválida ou expirada. Faça login novamente.' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Check caller role
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    const { data: roleData } = await supabaseAdmin
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', callerUser.id)
+      .maybeSingle();
+
+    const callerRole = roleData?.role || callerUser.user_metadata?.role;
+    if (callerRole !== 'gestor' && callerRole !== 'agente') {
+      return new Response(JSON.stringify({ success: false, error: 'Apenas gestores e agentes podem criar utilizadores.' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    // --- End Authorization ---
+
+    const { email, password, name, role, agent_id, phone, empresa_id } = await req.json();
 
     // Create user via admin API
     const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { name, role, agent_id, phone },
+      user_metadata: { name, role, agent_id, phone, empresa_id },
     });
 
     if (createError) {
@@ -33,6 +71,21 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    // Insert role into user_roles table
+    if (role) {
+      await supabaseAdmin.from('user_roles').upsert({
+        user_id: userData.user.id,
+        role: role,
+      }, { onConflict: 'user_id' });
+    }
+
+    // Insert profile
+    await supabaseAdmin.from('profiles').upsert({
+      user_id: userData.user.id,
+      name: name,
+      email: email,
+    }, { onConflict: 'user_id' });
 
     return new Response(JSON.stringify({ success: true, user_id: userData.user.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

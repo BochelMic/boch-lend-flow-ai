@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -144,3 +144,4 @@ const LoginForm = () => {
 };
 
 export default LoginForm;
+

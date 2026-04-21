@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, Camera, LogOut, Eye, EyeOff, Key, Loader2, User } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
 import { useClientAccess } from '../../hooks/useClientAccess';
 import { useNavigate } from 'react-router-dom';
@@ -394,3 +394,4 @@ export default function MobileHeader() {
         </div>
     );
 }
+
