@@ -47,9 +47,24 @@
         } catch(e) {}
       })();
     </script>
-    <!-- Fix: Override navigator.locks para browsers onde causa timeout (Edge) -->
+    <!-- Auto-limpeza de tokens inválidos + Fix navigator.locks -->
     <script>
       (function() {
+        // === 1. VALIDADOR DE TOKENS ===
+        // Incrementar TOKEN_VERSION quando migrar DB ou precisar forçar re-login
+        var TOKEN_VERSION = '2';
+        var storedVersion = localStorage.getItem('bochel_token_version');
+        if (storedVersion !== TOKEN_VERSION) {
+          console.warn('[TokenGuard] Versão de token desatualizada. Limpando sessão antiga...');
+          Object.keys(localStorage).forEach(function(key) {
+            if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+              localStorage.removeItem(key);
+            }
+          });
+          localStorage.setItem('bochel_token_version', TOKEN_VERSION);
+        }
+
+        // === 2. FIX NAVIGATOR.LOCKS (Edge) ===
         if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) {
           var original = navigator.locks.request.bind(navigator.locks);
           navigator.locks.request = function(name, optionsOrCallback, maybeCallback) {
