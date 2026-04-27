@@ -74,35 +74,32 @@ const Dashboard = () => {
       console.log('[Dashboard Diag]', msg);
     };
 
+    // Timeout helper: rejeita se a promise demorar mais que ms
+    const withTimeout = <T,>(promise: Promise<T>, ms: number, label: string): Promise<T> => {
+      return Promise.race([
+        promise,
+        new Promise<never>((_, reject) => 
+          setTimeout(() => reject(new Error(`Timeout: ${label} demorou mais de ${ms/1000}s`)), ms)
+        )
+      ]);
+    };
+
     try {
-      // Verificar sessão actual
-      log('Verificando sessão...');
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError) {
-        log(`❌ Erro de sessão: ${sessionError.message}`);
-        setDataError(true);
-        setErrorMessage(`Sessão: ${sessionError.message}`);
-        setLoading(false);
-        return;
-      }
-      if (!session) {
-        log('❌ Nenhuma sessão activa');
-        setDataError(true);
-        setErrorMessage('Sem sessão. Faça login novamente.');
-        setLoading(false);
-        return;
-      }
-      log(`✅ Sessão OK - User: ${session.user.email}`);
-      log(`   Role (metadata): ${session.user.user_metadata?.role || 'N/A'}`);
-      log(`   Token expira: ${new Date((session.expires_at || 0) * 1000).toLocaleTimeString()}`);
+      // NÃO chamar getSession() - congela em alguns computadores.
+      // As queries usam o token já guardado pelo AuthContext.
+      log('Iniciando carregamento de dados (sem verificar sessão)...');
 
       // Testar query simples com timeout
       log('Testando ligação à base de dados...');
       const testStart = Date.now();
-      const { count: testCount, error: testErr } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .limit(1);
+      const { count: testCount, error: testErr } = await withTimeout(
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .limit(1),
+        10000,
+        'Teste BD'
+      );
       const testTime = Date.now() - testStart;
 
       if (testErr) {
@@ -116,18 +113,26 @@ const Dashboard = () => {
 
       // Clientes ativos
       log('Buscando clientes ativos...');
-      const { count: totalClients, error: err1 } = await supabase
-        .from('clients')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'active');
+      const { count: totalClients, error: err1 } = await withTimeout(
+        supabase
+          .from('clients')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'active'),
+        10000,
+        'Clientes Ativos'
+      );
       if (err1) throw err1;
       log(`✅ Clientes: ${totalClients}`);
 
       // Empréstimos
       log('Buscando empréstimos...');
-      const { data: loans, error: err2 } = await supabase
-        .from('loans')
-        .select('amount, total_amount, remaining_amount, interest_rate, status');
+      const { data: loans, error: err2 } = await withTimeout(
+        supabase
+          .from('loans')
+          .select('amount, total_amount, remaining_amount, interest_rate, status'),
+        10000,
+        'Empréstimos'
+      );
       if (err2) throw err2;
       log(`✅ Empréstimos: ${loans?.length || 0}`);
 
@@ -142,35 +147,51 @@ const Dashboard = () => {
 
       // Pagamentos
       log('Buscando pagamentos...');
-      const { data: payments, error: err3 } = await supabase
-        .from('payments')
-        .select('amount');
+      const { data: payments, error: err3 } = await withTimeout(
+        supabase
+          .from('payments')
+          .select('amount'),
+        10000,
+        'Pagamentos'
+      );
       if (err3) throw err3;
       const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
       log(`✅ Pagamentos: ${payments?.length || 0}`);
 
       // Pedidos de crédito pendentes
       log('Buscando pedidos...');
-      const { count: creditRequests, error: err4 } = await supabase
-        .from('credit_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+      const { count: creditRequests, error: err4 } = await withTimeout(
+        supabase
+          .from('credit_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending'),
+        10000,
+        'Pedidos'
+      );
       if (err4) throw err4;
       log(`✅ Pedidos: ${creditRequests}`);
 
       // Notificações
       log('Buscando notificações...');
-      const { count: notificationsSent, error: err5 } = await supabase
-        .from('notifications')
-        .select('*', { count: 'exact', head: true });
+      const { count: notificationsSent, error: err5 } = await withTimeout(
+        supabase
+          .from('notifications')
+          .select('*', { count: 'exact', head: true }),
+        10000,
+        'Notificações'
+      );
       if (err5) throw err5;
       log(`✅ Notificações: ${notificationsSent}`);
 
       // Mensagens
       log('Buscando mensagens...');
-      const { count: messagesReceived, error: err6 } = await supabase
-        .from('chat_messages')
-        .select('*', { count: 'exact', head: true });
+      const { count: messagesReceived, error: err6 } = await withTimeout(
+        supabase
+          .from('chat_messages')
+          .select('*', { count: 'exact', head: true }),
+        10000,
+        'Mensagens'
+      );
       if (err6) throw err6;
       log(`✅ Mensagens: ${messagesReceived}`);
 
@@ -194,20 +215,28 @@ const Dashboard = () => {
 
       // Fetch Wallet Balance
       log('Buscando saldo...');
-      const { data: walletData, error: err7 } = await supabase
-        .from('company_wallet')
-        .select('balance')
-        .single();
+      const { data: walletData, error: err7 } = await withTimeout(
+        supabase
+          .from('company_wallet')
+          .select('balance')
+          .single(),
+        10000,
+        'Saldo'
+      );
       
       if (err7) log(`⚠️ Saldo: ${err7.message}`);
       if (walletData) setWalletBalance(walletData.balance);
 
       // Fetch Recent Ledger
-      const { data: ledgerData, error: err8 } = await supabase
-        .from('wallet_ledger')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
+      const { data: ledgerData, error: err8 } = await withTimeout(
+        supabase
+          .from('wallet_ledger')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(5),
+        10000,
+        'Ledger'
+      );
         
       if (err8) log(`⚠️ Ledger: ${err8.message}`);
       if (ledgerData) setWalletLedger(ledgerData);
