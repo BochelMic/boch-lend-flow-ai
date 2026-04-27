@@ -7,7 +7,7 @@
 // - uses network-first for navigations
 // - NEVER caches API or Supabase requests
 
-const CACHE_NAME = 'boch-lend-v9'; // Versão incrementada para forçar atualização
+const CACHE_NAME = 'boch-lend-v10';
 
 const urlsToCache = [
   '/',

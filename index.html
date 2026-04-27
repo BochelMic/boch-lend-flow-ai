@@ -47,6 +47,21 @@
         } catch(e) {}
       })();
     </script>
+    <!-- Fix: Override navigator.locks para browsers onde causa timeout (Edge) -->
+    <script>
+      (function() {
+        if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) {
+          var original = navigator.locks.request.bind(navigator.locks);
+          navigator.locks.request = function(name, optionsOrCallback, maybeCallback) {
+            var callback = maybeCallback || optionsOrCallback;
+            if (typeof callback === 'function') {
+              return Promise.resolve(callback({ name: name, mode: 'exclusive' }));
+            }
+            return original(name, optionsOrCallback, maybeCallback);
+          };
+        }
+      })();
+    </script>
   </head>
 
   <body>
