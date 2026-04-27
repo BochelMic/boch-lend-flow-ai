@@ -85,12 +85,31 @@ const Dashboard = () => {
     };
 
     try {
-      // NÃO chamar getSession() - congela em alguns computadores.
-      // As queries usam o token já guardado pelo AuthContext.
-      log('Iniciando carregamento de dados (sem verificar sessão)...');
+      log('Iniciando diagnóstico profundo de rede...');
 
-      // Testar query simples com timeout
-      log('Testando ligação à base de dados...');
+      // 1. TESTE PURO DE REDE (Fetch direto)
+      log('Ping direto ao servidor Supabase...');
+      const pingStart = Date.now();
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+        // Fazemos um fetch simples ao health endpoint ou root
+        const response = await withTimeout(
+          fetch(`${supabaseUrl}/auth/v1/health`, { method: 'GET' }),
+          5000,
+          'Ping de Rede'
+        );
+        log(`✅ Rede OK (${Date.now() - pingStart}ms) - Status: ${response.status}`);
+      } catch (pingErr: any) {
+        log(`❌ FALHA DE REDE: O seu computador/antivírus está a bloquear o Supabase!`);
+        log(`Detalhe da falha de rede: ${pingErr.message}`);
+        setDataError(true);
+        setErrorMessage('A sua rede ou computador está a bloquear a ligação ao servidor do sistema. Verifique o antivírus ou firewall.');
+        setLoading(false);
+        return; // Pára aqui, não vale a pena tentar a BD se a rede não funciona
+      }
+
+      // 2. Testar query simples com timeout
+      log('Testando ligação à base de dados (Supabase Client)...');
       const testStart = Date.now();
       const { count: testCount, error: testErr } = await withTimeout(
         supabase
