@@ -55,25 +55,81 @@ const Dashboard = () => {
   const [walletLedger, setWalletLedger] = useState<any[]>([]);
   const [dataError, setDataError] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [diagnostic, setDiagnostic] = useState<string[]>([]);
 
   useEffect(() => {
     loadStats();
   }, []);
 
+  const addDiag = (msg: string) => {
+    setDiagnostic(prev => [...prev, `${new Date().toLocaleTimeString()} - ${msg}`]);
+  };
+
   const loadStats = async () => {
+    const diag: string[] = [];
+    const log = (msg: string) => {
+      const entry = `${new Date().toLocaleTimeString()} - ${msg}`;
+      diag.push(entry);
+      setDiagnostic([...diag]);
+      console.log('[Dashboard Diag]', msg);
+    };
+
     try {
+      // Verificar sessão actual
+      log('Verificando sessão...');
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        log(`❌ Erro de sessão: ${sessionError.message}`);
+        setDataError(true);
+        setErrorMessage(`Sessão: ${sessionError.message}`);
+        setLoading(false);
+        return;
+      }
+      if (!session) {
+        log('❌ Nenhuma sessão activa');
+        setDataError(true);
+        setErrorMessage('Sem sessão. Faça login novamente.');
+        setLoading(false);
+        return;
+      }
+      log(`✅ Sessão OK - User: ${session.user.email}`);
+      log(`   Role (metadata): ${session.user.user_metadata?.role || 'N/A'}`);
+      log(`   Token expira: ${new Date((session.expires_at || 0) * 1000).toLocaleTimeString()}`);
+
+      // Testar query simples com timeout
+      log('Testando ligação à base de dados...');
+      const testStart = Date.now();
+      const { count: testCount, error: testErr } = await supabase
+        .from('clients')
+        .select('*', { count: 'exact', head: true })
+        .limit(1);
+      const testTime = Date.now() - testStart;
+
+      if (testErr) {
+        log(`❌ Falha na BD (${testTime}ms): ${testErr.message} [code: ${testErr.code}]`);
+        setDataError(true);
+        setErrorMessage(`BD: ${testErr.message} (code: ${testErr.code})`);
+        setLoading(false);
+        return;
+      }
+      log(`✅ BD OK (${testTime}ms) - Clientes encontrados: ${testCount}`);
+
       // Clientes ativos
+      log('Buscando clientes ativos...');
       const { count: totalClients, error: err1 } = await supabase
         .from('clients')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
       if (err1) throw err1;
+      log(`✅ Clientes: ${totalClients}`);
 
       // Empréstimos
+      log('Buscando empréstimos...');
       const { data: loans, error: err2 } = await supabase
         .from('loans')
         .select('amount, total_amount, remaining_amount, interest_rate, status');
       if (err2) throw err2;
+      log(`✅ Empréstimos: ${loans?.length || 0}`);
 
       const activeLoans = loans?.filter(l => l.status === 'active').length || 0;
       const pendingLoans = loans?.filter(l => l.status === 'pending').length || 0;
@@ -85,30 +141,38 @@ const Dashboard = () => {
       const defaultRate = loans && loans.length > 0 ? ((overdueLoans / loans.length) * 100) : 0;
 
       // Pagamentos
+      log('Buscando pagamentos...');
       const { data: payments, error: err3 } = await supabase
         .from('payments')
         .select('amount');
       if (err3) throw err3;
       const totalPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      log(`✅ Pagamentos: ${payments?.length || 0}`);
 
       // Pedidos de crédito pendentes
+      log('Buscando pedidos...');
       const { count: creditRequests, error: err4 } = await supabase
         .from('credit_requests')
         .select('*', { count: 'exact', head: true })
         .eq('status', 'pending');
       if (err4) throw err4;
+      log(`✅ Pedidos: ${creditRequests}`);
 
       // Notificações
+      log('Buscando notificações...');
       const { count: notificationsSent, error: err5 } = await supabase
         .from('notifications')
         .select('*', { count: 'exact', head: true });
       if (err5) throw err5;
+      log(`✅ Notificações: ${notificationsSent}`);
 
       // Mensagens
+      log('Buscando mensagens...');
       const { count: messagesReceived, error: err6 } = await supabase
         .from('chat_messages')
         .select('*', { count: 'exact', head: true });
       if (err6) throw err6;
+      log(`✅ Mensagens: ${messagesReceived}`);
 
       const roi = totalLoanAmount > 0 ? ((totalPaid / totalLoanAmount) * 100) : 0;
 
@@ -129,17 +193,14 @@ const Dashboard = () => {
       });
 
       // Fetch Wallet Balance
+      log('Buscando saldo...');
       const { data: walletData, error: err7 } = await supabase
         .from('company_wallet')
         .select('balance')
         .single();
       
-      // If error occurs here, log but don't fail entire dashboard
-      if (err7) console.warn('Wallet balance fetch error:', err7);
-
-      if (walletData) {
-        setWalletBalance(walletData.balance);
-      }
+      if (err7) log(`⚠️ Saldo: ${err7.message}`);
+      if (walletData) setWalletBalance(walletData.balance);
 
       // Fetch Recent Ledger
       const { data: ledgerData, error: err8 } = await supabase
@@ -148,13 +209,13 @@ const Dashboard = () => {
         .order('created_at', { ascending: false })
         .limit(5);
         
-      if (err8) console.warn('Wallet ledger fetch error:', err8);
+      if (err8) log(`⚠️ Ledger: ${err8.message}`);
+      if (ledgerData) setWalletLedger(ledgerData);
 
-      if (ledgerData) {
-        setWalletLedger(ledgerData);
-      }
+      log('🎉 Tudo carregado com sucesso!');
     } catch (error: any) {
       console.error('Error loading dashboard stats:', error);
+      log(`❌ ERRO FATAL: ${error.message || 'desconhecido'}`);
       setDataError(true);
       setErrorMessage(error.message || 'Erro desconhecido');
     } finally {
@@ -187,11 +248,23 @@ const Dashboard = () => {
               </p>
             </div>
           </div>
-          <Button variant="outline" size="sm" onClick={() => { setLoading(true); loadStats(); }} className="shrink-0 bg-white border-warning/30 hover:bg-warning/20">
+          <Button variant="outline" size="sm" onClick={() => { setDiagnostic([]); setDataError(false); setErrorMessage(null); setLoading(true); loadStats(); }} className="shrink-0 bg-white border-warning/30 hover:bg-warning/20">
             Tentar Novamente
           </Button>
         </div>
       )}
+
+      {/* PAINEL DE DIAGNÓSTICO TEMPORÁRIO - REMOVER DEPOIS */}
+      {diagnostic.length > 0 && (
+        <div className="bg-gray-900 text-green-400 p-4 rounded-lg text-xs font-mono max-h-48 overflow-y-auto border border-green-500/30">
+          <p className="text-white font-bold mb-2">🔍 DIAGNÓSTICO DO SISTEMA (temporário)</p>
+          {diagnostic.map((line, i) => (
+            <p key={i} className={line.includes('❌') ? 'text-red-400' : line.includes('⚠️') ? 'text-yellow-400' : ''}>{line}</p>
+          ))}
+          {loading && <p className="animate-pulse text-blue-400">⏳ A processar...</p>}
+        </div>
+      )}
+
 
       {/* Carteira e Ações Rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
