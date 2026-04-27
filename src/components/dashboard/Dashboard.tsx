@@ -54,6 +54,7 @@ const Dashboard = () => {
   const [isInjectionModalOpen, setIsInjectionModalOpen] = useState(false);
   const [walletLedger, setWalletLedger] = useState<any[]>([]);
   const [dataError, setDataError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadStats();
@@ -152,9 +153,10 @@ const Dashboard = () => {
       if (ledgerData) {
         setWalletLedger(ledgerData);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading dashboard stats:', error);
       setDataError(true);
+      setErrorMessage(error.message || 'Erro desconhecido');
     } finally {
       setLoading(false);
     }
@@ -180,7 +182,9 @@ const Dashboard = () => {
             <AlertTriangle className="h-5 w-5 text-warning" />
             <div>
               <p className="font-bold text-sm">Falha ao carregar dados do painel</p>
-              <p className="text-xs opacity-90">Houve um erro ao comunicar com a base de dados. Os números apresentados podem ser 0 ou desatualizados.</p>
+              <p className="text-xs opacity-90">
+                {errorMessage ? `Detalhe técnico: ${errorMessage}` : 'Houve um erro ao comunicar com a base de dados. Os números apresentados podem ser 0 ou desatualizados.'}
+              </p>
             </div>
           </div>
           <Button variant="outline" size="sm" onClick={() => { setLoading(true); loadStats(); }} className="shrink-0 bg-white border-warning/30 hover:bg-warning/20">

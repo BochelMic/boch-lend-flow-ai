@@ -15,5 +15,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     autoRefreshToken: true,
     flowType: 'implicit',
     detectSessionInUrl: false,
+    navigatorLock: false, // Desativa o sistema de locks que está a falhar no Edge
   }
 });

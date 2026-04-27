@@ -51,10 +51,13 @@ function shouldBypassCache(request) {
   const url = new URL(request.url);
 
   // Exclude Supabase and other API endpoints from caching
-  if (url.hostname.includes('supabase.co')) return true;
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('vercel.app')) return true;
 
   // Never cache cross-origin requests
   if (url.origin !== self.location.origin) return true;
+
+  // Never cache POST, PUT, DELETE, etc.
+  if (request.method !== 'GET') return true;
 
   // Never cache Vite dev modules (these change frequently and caching causes stale bundles)
   if (url.pathname.startsWith('/src/')) return true;
