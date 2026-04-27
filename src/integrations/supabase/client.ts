@@ -14,11 +14,6 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
     flowType: 'implicit',
-    detectSessionInUrl: false,
-    // Substitui o navigator.locks por uma implementação simples que não bloqueia.
-    // Resolve o erro "Lock not released within 5000ms" no Microsoft Edge.
-    lock: async (name: string, acquireTimeout: number, fn: () => Promise<any>) => {
-      return await fn();
-    },
+    detectSessionInUrl: false
   }
 });

@@ -63,18 +63,6 @@
           });
           localStorage.setItem('bochel_token_version', TOKEN_VERSION);
         }
-
-        // === 2. FIX NAVIGATOR.LOCKS (Edge) ===
-        if (typeof navigator !== 'undefined' && navigator.locks && navigator.locks.request) {
-          var original = navigator.locks.request.bind(navigator.locks);
-          navigator.locks.request = function(name, optionsOrCallback, maybeCallback) {
-            var callback = maybeCallback || optionsOrCallback;
-            if (typeof callback === 'function') {
-              return Promise.resolve(callback({ name: name, mode: 'exclusive' }));
-            }
-            return original(name, optionsOrCallback, maybeCallback);
-          };
-        }
       })();
     </script>
   </head>
