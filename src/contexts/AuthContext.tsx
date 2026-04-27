@@ -130,9 +130,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
         };
 
+        const forceLocalSignOut = () => {
+            console.warn('[Auth] Forcing local sign-out due to invalid tokens.');
+            // Limpar TODOS os tokens do Supabase do localStorage
+            const keysToRemove = Object.keys(localStorage).filter(k =>
+                k.startsWith('sb-') && k.endsWith('-auth-token')
+            );
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+            if (mounted) {
+                setUser(null);
+                setIsAuthenticated(false);
+                setLoading(false);
+                resolved = true;
+            }
+        };
+
         const initializeSession = async () => {
             try {
-                const { data: { session } } = await supabase.auth.getSession();
+                const { data: { session }, error } = await supabase.auth.getSession();
+
+                // Se o refresh token é inválido, limpar sessão e forçar re-login
+                if (error) {
+                    console.error('[Auth] Session error:', error.message);
+                    if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
+                        forceLocalSignOut();
+                        return;
+                    }
+                }
 
                 if (session?.user && mounted) {
                     await loadUserProfile(session.user);
@@ -143,8 +167,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     setLoading(false);
                     resolved = true;
                 }
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Error checking session:", error);
+                // Capturar erros de refresh token que chegam como exceção
+                if (error?.message?.includes('Refresh Token') || error?.message?.includes('refresh_token')) {
+                    forceLocalSignOut();
+                    return;
+                }
                 if (mounted) {
                     setLoading(false);
                     resolved = true;
@@ -166,6 +195,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     setLoading(false);
                     resolved = true;
                 }
+                return;
+            }
+
+            // Se o token foi "refreshed" mas não há sessão, o refresh falhou
+            if (event === 'TOKEN_REFRESHED' && !session) {
+                console.warn('[Auth] Token refresh failed, forcing local sign-out.');
+                forceLocalSignOut();
                 return;
             }
 
@@ -252,7 +288,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = async () => {
-        await supabase.auth.signOut();
+        try {
+            await supabase.auth.signOut();
+        } catch (error) {
+            console.warn('[Auth] Server sign-out failed, clearing locally:', error);
+            // Se signOut falhar (ex: refresh token inválido), limpar manualmente
+            const keysToRemove = Object.keys(localStorage).filter(k =>
+                k.startsWith('sb-') && k.endsWith('-auth-token')
+            );
+            keysToRemove.forEach(k => localStorage.removeItem(k));
+        }
         setUser(null);
         setIsAuthenticated(false);
     };
