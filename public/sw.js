@@ -74,7 +74,7 @@ function shouldBypassCache(request) {
   return false;
 }
 
-async function networkFirst(request, timeout = 5000) {
+async function networkFirst(request, timeout = 15000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
 
@@ -82,9 +82,15 @@ async function networkFirst(request, timeout = 5000) {
     const response = await fetch(request, { signal: controller.signal });
     clearTimeout(id);
 
-    // Update cache for navigations/app-shell
-    const cache = await caches.open(CACHE_NAME);
-    cache.put(request, response.clone());
+    // Only cache successful GET responses
+    if (response && response.status === 200 && request.method === 'GET') {
+      try {
+        const cache = await caches.open(CACHE_NAME);
+        await cache.put(request, response.clone());
+      } catch (cacheErr) {
+        console.warn('🛡️ Guardian: Falha ao guardar no cache:', cacheErr);
+      }
+    }
     return response;
   } catch (err) {
     clearTimeout(id);
@@ -93,6 +99,9 @@ async function networkFirst(request, timeout = 5000) {
       console.log('🛡️ Guardian: Usando cache devido a falha ou lentidão na rede:', request.url);
       return cached;
     }
+    // For navigation requests, if everything fails, we still want to throw 
+    // but with a clearer message
+    console.error('🛡️ Guardian: Falha total na rede e sem cache para:', request.url);
     throw err;
   }
 }
@@ -101,15 +110,15 @@ async function networkFirst(request, timeout = 5000) {
 self.addEventListener('fetch', (event) => {
   const request = event.request;
 
-  // Navigations: prefer network, fallback to cache (helps avoid stale app shell)
+  // STRICT BYPASS: Never intercept non-GET or Supabase requests
+  if (shouldBypassCache(request)) {
+    return; 
+  }
+
+  // Navigations: prefer network, fallback to cache
   if (request.mode === 'navigate') {
     event.respondWith(networkFirst(request));
     return;
-  }
-
-  // Bypass caching for Vite dev scripts/modules to prevent stale React copies
-  if (shouldBypassCache(request)) {
-    return; // Don't use respondWith(), let the browser handle it natively
   }
 
   // Cache-first for small static assets and app shell
@@ -117,10 +126,17 @@ self.addEventListener('fetch', (event) => {
     caches.match(request).then((cached) => {
       if (cached) return cached;
       return fetch(request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') return response;
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, responseToCache));
+        // Only cache valid GET responses
+        if (response && response.status === 200 && response.type === 'basic' && request.method === 'GET') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(request, responseToCache).catch(e => console.warn('Cache put failed:', e));
+          });
+        }
         return response;
+      }).catch(err => {
+        console.error('Fetch failed for:', request.url, err);
+        throw err;
       });
     })
   );
