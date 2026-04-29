@@ -42,6 +42,10 @@ export function useNotifications(userId?: string) {
   useEffect(() => {
     if (!userId) return;
 
+    let fallbackInterval: ReturnType<typeof setInterval> | null = null;
+    let realtimeChannel: ReturnType<typeof supabase.channel> | null = null;
+    let realtimeFailed = false;
+
     // Heartbeat for PWA: refresh when user returns to app/tab
     const handleFocus = () => {
       refresh();
@@ -67,44 +71,66 @@ export function useNotifications(userId?: string) {
     // Initial refresh
     refresh();
 
-    // Use a unique suffix for this hook instance to allow multiple subscriptions (Header + MobileHeader)
+    // Start fallback polling (safe for offline/unstable networks)
+    const startFallbackPolling = () => {
+      if (fallbackInterval) return;
+      fallbackInterval = setInterval(() => {
+        if (navigator.onLine) refresh();
+      }, 30000);
+    };
+
+    // Try Realtime, but give up on first failure to avoid infinite reconnect loops
     const instanceId = Math.random().toString(36).substring(7);
     const channelName = `notifs-live-${instanceId}`;
 
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-        },
-        (payload) => {
-          const newNotif = payload.new as any;
-          if (newNotif.user_id === userId) {
-            playNotificationSound();
-            refresh();
+    try {
+      realtimeChannel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+          },
+          (payload) => {
+            const newNotif = payload.new as any;
+            if (newNotif.user_id === userId) {
+              playNotificationSound();
+              refresh();
+            }
           }
-        }
-      )
-      .subscribe((status, err) => {
-        if (status === 'SUBSCRIBED') {
-          // Connected successfully
-        }
-        if (err) {
-          console.error(`[Realtime] Subscription error for ${channelName}:`, err);
-        }
-        if (status === 'CHANNEL_ERROR') {
-          console.error(`[Realtime] FAILED to connect. Using fallback refresh.`);
-        }
-      });
+        )
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            // Connected — clear fallback if it was started
+            if (fallbackInterval) {
+              clearInterval(fallbackInterval);
+              fallbackInterval = null;
+            }
+          }
+          if (status === 'CHANNEL_ERROR' && !realtimeFailed) {
+            realtimeFailed = true;
+            console.warn(`[Realtime] Connection failed. Switching to polling fallback.`);
+            // Remove the channel to stop reconnection attempts
+            if (realtimeChannel) {
+              supabase.removeChannel(realtimeChannel);
+              realtimeChannel = null;
+            }
+            startFallbackPolling();
+          }
+        });
+    } catch {
+      console.warn('[Realtime] Could not create channel. Using polling.');
+      startFallbackPolling();
+    }
 
     return () => {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('click', unlockAudio);
       window.removeEventListener('touchstart', unlockAudio);
-      supabase.removeChannel(channel);
+      if (realtimeChannel) supabase.removeChannel(realtimeChannel);
+      if (fallbackInterval) clearInterval(fallbackInterval);
     };
   }, [refresh, userId]);
 

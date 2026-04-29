@@ -74,7 +74,10 @@ const ClientsModule = () => {
           return;
         }
 
-        // 1. Call the Edge Function exactly like the Admin does (Name, Email, Password, Role)
+        // 1. Refresh session to ensure token is valid
+        await supabase.auth.refreshSession();
+
+        // 2. Call the Edge Function exactly like the Admin does (Name, Email, Password, Role)
         const { data: funcData, error: funcError } = await supabase.functions.invoke('create-user', {
           body: {
             email: formData.email,

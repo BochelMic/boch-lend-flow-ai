@@ -529,7 +529,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
       // Added explicit timeout via Promise.race
       const uploadPromise = supabase.storage.from('chat-files').upload(path, compressed, {
         contentType: compressed.type || 'image/jpeg',
-        upsert: true,
+        upsert: false,
         cacheControl: '3600'
       });
 

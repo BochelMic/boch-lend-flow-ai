@@ -253,7 +253,7 @@ const PaymentsModule = () => {
   const monthlyPayment = selectedLoan ? Math.round(selectedLoan.total_amount / selectedLoan.installments) : 0;
 
   const getMethodLabel = (method: string | null) => {
-    const methods: Record<string, string> = { cash: 'Dinheiro', transfer: 'Transferência', mpesa: 'M-Pesa', check: 'Cheque' };
+    const methods: Record<string, string> = { cash: 'Dinheiro', transfer: 'Transferência', mpesa: 'M-Pesa', emola: 'e-Mola', check: 'Cheque' };
     return methods[method || 'cash'] || method || 'N/A';
   };
 
@@ -446,6 +446,7 @@ const PaymentsModule = () => {
                         <SelectItem value="cash">💵 Dinheiro / Mão</SelectItem>
                         <SelectItem value="transfer">🏛️ T. Bancária</SelectItem>
                         <SelectItem value="mpesa">📱 M-Pesa</SelectItem>
+                        <SelectItem value="emola">📱 e-Mola</SelectItem>
                         <SelectItem value="check">📄 Cheque</SelectItem>
                       </SelectContent>
                     </Select>

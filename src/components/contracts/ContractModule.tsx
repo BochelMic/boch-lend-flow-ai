@@ -345,7 +345,26 @@ const ContractModule = () => {
 
             const timestamp = Date.now();
             const path = `${user.id}/${selectedContract.id}_${timestamp}.png`;
-            const { error: uploadErr } = await supabase.storage.from('signatures').upload(path, blob, { upsert: true });
+
+            // Resilient upload with retry (auth lock contention can corrupt tokens)
+            let uploadErr: any = null;
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              // Force fresh auth token before each attempt
+              await supabase.auth.refreshSession();
+              
+              const result = await supabase.storage.from('signatures').upload(path, blob, {
+                contentType: 'image/png',
+                upsert: false
+              });
+              uploadErr = result.error;
+              
+              if (!uploadErr) break;
+              console.warn(`[Sign] Upload attempt ${attempt}/3 failed:`, uploadErr.message);
+              
+              if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 1500 * attempt));
+              }
+            }
             if (uploadErr) throw uploadErr;
 
             const { data: urlData } = supabase.storage.from('signatures').getPublicUrl(path);
@@ -419,7 +438,7 @@ const ContractModule = () => {
                 .from('signatures')
                 .upload(pdfPath, finalPdfBytes, {
                     contentType: 'application/pdf',
-                    upsert: true
+                    upsert: false
                 });
 
             if (pdfUploadErr) throw pdfUploadErr;
@@ -942,7 +961,7 @@ const ContractModule = () => {
                                                 toast({ title: 'A fazer upload...', description: 'A transferir documento para o servidor.' });
                                                 try {
                                                     const path = `${selectedContract.id}.pdf`;
-                                                    const { error: uploadErr } = await supabase.storage.from('contracts').upload(path, file, { upsert: true });
+                                                    const { error: uploadErr } = await supabase.storage.from('contracts').upload(path, file, { upsert: false });
                                                     if (uploadErr) throw uploadErr;
 
                                                     const { data } = supabase.storage.from('contracts').getPublicUrl(path);

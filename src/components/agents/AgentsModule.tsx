@@ -144,6 +144,9 @@ const AgentsModule = () => {
 
     setIsCreatingAgent(true);
     try {
+      // Refresh session to ensure token is valid before calling Edge Function
+      await supabase.auth.refreshSession();
+
       // Create user via Edge Function (Standardized way)
       const { data, error: funcError } = await supabase.functions.invoke('create-user', {
         body: {

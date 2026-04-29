@@ -77,7 +77,7 @@ serve(async (req) => {
       await supabaseAdmin.from('user_roles').upsert({
         user_id: userData.user.id,
         role: role,
-      }, { onConflict: 'user_id' });
+      }, { onConflict: 'user_id, role' });
     }
 
     // Insert profile

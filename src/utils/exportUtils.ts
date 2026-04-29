@@ -1,4 +1,4 @@
-﻿import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -48,7 +48,7 @@ export const exportToExcel = (reportData: ReportData, filename: string) => {
     const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
     ws['!cols'] = reportData.headers.map(() => ({ width: 15 }));
 
-    XLSX.utils.book_append_sheet(wb, ws, 'RelatÃ³rio');
+    XLSX.utils.book_append_sheet(wb, ws, 'Relatório');
 
     // Salvar arquivo
     const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
@@ -189,7 +189,7 @@ const pdfBaseStyles = `
   .amount-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
   .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
   .footer-text { font-size: 10px; color: #94a3b8; text-align: center; line-height: 1.8; }
-  .signature-area { display: flex; justify-content: space-between; margin-top: 50px; padding-top: 10px; }
+  .signature-area { display: flex; justify-content: flex-end; margin-top: 50px; padding-top: 10px; }
   .sig-box { width: 45%; text-align: center; }
   .sig-line { border-top: 1px solid #94a3b8; padding-top: 8px; font-size: 11px; color: #64748b; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
@@ -208,7 +208,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   for (let i = 1; i <= installments; i++) {
     const isLast = i === installments;
     const val = isLast ? totalAmount - installmentValue * (installments - 1) : installmentValue;
-    installmentRows += `<tr><td>${i}Âª Parcela</td><td>â€”</td><td style="text-align:right">MZN ${val.toLocaleString()}</td></tr>`;
+    installmentRows += `<tr><td>${i}ª Parcela</td><td>---</td><td style="text-align:right">MZN ${val.toLocaleString()}</td></tr>`;
   }
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fatura ${s(invoiceData.number)}</title>
@@ -222,18 +222,18 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
       ${invoiceData.companyNuit ? 'NUIT: ' + s(invoiceData.companyNuit) + '<br/>' : ''}
       ${invoiceData.companyEmail ? s(invoiceData.companyEmail) + '<br/>' : ''}
       ${invoiceData.companyPhone ? 'Tel: ' + s(invoiceData.companyPhone) + '<br/>' : ''}
-      ${s(invoiceData.companyAddress || 'Maputo, MoÃ§ambique')}
+      ${s(invoiceData.companyAddress || 'Maputo, Moçambique')}
     </div>
   </div>
 
-  <div class="doc-title">Fatura de ConcessÃ£o de CrÃ©dito</div>
+  <div class="doc-title">Fatura de Concessão de Crédito</div>
 
   <div class="info-grid">
     <div class="info-box">
       <h3>Dados do Documento</h3>
-      <div class="info-row"><span class="label">NÂº Fatura</span><span class="value">${s(invoiceData.number)}</span></div>
-      <div class="info-row"><span class="label">Data de EmissÃ£o</span><span class="value">${s(invoiceData.date)}</span></div>
-      <div class="info-row"><span class="label">NÂº Parcelas</span><span class="value">${installments}</span></div>
+      <div class="info-row"><span class="label">Nº Fatura</span><span class="value">${s(invoiceData.number)}</span></div>
+      <div class="info-row"><span class="label">Data de Emissão</span><span class="value">${s(invoiceData.date)}</span></div>
+      <div class="info-row"><span class="label">Nº Parcelas</span><span class="value">${installments}</span></div>
       ${invoiceData.duration ? `<div class="info-row"><span class="label">Prazo</span><span class="value">${s(invoiceData.duration)}</span></div>` : ''}
     </div>
     <div class="info-box">
@@ -242,15 +242,15 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
       ${invoiceData.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(invoiceData.clientDocument)}</span></div>` : ''}
       ${invoiceData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(invoiceData.clientNuit)}</span></div>` : ''}
       ${invoiceData.clientPhone ? `<div class="info-row"><span class="label">Telefone</span><span class="value">${s(invoiceData.clientPhone)}</span></div>` : ''}
-      ${invoiceData.clientAddress ? `<div class="info-row"><span class="label">EndereÃ§o</span><span class="value">${s(invoiceData.clientAddress)}</span></div>` : ''}
+      ${invoiceData.clientAddress ? `<div class="info-row"><span class="label">Endereço</span><span class="value">${s(invoiceData.clientAddress)}</span></div>` : ''}
     </div>
   </div>
 
   <div class="table-section">
     <table>
-      <thead><tr><th>DescriÃ§Ã£o</th><th>Taxa</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
+      <thead><tr><th>Descrição</th><th>Taxa</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
-        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : 'â€”'}</td><td style="text-align:right">MZN ${invoiceData.amount.toLocaleString()}</td></tr>
+        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : '---'}</td><td style="text-align:right">MZN ${invoiceData.amount.toLocaleString()}</td></tr>
         ${invoiceData.interestRate ? `<tr><td>Juros (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">MZN ${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
         <tr class="total-row"><td colspan="2">TOTAL A PAGAR</td><td style="text-align:right">MZN ${totalAmount.toLocaleString()}</td></tr>
       </tbody>
@@ -267,20 +267,17 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   ` : ''}
 
   <div class="amount-section">
-    <div class="amount-label">Valor Total do CrÃ©dito</div>
+    <div class="amount-label">Valor Total do Crédito</div>
     <div class="amount-highlight">MZN ${totalAmount.toLocaleString()}</div>
   </div>
 
-  <div class="signature-area">
-    <div class="sig-box"><div class="sig-line">O Cliente</div></div>
-    <div class="sig-box"><div class="sig-line">A Empresa</div></div>
-  </div>
+
 
   <div class="footer">
     <p class="footer-text">
       Documento gerado automaticamente pelo sistema ${s(invoiceData.companyName)}.<br/>
       Este documento serve como comprovativo de concessÃ£o de crÃ©dito.<br/>
-      Data de impressÃ£o: ${new Date().toLocaleDateString('pt-MZ')}
+      Data de impressão: ${new Date().toLocaleDateString('pt-MZ')}
     </p>
   </div>
 </div></body></html>`;
@@ -288,7 +285,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
 
 export const generateReceiptHTML = (receiptData: ReceiptData) => {
   const s = sanitizeHtml;
-  const methodLabel: Record<string, string> = { cash: 'Dinheiro', transfer: 'TransferÃªncia BancÃ¡ria', mpesa: 'M-Pesa', emola: 'e-Mola', bank_transfer: 'TransferÃªncia BancÃ¡ria', check: 'Cheque' };
+  const methodLabel: Record<string, string> = { cash: 'Dinheiro', transfer: 'Transferência Bancária', mpesa: 'M-Pesa', emola: 'e-Mola', bank_transfer: 'Transferência Bancária', check: 'Cheque' };
   const method = methodLabel[receiptData.paymentMethod || 'cash'] || receiptData.paymentMethod || 'Dinheiro';
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo ${s(receiptData.number)}</title>
@@ -306,7 +303,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
       ${receiptData.companyNuit ? 'NUIT: ' + s(receiptData.companyNuit) + '<br/>' : ''}
       ${receiptData.companyEmail ? s(receiptData.companyEmail) + '<br/>' : ''}
       ${receiptData.companyPhone ? 'Tel: ' + s(receiptData.companyPhone) + '<br/>' : ''}
-      ${s(receiptData.companyAddress || 'Maputo, MoÃ§ambique')}
+      ${s(receiptData.companyAddress || 'Maputo, Moçambique')}
     </div>
   </div>
 
@@ -315,9 +312,9 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
   <div class="info-grid">
     <div class="info-box">
       <h3>Dados do Recibo</h3>
-      <div class="info-row"><span class="label">NÂº Recibo</span><span class="value">${s(receiptData.number)}</span></div>
+      <div class="info-row"><span class="label">Nº Recibo</span><span class="value">${s(receiptData.number)}</span></div>
       <div class="info-row"><span class="label">Data</span><span class="value">${s(receiptData.date)}</span></div>
-      <div class="info-row"><span class="label">MÃ©todo</span><span class="value">${s(method)}</span></div>
+      <div class="info-row"><span class="label">Método</span><span class="value">${s(method)}</span></div>
       ${receiptData.installmentNumber ? `<div class="info-row"><span class="label">Parcela</span><span class="value">${s(receiptData.installmentNumber)}</span></div>` : ''}
     </div>
     <div class="info-box">
@@ -327,16 +324,16 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
       ${receiptData.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(receiptData.clientDocument)}</span></div>` : ''}
       ${receiptData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(receiptData.clientNuit)}</span></div>` : ''}
       ${receiptData.clientPhone ? `<div class="info-row"><span class="label">Telefone</span><span class="value">${s(receiptData.clientPhone)}</span></div>` : ''}
-      ${receiptData.clientAddress ? `<div class="info-row"><span class="label">EndereÃ§o</span><span class="value">${s(receiptData.clientAddress)}</span></div>` : ''}
+      ${receiptData.clientAddress ? `<div class="info-row"><span class="label">Endereço</span><span class="value">${s(receiptData.clientAddress)}</span></div>` : ''}
     </div>
   </div>
 
   <div class="table-section">
     <table>
-      <thead><tr><th>DescriÃ§Ã£o</th><th>MÃ©todo</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
+      <thead><tr><th>Descrição</th><th>Método</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
         <tr><td>${s(receiptData.description)}</td><td>${s(method)}</td><td style="text-align:right">MZN ${receiptData.amount.toLocaleString()}</td></tr>
-        ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#64748b">Saldo restante apÃ³s este pagamento</td><td style="text-align:right;color:#64748b">MZN ${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
+        ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#64748b">Saldo restante após este pagamento</td><td style="text-align:right;color:#64748b">MZN ${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
       </tbody>
     </table>
   </div>
@@ -348,19 +345,16 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
 
   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0;font-size:12px;color:#334155;line-height:1.7">
     Recebemos de <strong>${s(receiptData.clientName)}</strong> a quantia de <strong>MZN ${receiptData.amount.toLocaleString()}</strong>
-    (${s(receiptData.description)}), paga atravÃ©s de <strong>${s(method)}</strong>.
+    (${s(receiptData.description)}), paga através de <strong>${s(method)}</strong>.
   </div>
 
-  <div class="signature-area">
-    <div class="sig-box"><div class="sig-line">O Cliente</div></div>
-    <div class="sig-box"><div class="sig-line">Recebido por</div></div>
-  </div>
+
 
   <div class="footer">
     <p class="footer-text">
       Documento gerado automaticamente pelo sistema ${s(receiptData.companyName)}.<br/>
       Este recibo serve como comprovativo de pagamento.<br/>
-      Data de impressÃ£o: ${new Date().toLocaleDateString('pt-MZ')}
+      Data de impressão: ${new Date().toLocaleDateString('pt-MZ')}
     </p>
   </div>
 </div></body></html>`;
@@ -429,19 +423,19 @@ export const generateCreditRequestHTML = (data: CreditRequestExportData) => {
       ${data.companyNuitInfo ? 'NUIT: ' + s(data.companyNuitInfo) + '<br/>' : ''}
       ${data.companyEmailInfo ? s(data.companyEmailInfo) + '<br/>' : ''}
       ${data.companyPhoneInfo ? 'Tel: ' + s(data.companyPhoneInfo) + '<br/>' : ''}
-      ${s(data.companyAddressInfo || 'Maputo, MoÃ§ambique')}
+      ${s(data.companyAddressInfo || 'Maputo, Moçambique')}
     </div>
   </div>
 
   <div class="doc-title" style="text-align: left; display: flex; justify-content: space-between; align-items: center; padding: 12px 20px;">
-    <span>DossiÃª de Pedido de CrÃ©dito</span>
+    <span>Dossiê de Pedido de Crédito</span>
     <span class="status-badge">${statusText}</span>
   </div>
 
   <div class="info-grid" style="grid-template-columns: 1fr;">
     <div class="info-box">
       <div style="display: flex; justify-content: space-between;">
-        <div><span class="label">NÂº Pedido:</span> <span class="value">${s(data.number)}</span></div>
+        <div><span class="label">Nº Pedido:</span> <span class="value">${s(data.number)}</span></div>
         <div><span class="label">Data do Pedido:</span> <span class="value">${s(data.date)}</span></div>
       </div>
     </div>
@@ -460,12 +454,12 @@ export const generateCreditRequestHTML = (data: CreditRequestExportData) => {
     </div>
     
     <div class="info-box">
-      <h3>2. EndereÃ§o</h3>
+      <h3>2. Endereço</h3>
       ${data.clientAddress ? `<div class="info-row"><span class="label">Morada</span><span class="value" style="text-align: right; max-width: 60%;">${s(data.clientAddress)}</span></div>` : ''}
-      ${data.residenceType ? `<div class="info-row"><span class="label">Tipo ResidÃªncia</span><span class="value">${s(data.residenceType)}</span></div>` : ''}
+      ${data.residenceType ? `<div class="info-row"><span class="label">Tipo Residência</span><span class="value">${s(data.residenceType)}</span></div>` : ''}
 
       <h3 style="margin-top: 15px;">3. Perfil Profissional</h3>
-      ${data.occupation ? `<div class="info-row"><span class="label">OcupaÃ§Ã£o</span><span class="value">${s(data.occupation)}</span></div>` : ''}
+      ${data.occupation ? `<div class="info-row"><span class="label">Ocupação</span><span class="value">${s(data.occupation)}</span></div>` : ''}
       ${data.companyName ? `<div class="info-row"><span class="label">Empresa/Ativ.</span><span class="value">${s(data.companyName)}</span></div>` : ''}
       ${data.workDuration ? `<div class="info-row"><span class="label">Tempo Trabal.</span><span class="value">${s(data.workDuration)}</span></div>` : ''}
       ${data.monthlyIncome ? `<div class="info-row"><span class="label">Rendimento</span><span class="value">MZN ${s(data.monthlyIncome)}</span></div>` : ''}
@@ -474,7 +468,7 @@ export const generateCreditRequestHTML = (data: CreditRequestExportData) => {
 
   <div class="info-grid" style="grid-template-columns: 1fr;">
     <div class="info-box">
-      <h3>4. InformaÃ§Ãµes do CrÃ©dito Solicitado</h3>
+      <h3>4. Informações do Crédito Solicitado</h3>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
         <div>
           <div class="info-row"><span class="label">Valor Solicitado</span><span class="value" style="color: #0b3a20; font-size: 16px;">MZN ${data.amount.toLocaleString()}</span></div>
@@ -489,22 +483,19 @@ export const generateCreditRequestHTML = (data: CreditRequestExportData) => {
       </div>
       ${data.observations ? `
         <div style="margin-top: 15px; background: #fffbeb; padding: 10px; border-radius: 6px; border: 1px solid #fde68a;">
-          <div style="font-size: 10px; color: #b45309; text-transform: uppercase; margin-bottom: 4px; font-weight: bold;">ObservaÃ§Ãµes do Cliente</div>
+          <div style="font-size: 10px; color: #b45309; text-transform: uppercase; margin-bottom: 4px; font-weight: bold;">Observações do Cliente</div>
           <div style="font-size: 12px; color: #78350f;">${s(data.observations)}</div>
         </div>
       ` : ''}
     </div>
   </div>
 
-  <div class="signature-area">
-    <div class="sig-box"><div class="sig-line">Assinatura do Cliente</div></div>
-    <div class="sig-box"><div class="sig-line">Analista de CrÃ©dito</div></div>
-  </div>
+
 
   <div class="footer">
     <p class="footer-text">
       Documento confidencial gerado automaticamente pelo sistema ${s(data.companyNameInfo)}.<br/>
-      Data de impressÃ£o: ${new Date().toLocaleDateString('pt-MZ', { hour: '2-digit', minute: '2-digit' })}
+      Data de impressão: ${new Date().toLocaleDateString('pt-MZ', { hour: '2-digit', minute: '2-digit' })}
     </p>
   </div>
 </div>
@@ -517,7 +508,7 @@ ${docsHtml}
 
 export const printDocument = (htmlContent: string) => {
   try {
-    console.log('Iniciando impressÃ£o...');
+    console.log('Iniciando impressão...');
     const printWindow = window.open('', '_blank');
     if (printWindow) {
       // Security: Safely write to the new window bypassing naive regex scanners,
@@ -531,7 +522,7 @@ export const printDocument = (htmlContent: string) => {
         printWindow.print();
       }, 250);
     } else {
-      console.error('NÃ£o foi possÃ­vel abrir janela de impressÃ£o');
+      console.error('Não foi possível abrir janela de impressão');
       return false;
     }
     return true;
