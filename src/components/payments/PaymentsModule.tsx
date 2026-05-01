@@ -6,12 +6,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight, ChevronRight, RefreshCw } from 'lucide-react';
+import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight, ChevronRight, RefreshCw, FileText } from 'lucide-react';
 import { calculateSmartSettlement } from '@/utils/creditUtils';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { generateReceiptHTML, downloadDocumentAsPdf } from '../../utils/exportUtils';
+import { generateReceiptHTML, generateInvoiceHTML, downloadDocumentAsPdf } from '../../utils/exportUtils';
 import { notifyEvent } from '@/utils/notifyEvent';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +31,7 @@ interface ActiveLoan {
   id: string;
   client_name: string;
   user_id: string | null;
+  is_physical: boolean;
   client_data?: any;
   remaining_amount: number;
   total_amount: number;
@@ -140,6 +141,7 @@ const PaymentsModule = () => {
         id: l.id,
         client_name: l.clients?.name || 'Desconhecido',
         user_id: l.clients?.user_id || null,
+        is_physical: l.clients?.is_physical || false,
         client_data: l.clients || null,
         remaining_amount: Number(l.remaining_amount),
         total_amount: Number(l.total_amount),
@@ -257,10 +259,17 @@ const PaymentsModule = () => {
     return methods[method || 'cash'] || method || 'N/A';
   };
 
-  const handlePrintReceipt = (payment: Payment) => {
+  const handlePrintReceipt = async (payment: Payment) => {
+    // Get sequential number from DB
+    let receiptNumber = 'REC-' + payment.id.substring(0, 8).toUpperCase();
+    try {
+      const { data } = await supabase.rpc('next_receipt_number');
+      if (data) receiptNumber = data;
+    } catch { /* fallback to ID-based */ }
+
     const cData = payment.client_data || {};
     const html = generateReceiptHTML({
-      number: 'REC-' + payment.id.substring(0, 8).toUpperCase(),
+      number: receiptNumber,
       date: new Date(payment.payment_date).toLocaleDateString('pt-MZ'),
       clientName: payment.loan_client_name || 'Cliente',
       clientEmail: cData.email,
@@ -271,14 +280,14 @@ const PaymentsModule = () => {
       amount: Number(payment.amount),
       paymentMethod: payment.payment_method || 'cash',
       description: payment.notes || 'Pagamento de prestação de microcrédito',
-      companyName: companySettings?.company_name || 'BOCHEL MICROCREDITO',
-      companyEmail: companySettings?.email,
-      companyPhone: companySettings?.phone,
-      companyNuit: companySettings?.nuit,
-      companyAddress: companySettings?.address,
+      companyName: companySettings?.company_name || 'Bochel Microcredito, Ei',
+      companyEmail: companySettings?.email || 'bm@bochelmicrocredito.com',
+      companyPhone: companySettings?.phone || '+258 86 188 7302 / +258 84 582 8205',
+      companyNuit: companySettings?.nuit || '1477066510',
+      companyAddress: companySettings?.address || 'Moçambique, Maputo - Malhampsene (N4)',
     });
-    downloadDocumentAsPdf(html, `Recibo_${(payment.loan_client_name || 'Pagamento').replace(/\s+/g, '_')}_${payment.id.slice(0, 6)}`);
-    toast({ title: 'Recibo Gerado', description: 'O recibo está sendo baixado em PDF.' });
+    downloadDocumentAsPdf(html, `Recibo_${(payment.loan_client_name || 'Pagamento').replace(/\s+/g, '_')}_${receiptNumber}`);
+    toast({ title: 'Recibo Gerado', description: `Recibo ${receiptNumber} baixado em PDF.` });
   };
 
   return (
@@ -345,13 +354,56 @@ const PaymentsModule = () => {
                       {activeLoans.map(loan => (
                         <SelectItem key={loan.id} value={loan.id} className="rounded-xl py-3 px-4 focus:bg-amber-50">
                           <div className="flex flex-col items-start gap-1">
-                            <span className="font-bold text-gray-800">{loan.client_name}</span>
+                            <span className="font-bold text-gray-800 flex items-center gap-1.5">
+                              {loan.client_name}
+                              {loan.is_physical && (
+                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">
+                                  <MapPin className="h-2.5 w-2.5" /> Físico
+                                </span>
+                              )}
+                            </span>
                             <span className="text-[10px] text-gray-500">Saldo Actual: <strong className="text-red-500">MZN {loan.remaining_amount.toLocaleString()}</strong></span>
                           </div>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+
+                  {selectedLoan && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full h-10 border-gray-200 text-gray-700 hover:bg-gray-50 rounded-xl text-xs font-bold flex items-center gap-2"
+                      onClick={async () => {
+                        let invoiceNumber = `FAT-${Date.now()}`;
+                        try {
+                          const { data } = await supabase.rpc('next_invoice_number');
+                          if (data) invoiceNumber = data;
+                        } catch { /* fallback */ }
+
+                        const html = generateInvoiceHTML({
+                          number: invoiceNumber,
+                          date: new Date().toLocaleDateString('pt-MZ'),
+                          clientName: selectedLoan.client_name,
+                          amount: selectedLoan.total_amount - (selectedLoan.total_amount - (selectedLoan.total_amount / (1 + (selectedLoan.is_installment ? 0.3 : 0.3)))),
+                          interestRate: 30,
+                          totalAmount: selectedLoan.total_amount,
+                          installments: selectedLoan.installments,
+                          description: 'Concessão de microcrédito',
+                          companyName: companySettings?.company_name || 'Bochel Microcredito, Ei',
+                          companyEmail: companySettings?.email || 'bm@bochelmicrocredito.com',
+                          companyPhone: companySettings?.phone || '+258 86 188 7302 / +258 84 582 8205',
+                          companyNuit: companySettings?.nuit || '1477066510',
+                          companyAddress: companySettings?.address || 'Moçambique, Maputo - Malhampsene (N4)',
+                        });
+                        downloadDocumentAsPdf(html, `Fatura_${selectedLoan.client_name.replace(/\s+/g, '_')}_${invoiceNumber}`);
+                        toast({ title: 'Fatura Gerada', description: `Fatura ${invoiceNumber} para ${selectedLoan.client_name} baixada em PDF.` });
+                      }}
+                    >
+                      <FileText className="h-4 w-4" />
+                      Gerar Fatura do Empréstimo
+                    </Button>
+                  )}
                 </div>
 
                 {selectedLoan && (

@@ -165,36 +165,35 @@ const pdfBaseStyles = `
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a1a; background: #fff; }
   .page { max-width: 800px; margin: 0 auto; padding: 40px 50px; }
-  .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 3px solid #0b3a20; margin-bottom: 25px; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 2px solid #1a1a1a; margin-bottom: 24px; }
   .header-left { display: flex; align-items: center; gap: 16px; }
-  .header-left img { height: 60px; object-fit: contain; }
-  .company-info { text-align: right; font-size: 11px; color: #555; line-height: 1.6; }
-  .doc-title { text-align: center; font-size: 20px; font-weight: 700; color: #0b3a20; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 25px; padding: 12px 0; background: linear-gradient(90deg, #f0fdf4, #ecfdf5, #f0fdf4); border-radius: 8px; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px; }
-  .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
-  .info-box h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #0b3a20; font-weight: 700; margin-bottom: 10px; border-bottom: 2px solid #d37c22; padding-bottom: 6px; display: inline-block; }
-  .info-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; }
-  .info-row .label { color: #64748b; }
-  .info-row .value { font-weight: 600; color: #1e293b; }
-  .table-section { margin-bottom: 25px; }
-  .table-section table { width: 100%; border-collapse: collapse; border-radius: 8px; overflow: hidden; }
-  .table-section th { background: #0b3a20; color: white; padding: 10px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; }
-  .table-section td { padding: 10px 14px; font-size: 12px; border-bottom: 1px solid #e2e8f0; }
-  .table-section tr:nth-child(even) { background: #f8fafc; }
-  .table-section tr:last-child td { border-bottom: none; }
-  .total-row { background: #f0fdf4 !important; }
-  .total-row td { font-weight: 700; font-size: 14px; color: #0b3a20; border-top: 2px solid #0b3a20; }
-  .amount-highlight { display: inline-block; background: linear-gradient(135deg, #0b3a20, #1a6b3c); color: white; padding: 12px 28px; border-radius: 10px; font-size: 22px; font-weight: 800; letter-spacing: 1px; margin: 15px 0; }
-  .amount-section { text-align: center; margin: 20px 0; padding: 20px; background: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0; }
-  .amount-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-  .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
-  .footer-text { font-size: 10px; color: #94a3b8; text-align: center; line-height: 1.8; }
-  .signature-area { display: flex; justify-content: flex-end; margin-top: 50px; padding-top: 10px; }
+  .header-left img { height: 56px; object-fit: contain; }
+  .company-info { text-align: right; font-size: 11px; color: #444; line-height: 1.6; }
+  .doc-title { text-align: center; font-size: 18px; font-weight: 700; color: #1a1a1a; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; padding: 10px 0; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  .info-box { border: 1px solid #ccc; padding: 14px; }
+  .info-box h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #1a1a1a; font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid #999; padding-bottom: 4px; display: inline-block; }
+  .info-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+  .info-row .label { color: #666; }
+  .info-row .value { font-weight: 600; color: #1a1a1a; }
+  .table-section { margin-bottom: 24px; }
+  .table-section table { width: 100%; border-collapse: collapse; }
+  .table-section th { background: #f5f5f5; color: #1a1a1a; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border: 1px solid #ccc; }
+  .table-section td { padding: 8px 12px; font-size: 12px; border: 1px solid #ccc; }
+  .table-section tr:nth-child(even) { background: #fafafa; }
+  .total-row { background: #f0f0f0 !important; }
+  .total-row td { font-weight: 700; font-size: 13px; color: #1a1a1a; border-top: 2px solid #1a1a1a; }
+  .amount-highlight { display: inline-block; border: 2px solid #1a1a1a; padding: 10px 28px; font-size: 20px; font-weight: 800; letter-spacing: 1px; margin: 12px 0; color: #1a1a1a; }
+  .amount-section { text-align: center; margin: 20px 0; padding: 18px; border: 1px solid #ccc; }
+  .amount-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #ccc; }
+  .footer-text { font-size: 10px; color: #888; text-align: center; line-height: 1.8; }
+  .signature-area { display: flex; justify-content: flex-end; margin-top: 60px; padding-top: 10px; }
   .sig-box { width: 45%; text-align: center; }
-  .sig-line { border-top: 1px solid #94a3b8; padding-top: 8px; font-size: 11px; color: #64748b; }
+  .sig-line { border-top: 1px solid #1a1a1a; padding-top: 8px; font-size: 11px; color: #444; margin-top: 50px; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
-  .badge-green { background: #dcfce7; color: #166534; }
-  .badge-orange { background: #fef3c7; color: #92400e; }
+  .badge-green { background: #e8e8e8; color: #1a1a1a; }
+  .badge-orange { background: #f0f0f0; color: #1a1a1a; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 `;
 
@@ -218,7 +217,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
       <img src="${invoiceData.logoUrl || '/logo-bochel.png'}" alt="Logo" onerror="this.style.display='none'" />
     </div>
     <div class="company-info">
-      <strong style="font-size:14px;color:#0b3a20">${s(invoiceData.companyName)}</strong><br/>
+      <strong style="font-size:14px;color:#1a1a1a">${s(invoiceData.companyName)}</strong><br/>
       ${invoiceData.companyNuit ? 'NUIT: ' + s(invoiceData.companyNuit) + '<br/>' : ''}
       ${invoiceData.companyEmail ? s(invoiceData.companyEmail) + '<br/>' : ''}
       ${invoiceData.companyPhone ? 'Tel: ' + s(invoiceData.companyPhone) + '<br/>' : ''}
@@ -271,12 +270,16 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
     <div class="amount-highlight">MZN ${totalAmount.toLocaleString()}</div>
   </div>
 
-
+  <div class="signature-area">
+    <div class="sig-box">
+      <div class="sig-line">Concedido por</div>
+    </div>
+  </div>
 
   <div class="footer">
     <p class="footer-text">
-      Documento gerado automaticamente pelo sistema ${s(invoiceData.companyName)}.<br/>
-      Este documento serve como comprovativo de concessÃ£o de crÃ©dito.<br/>
+      Documento gerado por ${s(invoiceData.companyName)}.<br/>
+      Este documento serve como comprovativo de concessão de crédito.<br/>
       Data de impressão: ${new Date().toLocaleDateString('pt-MZ')}
     </p>
   </div>
@@ -289,17 +292,13 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
   const method = methodLabel[receiptData.paymentMethod || 'cash'] || receiptData.paymentMethod || 'Dinheiro';
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Recibo ${s(receiptData.number)}</title>
-<style>${pdfBaseStyles}
-  .doc-title { color: #0b3a20; background: linear-gradient(90deg, #f0fdf4, #ecfdf5, #f0fdf4); }
-  .amount-highlight { background: linear-gradient(135deg, #0b3a20, #166534); }
-  .amount-section { background: #f0fdf4; border-color: #bbf7d0; }
-</style></head><body><div class="page">
+<style>${pdfBaseStyles}</style></head><body><div class="page">
   <div class="header">
     <div class="header-left">
       <img src="${receiptData.logoUrl || '/logo-bochel.png'}" alt="Logo" onerror="this.style.display='none'" />
     </div>
     <div class="company-info">
-      <strong style="font-size:14px;color:#0b3a20">${s(receiptData.companyName)}</strong><br/>
+      <strong style="font-size:14px;color:#1a1a1a">${s(receiptData.companyName)}</strong><br/>
       ${receiptData.companyNuit ? 'NUIT: ' + s(receiptData.companyNuit) + '<br/>' : ''}
       ${receiptData.companyEmail ? s(receiptData.companyEmail) + '<br/>' : ''}
       ${receiptData.companyPhone ? 'Tel: ' + s(receiptData.companyPhone) + '<br/>' : ''}
@@ -333,7 +332,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
       <thead><tr><th>Descrição</th><th>Método</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
         <tr><td>${s(receiptData.description)}</td><td>${s(method)}</td><td style="text-align:right">MZN ${receiptData.amount.toLocaleString()}</td></tr>
-        ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#64748b">Saldo restante após este pagamento</td><td style="text-align:right;color:#64748b">MZN ${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
+        ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#666">Saldo restante após este pagamento</td><td style="text-align:right;color:#666">MZN ${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
       </tbody>
     </table>
   </div>
@@ -343,16 +342,20 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
     <div class="amount-highlight">MZN ${receiptData.amount.toLocaleString()}</div>
   </div>
 
-  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin:20px 0;font-size:12px;color:#334155;line-height:1.7">
+  <div style="border:1px solid #ccc;padding:14px;margin:20px 0;font-size:12px;color:#1a1a1a;line-height:1.7">
     Recebemos de <strong>${s(receiptData.clientName)}</strong> a quantia de <strong>MZN ${receiptData.amount.toLocaleString()}</strong>
     (${s(receiptData.description)}), paga através de <strong>${s(method)}</strong>.
   </div>
 
-
+  <div class="signature-area">
+    <div class="sig-box">
+      <div class="sig-line">Recebido por</div>
+    </div>
+  </div>
 
   <div class="footer">
     <p class="footer-text">
-      Documento gerado automaticamente pelo sistema ${s(receiptData.companyName)}.<br/>
+      Documento gerado por ${s(receiptData.companyName)}.<br/>
       Este recibo serve como comprovativo de pagamento.<br/>
       Data de impressão: ${new Date().toLocaleDateString('pt-MZ')}
     </p>

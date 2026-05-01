@@ -88,7 +88,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
             // Determine role: from DB > from user_metadata > default
             const role = (roleData?.role || authUser.user_metadata?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
-            const name = profile?.name || authUser.user_metadata?.name || authUser.email || '';
+            let name = profile?.name || authUser.user_metadata?.name || authUser.email || '';
+            
+            // Hardcode override for the manager as requested
+            if (authUser.email === 'admin@bochel.com' || authUser.email === 'admin@bochel.mz') {
+                name = 'Armindo Dique Bochiwe';
+            }
+            
             const avatar = null;
             const empresaId = authUser.user_metadata?.empresa_id || null;
 
@@ -97,7 +103,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.error("Error loading profile, using session metadata:", error);
             // Fallback: use metadata from the auth session itself
             const metaRole = (authUser.user_metadata?.role || 'cliente') as 'gestor' | 'agente' | 'cliente';
-            setUserFromSession(authUser, metaRole);
+            let name = authUser.user_metadata?.name || authUser.email || '';
+            
+            if (authUser.email === 'admin@bochel.com' || authUser.email === 'admin@bochel.mz') {
+                name = 'Armindo Dique Bochiwe';
+            }
+            
+            setUserFromSession(authUser, metaRole, name);
         }
     };
 

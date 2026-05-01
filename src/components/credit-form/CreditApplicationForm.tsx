@@ -29,6 +29,7 @@ import {
 
 interface CreditApplicationFormProps {
   isPublicAccess?: boolean;
+  isPhysicalRegistration?: boolean;
   initialData?: any;
 }
 
@@ -156,7 +157,7 @@ const compressImage = (file: File, maxWidth = 1024, quality = 0.6): Promise<File
   });
 };
 
-const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditApplicationFormProps) => {
+const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration = false, initialData }: CreditApplicationFormProps) => {
   // Initial form state constant
   const initialFormState = {
     fullName: '', birthDate: '', documentType: '', documentNumber: '',
@@ -306,6 +307,11 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
 
   // Check existing credit requests and load Cloud Draft on mount
   useEffect(() => {
+    // Physical registration: skip ALL user status checks
+    if (isPhysicalRegistration) {
+      setCheckingStatus(false);
+      return;
+    }
     if (!user?.id || isPublicAccess) {
       setCheckingStatus(false);
       return;
@@ -644,6 +650,110 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
     setIsLoading(true);
 
     try {
+      // === PHYSICAL REGISTRATION MODE ===
+      if (isPhysicalRegistration) {
+        const clientId = initialData?.clientId;
+        if (!clientId) {
+          toast({ title: 'Erro', description: 'ID do cliente não encontrado.', variant: 'destructive' });
+          setIsLoading(false);
+          return;
+        }
+
+        const address = `${form.neighborhood}, ${form.district}, ${form.province}`;
+        const amount = parseFloat(form.requestedAmount);
+
+        // Calculate dates
+        const startDate = new Date();
+        const endDate = new Date();
+        const installments = form.installmentMonths || 1;
+        const isInstallment = form.isInstallment || false;
+        const option = form.creditOption || 'A';
+
+        if (isInstallment && installments > 1) {
+          if (option === 'A') {
+            endDate.setDate(endDate.getDate() + (installments * 7));
+          } else {
+            endDate.setDate(endDate.getDate() + (installments * 30));
+          }
+        } else {
+          endDate.setDate(endDate.getDate() + 30);
+        }
+
+        const totalAmount = form.amortizationPlan
+          ? form.amortizationPlan.reduce((acc: number, row: any) => acc + (Number(row.total) || 0), 0)
+          : amount * 1.3;
+
+        const interestRate = form.creditOption === 'B'
+          ? (form.isInstallment || (form.term || 30) > 15 ? 30 : 20)
+          : 30;
+
+        console.log('[PHYSICAL] Calling register_physical_loan RPC for client:', clientId);
+
+        const { data: rpcResult, error: rpcErr } = await supabase.rpc('register_physical_loan', {
+          p_client_id: clientId,
+          p_client_name: form.fullName,
+          p_client_phone: form.phone || null,
+          p_client_email: form.email || null,
+          p_client_address: address || null,
+          p_amount: amount,
+          p_interest_rate: interestRate,
+          p_installments: installments,
+          p_total_amount: totalAmount,
+          p_credit_option: option,
+          p_is_installment: isInstallment,
+          p_start_date: startDate.toISOString().split('T')[0],
+          p_end_date: endDate.toISOString().split('T')[0],
+          p_amortization_plan: form.amortizationPlan || null,
+          p_notes: form.observations || null,
+          p_birth_date: form.birthDate || null,
+          p_gender: form.gender || null,
+          p_document_type: form.documentType || null,
+          p_document_number: form.documentNumber || null,
+          p_document_issue_date: form.documentIssueDate || null,
+          p_document_expiry_date: form.documentExpiryDate || null,
+          p_nuit: form.nuit || null,
+          p_neighborhood: form.neighborhood || null,
+          p_district: form.district || null,
+          p_province: form.province || null,
+          p_residence_type: form.residenceType || null,
+          p_occupation: form.occupation || null,
+          p_company_name: form.companyName || null,
+          p_work_duration: form.workDuration || null,
+          p_monthly_income: form.monthlyIncome || null,
+          p_credit_purpose: form.creditPurpose || null,
+          p_receive_date: form.receiveDate || null,
+          p_guarantee_type: form.guaranteeType || null,
+          p_guarantee_mode: form.guaranteeMode || null,
+          p_observations: form.observations || null,
+          p_doc_front_url: form.docFrontUrl || null,
+          p_doc_back_url: form.docBackUrl || null,
+          p_guarantee_photos: form.guaranteePhotos || [],
+        });
+
+        if (rpcErr) {
+          console.error('[PHYSICAL] RPC Error:', rpcErr);
+          throw new Error(rpcErr.message);
+        }
+
+        console.log('[PHYSICAL] \u2705 Loan registered successfully:', rpcResult);
+
+        localStorage.removeItem('bochel_credit_form_data');
+        localStorage.removeItem('bochel_credit_form_step');
+
+        const newBalance = (rpcResult as any)?.new_balance;
+        toast({
+          title: '\u2705 Cr\u00e9dito Registado com Sucesso!',
+          description: `MZN ${amount.toLocaleString()} concedido a ${form.fullName}. ${newBalance !== undefined ? `Saldo restante: MZN ${Number(newBalance).toLocaleString()}` : ''}`,
+        });
+
+        setIsSubmitted(true);
+        setIsLoading(false);
+        // Navigate back after short delay
+        setTimeout(() => window.history.back(), 2000);
+        return;
+      }
+
+      // === STANDARD DIGITAL FLOW ===
       const address = `${form.neighborhood}, ${form.district}, ${form.province}`;
       let resolvedAgentId = user?.role === 'agente' ? user.id : null;
       let resolvedUserId = user?.id || null;
@@ -860,8 +970,8 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
     );
   }
 
-  // Blocked state
-  if (isBlocked) {
+  // Blocked state (skip for physical registration)
+  if (isBlocked && !isPhysicalRegistration) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-4">
         <Card className="max-w-lg w-full border-0 shadow-xl overflow-hidden">
@@ -921,7 +1031,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
     return (
       <div className="max-w-2xl mx-auto p-3 md:p-6 space-y-6">
         <div className="text-center space-y-2">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Novo Pedido de Crédito</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{isPhysicalRegistration ? 'Registo de Crédito Concedido' : 'Novo Pedido de Crédito'}</h1>
           <p className="text-sm text-gray-500">Os seus dados pessoais já estão registados</p>
         </div>
 
@@ -1226,7 +1336,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
               <Button onClick={handleSubmit} disabled={isLoading} className="gap-2 text-white font-semibold px-8 shadow-lg" style={{ backgroundColor: '#d37c22' }}>
-                {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>) : (<><Send className="h-4 w-4" /> Enviar Pedido</>)}
+                {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> {isPhysicalRegistration ? 'Registando...' : 'Enviando...'}</>) : (<><Send className="h-4 w-4" /> {isPhysicalRegistration ? 'Registar Crédito' : 'Enviar Pedido'}</>)}
               </Button>
             </div>
           </CardContent>
@@ -1239,7 +1349,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
   return (
     <div className="max-w-3xl mx-auto p-3 md:p-6 space-y-6">
       <div className="text-center space-y-2">
-        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Pedido de Crédito</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{isPhysicalRegistration ? 'Registo de Crédito Concedido' : 'Pedido de Crédito'}</h1>
         <p className="text-sm text-gray-500">Preencha as informações em 4 etapas simples</p>
       </div>
 
@@ -1617,7 +1727,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, initialData }: CreditAp
                 <Button type="button" onClick={nextStep} className="gap-2 text-white font-semibold px-6" style={{ backgroundColor: '#1b5e20' }}> Próximo<ChevronRight className="h-4 w-4" /></Button>
               ) : (
                 <Button type="button" onClick={handleSubmit} disabled={isLoading} className="gap-2 text-white font-semibold px-8 shadow-lg" style={{ backgroundColor: '#d37c22' }}>
-                  {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>) : (<><Send className="h-4 w-4" /> Enviar Pedido</>)}
+                  {isLoading ? (<><Loader2 className="h-4 w-4 animate-spin" /> {isPhysicalRegistration ? 'Registando...' : 'Enviando...'}</>) : (<><Send className="h-4 w-4" /> {isPhysicalRegistration ? 'Registar Crédito' : 'Enviar Pedido'}</>)}
                 </Button>
               )}
             </div>

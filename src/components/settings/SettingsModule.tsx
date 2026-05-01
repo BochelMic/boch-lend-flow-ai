@@ -30,8 +30,8 @@ const SettingsModule = () => {
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SystemSettings>({
     id: '',
-    company_name: 'BOCHEL MICROCREDITO',
-    email: 'admin@bochel.mz',
+    company_name: 'Bochel Microcredito, Ei',
+    email: 'bm@bochelmicrocredito.com',
     phone: '',
     nuit: '',
     address: '',

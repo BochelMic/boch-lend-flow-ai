@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, Plus, Search, FileText, CreditCard, AlertCircle, RefreshCw } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { Users, Plus, Search, FileText, CreditCard, AlertCircle, RefreshCw, MapPin, Globe, HandCoins, History, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,11 +25,14 @@ interface Client {
   address: string | null;
   id_number: string | null;
   status: string;
+  is_physical: boolean;
+  agent_id: string | null;
   created_at: string;
 }
 
 const ClientsModule = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -35,8 +41,34 @@ const ClientsModule = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '', password: ''
+    name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '', password: '', isPhysical: false
   });
+
+  // Loan history dialog state
+  const [loanDialogOpen, setLoanDialogOpen] = useState(false);
+  const [loanDialogClient, setLoanDialogClient] = useState<string>('');
+  const [clientLoans, setClientLoans] = useState<any[]>([]);
+  const [loadingLoans, setLoadingLoans] = useState(false);
+
+  const loadClientLoans = async (clientId: string, clientName: string) => {
+    setLoanDialogClient(clientName);
+    setLoanDialogOpen(true);
+    setLoadingLoans(true);
+    try {
+      const { data, error } = await supabase
+        .from('loans')
+        .select('id, amount, total_amount, remaining_amount, status, start_date, end_date, installments, created_at')
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setClientLoans(data || []);
+    } catch (err: any) {
+      console.error('Error loading loans:', err);
+      toast({ title: 'Erro', description: 'Não foi possível carregar os empréstimos.', variant: 'destructive' });
+    } finally {
+      setLoadingLoans(false);
+    }
+  };
 
   const { data: clients = [], isLoading: isQueryLoading, refetch } = useQuery({
     queryKey: ['clients', user?.role, user?.id],
@@ -133,12 +165,23 @@ const ClientsModule = () => {
           status: 'active',
         };
 
-        const { error } = await supabase.from('clients').insert(clientData);
+        const { data: insertedData, error } = await supabase.from('clients').insert(clientData).select('id').single();
         if (error) throw error;
+
+        // Step 2: If physical, mark via RPC (bypasses PostgREST schema cache)
+        if (formData.isPhysical && insertedData?.id) {
+          const { error: rpcErr } = await supabase.rpc('set_client_physical', {
+            p_client_id: insertedData.id,
+            p_is_physical: true,
+          });
+          if (rpcErr) {
+            console.warn('[ClientsModule] Failed to set is_physical via RPC:', rpcErr.message);
+          }
+        }
         toast({ title: 'Sucesso', description: 'Cliente cadastrado com sucesso!' });
       }
 
-      setFormData({ name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '', password: '' });
+      setFormData({ name: '', email: '', phone: '', document: '', address: '', occupation: '', income: '', zone: '', password: '', isPhysical: false });
       setActiveTab('list');
       refetch();
     } catch (error: any) {
@@ -162,6 +205,7 @@ const ClientsModule = () => {
   });
 
   return (
+    <>
     <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -257,6 +301,15 @@ const ClientsModule = () => {
                             }`}>
                             {client.status === 'active' ? 'Ativo' : 'Inativo'}
                           </span>
+                          {client.is_physical ? (
+                            <span className="px-2 py-1 rounded-full text-xs bg-amber-100 text-amber-700 flex items-center gap-1">
+                              <MapPin className="h-3 w-3" /> Físico
+                            </span>
+                          ) : (
+                            <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-700 flex items-center gap-1">
+                              <Globe className="h-3 w-3" /> Digital
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground">
                             BI: {client.id_number || 'N/A'}
                           </span>
@@ -276,21 +329,32 @@ const ClientsModule = () => {
                             Perfil
                           </Button>
                         </ClientProfileDialog>
-                        <Button variant="outline" size="sm" className="text-xs" onClick={() => {
-                          const prefix = user?.role === 'gestor' ? '/gestor' : '/agente';
-                          navigate(`${prefix}/credit-form`, {
-                            state: {
-                              clientId: client.id,
-                              fullName: client.name,
-                              email: client.email,
-                              phone: client.phone,
-                              agentId: client.agent_id
-                            }
-                          });
-                        }}>
-                          <CreditCard className="h-3 w-3 mr-1" />
-                          Empréstimo
+                        <Button variant="outline" size="sm" className="text-xs" onClick={() => loadClientLoans(client.id, client.name)}>
+                          <History className="h-3 w-3 mr-1" />
+                          Empréstimos
                         </Button>
+                        {client.is_physical && user?.role === 'gestor' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs border-amber-300 text-amber-700 hover:bg-amber-50"
+                            onClick={() => {
+                              navigate('/gestor/credit-form', {
+                                state: {
+                                  clientId: client.id,
+                                  fullName: client.name,
+                                  email: client.email,
+                                  phone: client.phone,
+                                  agentId: client.agent_id,
+                                  isPhysicalRegistration: true,
+                                }
+                              });
+                            }}
+                          >
+                            <HandCoins className="h-3 w-3 mr-1" />
+                            Registar Crédito Concedido
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -355,6 +419,26 @@ const ClientsModule = () => {
                       />
                     </div>
                   )}
+                  {user?.role === 'gestor' && (
+                    <div className="space-y-2 sm:col-span-2">
+                      <div className="flex items-center justify-between rounded-lg border p-3 bg-amber-50/50">
+                        <div className="space-y-0.5">
+                          <Label htmlFor="isPhysical" className="text-sm font-medium flex items-center gap-2">
+                            <MapPin className="h-4 w-4 text-amber-600" />
+                            Cliente Físico (Presencial)
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Marque se o cliente não tem acesso digital ao sistema
+                          </p>
+                        </div>
+                        <Switch
+                          id="isPhysical"
+                          checked={formData.isPhysical}
+                          onCheckedChange={(checked) => setFormData({ ...formData, isPhysical: checked })}
+                        />
+                      </div>
+                    </div>
+                  )}
                   {user?.role !== 'agente' && (
                     <>
                       <div className="space-y-2">
@@ -394,6 +478,69 @@ const ClientsModule = () => {
         </TabsContent>
       </Tabs>
     </div>
+
+      {/* Loan History Dialog */}
+      <Dialog open={loanDialogOpen} onOpenChange={setLoanDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Empréstimos — {loanDialogClient}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingLoans ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+            </div>
+          ) : clientLoans.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <CreditCard className="mx-auto h-10 w-10 opacity-40 mb-2" />
+              <p className="text-sm">Nenhum empréstimo encontrado</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {clientLoans.map((loan) => {
+                const statusMap: Record<string, { label: string; color: string }> = {
+                  active: { label: 'Activo', color: 'bg-emerald-100 text-emerald-700' },
+                  paid: { label: 'Pago', color: 'bg-blue-100 text-blue-700' },
+                  completed: { label: 'Concluído', color: 'bg-blue-100 text-blue-700' },
+                  defaulted: { label: 'Em atraso', color: 'bg-red-100 text-red-700' },
+                };
+                const st = statusMap[loan.status] || { label: loan.status, color: 'bg-gray-100 text-gray-700' };
+                return (
+                  <div key={loan.id} className="border rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm">MZN {Number(loan.amount).toLocaleString()}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${st.color}`}>{st.label}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                      <div>
+                        <span className="font-medium text-gray-600">Total:</span>{' '}
+                        MZN {Number(loan.total_amount).toLocaleString()}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Restante:</span>{' '}
+                        <span className={loan.remaining_amount > 0 ? 'text-red-500 font-bold' : 'text-green-600'}>
+                          MZN {Number(loan.remaining_amount).toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Início:</span>{' '}
+                        {loan.start_date ? new Date(loan.start_date).toLocaleDateString('pt-PT') : '—'}
+                      </div>
+                      <div>
+                        <span className="font-medium text-gray-600">Fim:</span>{' '}
+                        {loan.end_date ? new Date(loan.end_date).toLocaleDateString('pt-PT') : '—'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

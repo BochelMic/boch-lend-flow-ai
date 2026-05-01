@@ -22,10 +22,11 @@ const CreditFormModule = () => {
 
   // Simulation Flow State
   const [flowStep, setFlowStep] = useState<'simulate' | 'apply'>(() => {
-    // If coming from landing page with state, skip to apply
+    // If coming from landing page with state, or physical registration, skip to apply
     return location.state ? 'apply' : 'simulate';
   });
   const [simulationData, setSimulationData] = useState<any>(location.state || null);
+  const isPhysicalRegistration = !!(location.state?.isPhysicalRegistration);
 
   useEffect(() => {
     if (user) checkClientStatus();
@@ -103,7 +104,8 @@ const CreditFormModule = () => {
     );
   }
 
-  if (hasDebt) {
+  // Physical registration mode: skip debt check entirely — gestor is registering a granted loan
+  if (hasDebt && !isPhysicalRegistration) {
     return (
       <div className="max-w-lg mx-auto p-6">
         <Card className="border-0 shadow-xl overflow-hidden">
@@ -121,10 +123,22 @@ const CreditFormModule = () => {
     );
   }
 
-  // Step 1: Simulation (Mandatory)
+  // Step 1: Simulation (Mandatory for ALL — including physical registration)
   if (flowStep === 'simulate') {
     return (
       <div className="space-y-6">
+        {isPhysicalRegistration && (
+          <div className="bg-amber-50 p-4 border-b border-amber-200 flex items-center gap-4">
+            <Button variant="ghost" size="sm" onClick={() => window.history.back()} className="text-amber-700 hover:text-amber-900">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+            <div>
+              <h2 className="text-lg font-bold text-amber-800">📍 Registar Crédito Concedido — Cliente Físico</h2>
+              <p className="text-xs text-amber-600">Passo 1: Simule o crédito para calcular os valores correctos</p>
+            </div>
+          </div>
+        )}
         <div className="bg-white p-4 border-b flex items-center justify-between sticky top-0 z-10 shadow-sm">
           <div>
             <h2 className="text-xl font-bold text-[#1a3a5c]">Passo 1: Simulação</h2>
@@ -139,15 +153,28 @@ const CreditFormModule = () => {
   // Step 2: Application Form
   return (
     <div className="space-y-4">
-      <div className="bg-white p-4 border-b flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={handleGoBack} className="text-gray-500 hover:text-[#1a3a5c]">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar para Simulação
-        </Button>
-      </div>
+      {isPhysicalRegistration ? (
+        <div className="bg-amber-50 p-4 border-b border-amber-200 flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleGoBack} className="text-amber-700 hover:text-amber-900">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar para Simulação
+          </Button>
+          <div>
+            <h2 className="text-lg font-bold text-amber-800">📍 Registar Crédito Concedido — Cliente Físico</h2>
+            <p className="text-xs text-amber-600">Passo 2: Preencha os dados do crédito já concedido presencialmente</p>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white p-4 border-b flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleGoBack} className="text-gray-500 hover:text-[#1a3a5c]">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar para Simulação
+          </Button>
+        </div>
+      )}
 
       {!hasCompletedProfile ? (
-        <CreditApplicationForm initialData={simulationData} />
+        <CreditApplicationForm initialData={simulationData} isPhysicalRegistration={isPhysicalRegistration} />
       ) : (
         <CreditRequestForm initialData={simulationData} />
       )}

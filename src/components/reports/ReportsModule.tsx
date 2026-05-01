@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart3, FileText, Download, Calendar, TrendingUp, Users, Building2 } from 'lucide-react';
+import { BarChart3, FileText, Download, TrendingUp, Users, Building2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -198,7 +198,53 @@ const ReportsModule = () => {
         toast({ title: "Relatório de Clientes gerado", description: "Exportado com sucesso." });
 
       } else if (selectedReportType === 'financeiro') {
-        toast({ title: "Relatório Financeiro", description: "O módulo financeiro está a ser calculado na carteira." });
+        // Fetch loans, payments, and wallet data for financial report
+        const [{ data: loansData }, { data: paymentsData }, { data: walletData }] = await Promise.all([
+          supabase.from('loans').select('*, clients!inner(name)'),
+          supabase.from('payments').select('amount, payment_date, payment_method'),
+          supabase.from('company_wallet').select('balance').limit(1).single(),
+        ]);
+
+        const loans = loansData || [];
+        const pmts = paymentsData || [];
+
+        const totalDesembolsado = loans.reduce((s: number, l: any) => s + Number(l.amount || 0), 0);
+        const totalComJuros = loans.reduce((s: number, l: any) => s + Number(l.total_amount || 0), 0);
+        const totalJuros = totalComJuros - totalDesembolsado;
+        const totalRecebido = pmts.reduce((s: number, p: any) => s + Number(p.amount || 0), 0);
+        const totalDevedor = loans.filter((l: any) => l.status === 'active' || l.status === 'overdue')
+          .reduce((s: number, l: any) => s + Number(l.remaining_amount || 0), 0);
+        const saldoCarteira = walletData?.balance || 0;
+
+        // Loan-by-loan breakdown
+        const rows = loans.map((l: any) => [
+          l.clients?.name || 'N/A',
+          Number(l.amount || 0).toLocaleString(),
+          `${l.interest_rate || 0}%`,
+          Number(l.total_amount || 0).toLocaleString(),
+          Number(Number(l.total_amount || 0) - Number(l.remaining_amount || 0)).toLocaleString(),
+          Number(l.remaining_amount || 0).toLocaleString(),
+          l.status === 'active' ? 'Activo' : l.status === 'completed' ? 'Quitado' : l.status === 'overdue' ? 'Em Atraso' : l.status,
+          new Date(l.created_at).toLocaleDateString('pt-MZ'),
+        ]);
+
+        const reportData = {
+          title: 'Relatório Financeiro - Bochel Microcredito, Ei',
+          headers: ['Cliente', 'Capital (MZN)', 'Taxa', 'Total c/ Juros', 'Pago', 'Saldo Devedor', 'Status', 'Data'],
+          data: rows,
+          summary: {
+            'Saldo da Carteira Empresa': `MZN ${Number(saldoCarteira).toLocaleString()}`,
+            'Total Desembolsado (Capital)': `MZN ${totalDesembolsado.toLocaleString()}`,
+            'Total Juros Gerados': `MZN ${totalJuros.toLocaleString()}`,
+            'Total c/ Juros': `MZN ${totalComJuros.toLocaleString()}`,
+            'Total Recebido (Pagamentos)': `MZN ${totalRecebido.toLocaleString()}`,
+            'Total Saldo Devedor Activo': `MZN ${totalDevedor.toLocaleString()}`,
+            'Nº Total de Empréstimos': loans.length.toString(),
+            'Nº Pagamentos Registados': pmts.length.toString(),
+          }
+        };
+        exportToExcel(reportData, 'Relatorio_Financeiro');
+        toast({ title: "Relatório Financeiro gerado", description: "Excel exportado com dados reais." });
       }
 
       setFilterDialogOpen(false);
@@ -554,22 +600,7 @@ const ReportsModule = () => {
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Relatórios Agendados</CardTitle>
-          <CardDescription>
-            Configure relatórios para geração automática
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button>
-            <Calendar className="mr-2 h-4 w-4" />
-            Agendar Relatório
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Extracted Filter Dialog for all Excel Reports */}
+      {/* Filter Dialog for all Excel Reports */}
       <Dialog open={filterDialogOpen} onOpenChange={setFilterDialogOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>

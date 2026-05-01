@@ -58,7 +58,7 @@ const DocumentGenerator = () => {
       const [{ data: loansData }, { data: settings }] = await Promise.all([
         supabase
           .from('loans')
-          .select('id, total_amount, remaining_amount, interest_rate, installments, client_id, status, clients(name, phone, user_id)')
+          .select('id, total_amount, remaining_amount, interest_rate, installments, client_id, status, clients(name, phone, user_id, id_number, address, is_physical)')
           .in('status', ['active', 'completed']),
         supabase
           .from('system_settings')
@@ -72,10 +72,11 @@ const DocumentGenerator = () => {
         const enrichedLoans: LoanOption[] = await Promise.all(
           loansData.map(async (l: any) => {
             const clientUserId = l.clients?.user_id;
-            let clientDoc = '';
+            let clientDoc = l.clients?.id_number || '';
             let clientNuit = '';
-            let clientAddr = '';
+            let clientAddr = l.clients?.address || '';
 
+            // Try to enrich from credit_requests (works for digital clients with user_id)
             if (clientUserId) {
               const { data: creditReq } = await supabase
                 .from('credit_requests')
@@ -86,10 +87,29 @@ const DocumentGenerator = () => {
                 .single();
 
               if (creditReq) {
-                clientDoc = creditReq.document_number || '';
+                clientDoc = creditReq.document_number || clientDoc;
                 clientNuit = creditReq.nuit || '';
                 const parts = [creditReq.neighborhood, creditReq.district, creditReq.province].filter(Boolean);
-                clientAddr = parts.join(', ');
+                if (parts.length > 0) clientAddr = parts.join(', ');
+              }
+            } else {
+              // Physical client fallback: try to find credit_request by client_name
+              const clientName = l.clients?.name;
+              if (clientName) {
+                const { data: creditReq } = await supabase
+                  .from('credit_requests')
+                  .select('document_number, nuit, neighborhood, district, province')
+                  .ilike('client_name', clientName)
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .single();
+
+                if (creditReq) {
+                  clientDoc = creditReq.document_number || clientDoc;
+                  clientNuit = creditReq.nuit || '';
+                  const parts = [creditReq.neighborhood, creditReq.district, creditReq.province].filter(Boolean);
+                  if (parts.length > 0) clientAddr = parts.join(', ');
+                }
               }
             }
 
@@ -111,11 +131,11 @@ const DocumentGenerator = () => {
       }
       if (settings) {
         setCompanySettings({
-          company_name: settings.company_name || 'BOCHEL MICROCREDITO',
-          email: settings.email || '',
-          phone: settings.phone || '',
-          nuit: (settings as any).nuit || '',
-          address: (settings as any).address || 'Maputo, Moçambique',
+          company_name: settings.company_name || 'Bochel Microcredito, Ei',
+          email: settings.email || 'bm@bochelmicrocredito.com',
+          phone: settings.phone || '+258 86 188 7302 / +258 84 582 8205',
+          nuit: (settings as any).nuit || '1477066510',
+          address: (settings as any).address || 'Moçambique, Maputo - Malhampsene (N4)',
         });
       }
     } catch (e) {
@@ -128,13 +148,20 @@ const DocumentGenerator = () => {
   const selectedLoan = loans.find(l => l.id === selectedLoanId);
   const receiptLoan = loans.find(l => l.id === receiptLoanId);
 
-  const generateInvoice = () => {
+  const generateInvoice = async () => {
     if (!selectedLoan) {
       toast({ title: 'Erro', description: 'Selecione um empréstimo.', variant: 'destructive' });
       return;
     }
+    // Get sequential number from DB
+    let invoiceNumber = `FAT-${Date.now()}`;
+    try {
+      const { data } = await supabase.rpc('next_invoice_number');
+      if (data) invoiceNumber = data;
+    } catch { /* fallback to timestamp */ }
+
     const html = generateInvoiceHTML({
-      number: `FAT-${Date.now()}`,
+      number: invoiceNumber,
       date: new Date().toLocaleDateString('pt-MZ'),
       clientName: selectedLoan.clientName,
       clientPhone: selectedLoan.clientPhone,
@@ -152,18 +179,25 @@ const DocumentGenerator = () => {
       companyNuit: companySettings.nuit,
       companyAddress: companySettings.address,
     });
-    downloadDocumentAsPdf(html, `Fatura_${selectedLoan.clientName.replace(/\s+/g, '_')}_${Date.now()}`);
-    toast({ title: 'Fatura Gerada', description: 'A fatura está sendo baixada em PDF.' });
+    downloadDocumentAsPdf(html, `Fatura_${selectedLoan.clientName.replace(/\s+/g, '_')}_${invoiceNumber}`);
+    toast({ title: 'Fatura Gerada', description: `Fatura ${invoiceNumber} baixada em PDF.` });
   };
 
-  const generateReceipt = () => {
+  const generateReceipt = async () => {
     if (!receiptLoan || !receiptAmount) {
       toast({ title: 'Erro', description: 'Selecione o empréstimo e preencha o valor.', variant: 'destructive' });
       return;
     }
+    // Get sequential number from DB
+    let receiptNumber = `REC-${Date.now()}`;
+    try {
+      const { data } = await supabase.rpc('next_receipt_number');
+      if (data) receiptNumber = data;
+    } catch { /* fallback to timestamp */ }
+
     const amount = parseFloat(receiptAmount);
     const html = generateReceiptHTML({
-      number: `REC-${Date.now()}`,
+      number: receiptNumber,
       date: new Date().toLocaleDateString('pt-MZ'),
       clientName: receiptLoan.clientName,
       clientPhone: receiptLoan.clientPhone,
@@ -180,8 +214,8 @@ const DocumentGenerator = () => {
       companyNuit: companySettings.nuit,
       companyAddress: companySettings.address,
     });
-    downloadDocumentAsPdf(html, `Recibo_${receiptLoan.clientName.replace(/\s+/g, '_')}_${Date.now()}`);
-    toast({ title: 'Recibo Gerado', description: 'O recibo está sendo baixado em PDF.' });
+    downloadDocumentAsPdf(html, `Recibo_${receiptLoan.clientName.replace(/\s+/g, '_')}_${receiptNumber}`);
+    toast({ title: 'Recibo Gerado', description: `Recibo ${receiptNumber} baixado em PDF.` });
   };
 
   if (loading) {
