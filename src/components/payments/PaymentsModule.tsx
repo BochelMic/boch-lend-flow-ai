@@ -381,11 +381,24 @@ const PaymentsModule = () => {
                           if (data) invoiceNumber = data;
                         } catch { /* fallback */ }
 
+                        const cDataInv = selectedLoan.client_data || {};
+                        // Fetch end_date for due date
+                        let dueDateStr: string | undefined;
+                        try {
+                          const { data: loanDetails } = await supabase.from('loans').select('end_date').eq('id', selectedLoan.id).single();
+                          if (loanDetails?.end_date) dueDateStr = new Date(loanDetails.end_date).toLocaleDateString('pt-MZ');
+                        } catch { /* fallback */ }
+
                         const html = generateInvoiceHTML({
                           number: invoiceNumber,
                           date: new Date().toLocaleDateString('pt-MZ'),
+                          dueDate: dueDateStr,
                           clientName: selectedLoan.client_name,
-                          amount: selectedLoan.total_amount - (selectedLoan.total_amount - (selectedLoan.total_amount / (1 + (selectedLoan.is_installment ? 0.3 : 0.3)))),
+                          clientDocument: cDataInv.id_number || (cDataInv.document_type ? `${cDataInv.document_type}: ${cDataInv.document_number}` : undefined),
+                          clientPhone: cDataInv.phone,
+                          clientAddress: cDataInv.address || [cDataInv.neighborhood, cDataInv.district, cDataInv.province].filter(Boolean).join(', ') || undefined,
+                          clientNuit: cDataInv.nuit,
+                          amount: selectedLoan.total_amount - (selectedLoan.total_amount - (selectedLoan.total_amount / (1 + 0.3))),
                           interestRate: 30,
                           totalAmount: selectedLoan.total_amount,
                           installments: selectedLoan.installments,

@@ -78,6 +78,7 @@ export const exportToWord = (content: string, filename: string) => {
 export interface InvoiceData {
   number: string;
   date: string;
+  dueDate?: string;
   clientName: string;
   clientPhone?: string;
   clientDocument?: string;
@@ -163,37 +164,47 @@ export interface CreditRequestExportData {
 const pdfBaseStyles = `
   @page { margin: 0; size: A4; }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1a1a1a; background: #fff; }
-  .page { max-width: 800px; margin: 0 auto; padding: 40px 50px; }
-  .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 16px; border-bottom: 2px solid #1a1a1a; margin-bottom: 24px; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #000; background: #fff; }
+  .page { max-width: 800px; margin: 0 auto; padding: 28px 40px; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 2px solid #000; margin-bottom: 14px; }
   .header-left { display: flex; align-items: center; gap: 16px; }
   .header-left img { height: 56px; object-fit: contain; }
   .company-info { text-align: right; font-size: 11px; color: #444; line-height: 1.6; }
-  .doc-title { text-align: center; font-size: 18px; font-weight: 700; color: #1a1a1a; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; padding: 10px 0; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; }
-  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
-  .info-box { border: 1px solid #ccc; padding: 14px; }
-  .info-box h3 { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #1a1a1a; font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid #999; padding-bottom: 4px; display: inline-block; }
-  .info-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 12px; }
+  /* FATURA: header igual ao recibo (branco), apenas o título fica preto */
+  .invoice-header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; border-bottom: 2px solid #000; margin-bottom: 14px; }
+  .invoice-header img { height: 48px; object-fit: contain; }
+  .invoice-header .company-info { text-align: right; font-size: 10px; color: #444; line-height: 1.4; }
+  .invoice-doc-title { text-align: center; font-size: 16px; font-weight: 700; background: #000; color: #fff; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 14px; padding: 9px 0; }
+  .doc-title { text-align: center; font-size: 16px; font-weight: 700; color: #000; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; padding: 8px 0; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc; }
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .info-box { border: 1px solid #ccc; padding: 10px; }
+  .info-box h3 { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; color: #000; font-weight: 700; margin-bottom: 6px; border-bottom: 1px solid #999; padding-bottom: 3px; display: inline-block; }
+  .info-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 11px; }
   .info-row .label { color: #666; }
-  .info-row .value { font-weight: 600; color: #1a1a1a; }
-  .table-section { margin-bottom: 24px; }
+  .info-row .value { font-weight: 600; color: #000; }
+  .table-section { margin-bottom: 14px; }
   .table-section table { width: 100%; border-collapse: collapse; }
-  .table-section th { background: #f5f5f5; color: #1a1a1a; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border: 1px solid #ccc; }
-  .table-section td { padding: 8px 12px; font-size: 12px; border: 1px solid #ccc; }
+  .table-section th { background: #000; color: #fff; padding: 6px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; text-align: left; border: 1px solid #000; }
+  .table-section td { padding: 6px 10px; font-size: 11px; border: 1px solid #ccc; }
   .table-section tr:nth-child(even) { background: #fafafa; }
-  .total-row { background: #f0f0f0 !important; }
-  .total-row td { font-weight: 700; font-size: 13px; color: #1a1a1a; border-top: 2px solid #1a1a1a; }
-  .amount-highlight { display: inline-block; border: 2px solid #1a1a1a; padding: 10px 28px; font-size: 20px; font-weight: 800; letter-spacing: 1px; margin: 12px 0; color: #1a1a1a; }
-  .amount-section { text-align: center; margin: 20px 0; padding: 18px; border: 1px solid #ccc; }
-  .amount-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
-  .footer { margin-top: 30px; padding-top: 16px; border-top: 1px solid #ccc; }
-  .footer-text { font-size: 10px; color: #888; text-align: center; line-height: 1.8; }
-  .signature-area { display: flex; justify-content: flex-end; margin-top: 60px; padding-top: 10px; }
+  .total-row { background: #000 !important; }
+  .total-row td { font-weight: 700; font-size: 13px; color: #fff !important; border-top: 2px solid #000; }
+  .amount-highlight { display: inline-block; border: 2px solid #000; padding: 7px 24px; font-size: 18px; font-weight: 800; letter-spacing: 1px; margin: 8px 0; color: #000; }
+  .amount-section { text-align: center; margin: 12px 0; padding: 12px; border: 1px solid #ccc; background: #fff; }
+  .amount-label { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
+  .amount-highlight-inv { display: inline-block; border: 2px solid #000; padding: 7px 24px; font-size: 20px; font-weight: 800; letter-spacing: 1px; color: #000; }
+  .payment-methods { margin: 12px 0; padding: 10px 14px; border: 1px solid #ccc; background: #fafafa; }
+  .payment-methods h4 { font-size: 9px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; color: #333; margin-bottom: 6px; border-bottom: 1px solid #ddd; padding-bottom: 3px; }
+  .payment-methods-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .payment-method-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: #444; background: #fff; border: 1px solid #e0e0e0; padding: 6px 10px; border-radius: 4px; }
+  .footer { margin-top: 14px; padding-top: 10px; border-top: 1px solid #ccc; }
+  .footer-text { font-size: 9px; color: #888; text-align: center; line-height: 1.6; }
+  .signature-area { display: flex; justify-content: flex-end; margin-top: 24px; padding-top: 6px; }
   .sig-box { width: 45%; text-align: center; }
-  .sig-line { border-top: 1px solid #1a1a1a; padding-top: 8px; font-size: 11px; color: #444; margin-top: 50px; }
+  .sig-line { border-top: 1px solid #000; padding-top: 6px; font-size: 10px; color: #444; margin-top: 30px; }
   .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
-  .badge-green { background: #e8e8e8; color: #1a1a1a; }
-  .badge-orange { background: #f0f0f0; color: #1a1a1a; }
+  .badge-green { background: #e8e8e8; color: #000; }
+  .badge-orange { background: #f0f0f0; color: #000; }
   @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
 `;
 
@@ -212,20 +223,19 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fatura ${s(invoiceData.number)}</title>
 <style>${pdfBaseStyles}</style></head><body><div class="page">
-  <div class="header">
-    <div class="header-left">
-      <img src="${invoiceData.logoUrl || '/logo-bochel.png'}" alt="Logo" onerror="this.style.display='none'" />
-    </div>
+
+  <div class="invoice-header">
+    <img src="${invoiceData.logoUrl || '/logo-bochel.png'}" alt="Logo" onerror="this.style.display='none'" />
     <div class="company-info">
       <strong style="font-size:14px;color:#1a1a1a">${s(invoiceData.companyName)}</strong><br/>
       ${invoiceData.companyNuit ? 'NUIT: ' + s(invoiceData.companyNuit) + '<br/>' : ''}
       ${invoiceData.companyEmail ? s(invoiceData.companyEmail) + '<br/>' : ''}
       ${invoiceData.companyPhone ? 'Tel: ' + s(invoiceData.companyPhone) + '<br/>' : ''}
-      ${s(invoiceData.companyAddress || 'Maputo, Moçambique')}
+      ${s(invoiceData.companyAddress || 'Maputo, Mo\u00e7ambique')}
     </div>
   </div>
 
-  <div class="doc-title">Fatura de Concessão de Crédito</div>
+  <div class="invoice-doc-title">Fatura de Comissão de Crédito</div>
 
   <div class="info-grid">
     <div class="info-box">
@@ -234,23 +244,24 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
       <div class="info-row"><span class="label">Data de Emissão</span><span class="value">${s(invoiceData.date)}</span></div>
       <div class="info-row"><span class="label">Nº Parcelas</span><span class="value">${installments}</span></div>
       ${invoiceData.duration ? `<div class="info-row"><span class="label">Prazo</span><span class="value">${s(invoiceData.duration)}</span></div>` : ''}
+      ${invoiceData.dueDate ? `<div class="info-row"><span class="label">Data de Vencimento</span><span class="value" style="font-weight:800;color:#c0392b">${s(invoiceData.dueDate)}</span></div>` : ''}
     </div>
     <div class="info-box">
       <h3>Dados do Cliente</h3>
-      <div class="info-row"><span class="label">Nome</span><span class="value">${s(invoiceData.clientName)}</span></div>
-      ${invoiceData.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(invoiceData.clientDocument)}</span></div>` : ''}
+      <div class="info-row"><span class="label">Nome Completo</span><span class="value">${s(invoiceData.clientName)}</span></div>
+      ${invoiceData.clientDocument ? `<div class="info-row"><span class="label">Nº Documento (BI)</span><span class="value">${s(invoiceData.clientDocument)}</span></div>` : ''}
       ${invoiceData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(invoiceData.clientNuit)}</span></div>` : ''}
-      ${invoiceData.clientPhone ? `<div class="info-row"><span class="label">Telefone</span><span class="value">${s(invoiceData.clientPhone)}</span></div>` : ''}
+      ${invoiceData.clientPhone ? `<div class="info-row"><span class="label">Contacto</span><span class="value">${s(invoiceData.clientPhone)}</span></div>` : ''}
       ${invoiceData.clientAddress ? `<div class="info-row"><span class="label">Endereço</span><span class="value">${s(invoiceData.clientAddress)}</span></div>` : ''}
     </div>
   </div>
 
   <div class="table-section">
     <table>
-      <thead><tr><th>Descrição</th><th>Taxa</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
+      <thead><tr><th>Descrição</th><th>Taxa de Juro</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
-        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : '---'}</td><td style="text-align:right">MZN ${invoiceData.amount.toLocaleString()}</td></tr>
-        ${invoiceData.interestRate ? `<tr><td>Juros (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">MZN ${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
+        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%/mês' : '---'}</td><td style="text-align:right">MZN ${invoiceData.amount.toLocaleString()}</td></tr>
+        ${invoiceData.interestRate ? `<tr><td>Comissão de Juros (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">MZN ${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
         <tr class="total-row"><td colspan="2">TOTAL A PAGAR</td><td style="text-align:right">MZN ${totalAmount.toLocaleString()}</td></tr>
       </tbody>
     </table>
@@ -266,19 +277,39 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   ` : ''}
 
   <div class="amount-section">
-    <div class="amount-label">Valor Total do Crédito</div>
-    <div class="amount-highlight">MZN ${totalAmount.toLocaleString()}</div>
+    <div class="amount-label">Valor Total do Crédito Concedido</div>
+    <div class="amount-highlight-inv">MZN ${totalAmount.toLocaleString()}</div>
+  </div>
+
+  <!-- MEIOS DE PAGAMENTO -->
+  <div class="payment-methods">
+    <h4>Meios de Pagamento</h4>
+    <div style="font-size:11px;color:#333;line-height:2;">
+      <div style="display:flex;gap:40px;flex-wrap:wrap;">
+        <div>
+          <div style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#666;margin-bottom:4px">Banco (NIB) &amp; Conta M&oacute;vel</div>
+          <div><strong>BCI:</strong> 000800000215226910113</div>
+          <div><strong>BIM:</strong> 000100000035411644657</div>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#666;margin-bottom:4px">Carteira M&oacute;vel</div>
+          <div><strong>M-Pesa:</strong> 84 582 8205</div>
+          <div><strong>e-Mola:</strong> 86 188 7302</div>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#555;">Titular: <strong>Armindo Dique Bochiwe</strong></div>
+    </div>
   </div>
 
   <div class="signature-area">
     <div class="sig-box">
-      <div class="sig-line">Concedido por</div>
+      <div class="sig-line">Concedido por — ${s(invoiceData.companyName)}</div>
     </div>
   </div>
 
   <div class="footer">
     <p class="footer-text">
-      Documento gerado por ${s(invoiceData.companyName)}.<br/>
+      Documento gerado por ${s(invoiceData.companyName)} · NUIT: ${s(invoiceData.companyNuit || '1477066510')}<br/>
       Este documento serve como comprovativo de concessão de crédito.<br/>
       Data de impressão: ${new Date().toLocaleDateString('pt-MZ')}
     </p>

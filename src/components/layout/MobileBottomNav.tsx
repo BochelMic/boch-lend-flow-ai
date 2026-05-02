@@ -61,15 +61,10 @@ export default function MobileBottomNav() {
                 { name: 'Pagamentos', href: `${prefix}/pagamentos` },
                 { name: 'Contratos', href: `${prefix}/contratos` },
                 { name: 'Cobranças', href: `${prefix}/cobrancas` },
-                { name: 'Caixa', href: `${prefix}/caixa` },
                 { name: 'Relatórios', href: `${prefix}/reports` },
                 { name: 'Agentes', href: `${prefix}/agentes` },
-                { name: 'Simulador', href: `${prefix}/credit-simulator` },
                 { name: 'Administração', href: `${prefix}/admin` },
-                { name: 'Auditoria', href: `${prefix}/audit` },
-                { name: 'Subsistemas', href: `${prefix}/subsistemas` },
                 { name: 'Configurações', href: `${prefix}/settings` },
-                { name: 'Novo Crédito', href: `${prefix}/credit-form` },
             ],
         };
     };

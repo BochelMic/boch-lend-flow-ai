@@ -445,7 +445,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
     if (!form.receiveDate) newErrors.receiveDate = 'Data é obrigatória';
     if (!form.guaranteeType) newErrors.guaranteeType = 'Selecione a garantia';
     if (!form.guaranteeMode) newErrors.guaranteeMode = 'Selecione o modo';
-    if (!form.truthDeclaration) newErrors.truthDeclaration = 'Deve concordar';
+    if (!isPhysicalRegistration && !form.truthDeclaration) newErrors.truthDeclaration = 'Deve concordar';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -475,10 +475,10 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
       if (!form.receiveDate) newErrors.receiveDate = 'Data é obrigatória';
       if (!form.guaranteeType) newErrors.guaranteeType = 'Selecione a garantia';
       if (!form.guaranteeMode) newErrors.guaranteeMode = 'Selecione o modo';
-      if (!form.truthDeclaration) newErrors.truthDeclaration = 'Deve concordar';
+      if (!isPhysicalRegistration && !form.truthDeclaration) newErrors.truthDeclaration = 'Deve concordar';
 
-      // Document requirements for first-time clients
-      if (!isSimplifiedForm) {
+      // Document requirements for first-time clients (not needed for admin physical registration)
+      if (!isSimplifiedForm && !isPhysicalRegistration) {
         if (!form.docFrontUrl) newErrors.docFront = 'Foto da frente é obrigatória';
         if (!form.docBackUrl) newErrors.docBack = 'Foto do verso é obrigatória';
       }
@@ -1272,6 +1272,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
               </div>
             )}
 
+            {!isPhysicalRegistration && (
             <div>
               <div className="flex justify-between items-center mb-2">
                 <Label className="text-sm font-medium">Fotos dos Bens de Garantia (Opcional, máx 4)</Label>
@@ -1319,12 +1320,14 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
               </div>
               <p className="text-[10px] text-gray-400 mt-1.5">Formatos: JPG, PNG (máx. 5MB cada)</p>
             </div>
+            )}
 
             <div>
               <Label className="text-sm font-medium">Observações (opcional)</Label>
               <Textarea value={form.observations} onChange={e => updateField('observations', e.target.value)} placeholder="Informações adicionais..." className="mt-1.5" rows={3} />
             </div>
 
+            {!isPhysicalRegistration && (
             <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
               <Checkbox checked={form.truthDeclaration} onCheckedChange={(v) => updateField('truthDeclaration', v === true)} className="mt-0.5" />
               <div>
@@ -1333,6 +1336,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
                 <FieldError field="truthDeclaration" />
               </div>
             </div>
+            )}
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
               <Button onClick={handleSubmit} disabled={isLoading} className="gap-2 text-white font-semibold px-8 shadow-lg" style={{ backgroundColor: '#d37c22' }}>
@@ -1588,6 +1592,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
 
                 <div><Label className="text-sm font-medium">Observações (opcional)</Label><Textarea value={form.observations} onChange={e => updateField('observations', e.target.value)} placeholder="Informações adicionais..." className="mt-1.5" rows={3} /></div>
 
+                {!isPhysicalRegistration && (
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <Label className="text-sm font-medium">Fotos dos Bens de Garantia (Opcional, máx 4)</Label>
@@ -1635,8 +1640,10 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
                   </div>
                   <p className="text-[10px] text-gray-400 mt-1.5">Formatos: JPG, PNG (máx. 5MB cada)</p>
                 </div>
+                )}
 
-                {/* Doc Upload */}
+                {/* Doc Upload - hidden for admin physical registration */}
+                {!isPhysicalRegistration && (
                 <div>
                   <Label className="text-sm font-medium">Documento de Identidade (Frente e Verso) *</Label>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
@@ -1712,11 +1719,14 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
                   <FieldError field="docBack" />
                   <p className="text-[10px] text-gray-400 mt-1.5">Formatos: JPG, PNG, PDF (máx. 5MB)</p>
                 </div>
+                )}
 
+                {!isPhysicalRegistration && (
                 <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
                   <Checkbox checked={form.truthDeclaration} onCheckedChange={(v) => updateField('truthDeclaration', v === true)} className="mt-0.5" />
                   <div><Label className="text-sm font-medium cursor-pointer">Declaração de Veracidade *</Label><p className="text-xs text-amber-700 mt-1">Declaro que todas as informações são verdadeiras. Taxas: Opção A/C (30%), Opção B (20% até dia 15, senão 30%). Parcelamentos possuem juros capitalizados mensalmente.</p><FieldError field="truthDeclaration" /></div>
                 </div>
+                )}
               </div>
             )}
 
