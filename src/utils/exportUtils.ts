@@ -231,7 +231,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
       ${invoiceData.companyNuit ? 'NUIT: ' + s(invoiceData.companyNuit) + '<br/>' : ''}
       ${invoiceData.companyEmail ? s(invoiceData.companyEmail) + '<br/>' : ''}
       ${invoiceData.companyPhone ? 'Tel: ' + s(invoiceData.companyPhone) + '<br/>' : ''}
-      ${s(invoiceData.companyAddress || 'Maputo, Mo\u00e7ambique')}
+      Mocambique, Maputo
     </div>
   </div>
 
@@ -260,9 +260,9 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
     <table>
       <thead><tr><th>Descrição</th><th>Taxa de Juro</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
-        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%/mês' : '---'}</td><td style="text-align:right">MZN ${invoiceData.amount.toLocaleString()}</td></tr>
-        ${invoiceData.interestRate ? `<tr><td>Comissão de Juros (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">MZN ${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
-        <tr class="total-row"><td colspan="2">TOTAL A PAGAR</td><td style="text-align:right">MZN ${totalAmount.toLocaleString()}</td></tr>
+        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : '---'}</td><td style="text-align:right">${invoiceData.amount.toLocaleString()}</td></tr>
+        ${invoiceData.interestRate ? `<tr><td>Comissão de Juros (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
+        <tr class="total-row"><td colspan="2">TOTAL A PAGAR</td><td style="text-align:right">${totalAmount.toLocaleString()}</td></tr>
       </tbody>
     </table>
   </div>
@@ -277,7 +277,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   ` : ''}
 
   <div class="amount-section">
-    <div class="amount-label">Valor Total do Crédito Concedido</div>
+    <div class="amount-label">Total a Pagar</div>
     <div class="amount-highlight-inv">MZN ${totalAmount.toLocaleString()}</div>
   </div>
 
@@ -298,6 +298,9 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
         </div>
       </div>
       <div style="margin-top:8px;font-size:11px;color:#555;">Titular: <strong>Armindo Dique Bochiwe</strong></div>
+    </div>
+    <div style="margin-top:10px;padding:8px 12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:4px;font-size:10px;color:#92400e;line-height:1.6;">
+      <strong>⚠ AVISO:</strong> É obrigatório o envio do comprovativo de pagamento via WhatsApp ou por e-mail fornecidos neste documento para a quitação imediata no sistema.
     </div>
   </div>
 
@@ -333,7 +336,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
       ${receiptData.companyNuit ? 'NUIT: ' + s(receiptData.companyNuit) + '<br/>' : ''}
       ${receiptData.companyEmail ? s(receiptData.companyEmail) + '<br/>' : ''}
       ${receiptData.companyPhone ? 'Tel: ' + s(receiptData.companyPhone) + '<br/>' : ''}
-      ${s(receiptData.companyAddress || 'Maputo, Moçambique')}
+      Mocambique, Maputo
     </div>
   </div>
 
@@ -362,20 +365,24 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
     <table>
       <thead><tr><th>Descrição</th><th>Método</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
-        <tr><td>${s(receiptData.description)}</td><td>${s(method)}</td><td style="text-align:right">MZN ${receiptData.amount.toLocaleString()}</td></tr>
-        ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#666">Saldo restante após este pagamento</td><td style="text-align:right;color:#666">MZN ${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
+        <tr><td>${s(receiptData.description)}</td><td>${s(method)}</td><td style="text-align:right">${receiptData.amount.toLocaleString()}</td></tr>
+        ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#666">Saldo restante após este pagamento</td><td style="text-align:right;color:#666">${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
       </tbody>
     </table>
   </div>
 
   <div class="amount-section">
-    <div class="amount-label">Valor Recebido</div>
+    <div class="amount-label">Total Pago</div>
     <div class="amount-highlight">MZN ${receiptData.amount.toLocaleString()}</div>
   </div>
 
-  <div style="border:1px solid #ccc;padding:14px;margin:20px 0;font-size:12px;color:#1a1a1a;line-height:1.7">
+  <div style="border:1px solid #ccc;padding:14px;margin:12px 0;font-size:12px;color:#1a1a1a;line-height:1.7">
     Recebemos de <strong>${s(receiptData.clientName)}</strong> a quantia de <strong>MZN ${receiptData.amount.toLocaleString()}</strong>
     (${s(receiptData.description)}), paga através de <strong>${s(method)}</strong>.
+  </div>
+
+  <div style="margin:12px 0;padding:8px 12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:4px;font-size:10px;color:#92400e;line-height:1.6;">
+    <strong>⚠ AVISO:</strong> É obrigatório o envio do comprovativo de pagamento via WhatsApp ou por e-mail fornecidos neste documento para a quitação imediata no sistema.
   </div>
 
   <div class="signature-area">
