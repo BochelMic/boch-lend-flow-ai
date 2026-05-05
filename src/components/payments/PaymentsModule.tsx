@@ -79,7 +79,7 @@ const PaymentsModule = () => {
     try {
       let query = supabase
         .from('payments')
-        .select('*, loans!inner(agent_id, clients(*))')
+        .select('*, loans!inner(agent_id, clients(*, client_number))')
         .order('created_at', { ascending: false })
         .limit(50);
 
@@ -124,7 +124,7 @@ const PaymentsModule = () => {
           credit_option, 
           remaining_installments, 
           amortization_plan,
-          clients(*)
+          clients(*, client_number)
         `)
         .eq('status', 'active')
         .order('created_at', { ascending: false });
@@ -277,6 +277,7 @@ const PaymentsModule = () => {
       clientDocument: cData.id_number || (cData.document_type ? `${cData.document_type}: ${cData.document_number}` : undefined),
       clientNuit: cData.nuit,
       clientAddress: cData.address || [cData.neighborhood, cData.district, cData.province].filter(Boolean).join(', ') || undefined,
+      clientNumber: cData.client_number ? String(cData.client_number) : undefined,
       amount: Number(payment.amount),
       paymentMethod: payment.payment_method || 'cash',
       description: payment.notes || 'Pagamento de prestação de microcrédito',
@@ -398,6 +399,7 @@ const PaymentsModule = () => {
                           clientPhone: cDataInv.phone,
                           clientAddress: cDataInv.address || [cDataInv.neighborhood, cDataInv.district, cDataInv.province].filter(Boolean).join(', ') || undefined,
                           clientNuit: cDataInv.nuit,
+                          clientNumber: cDataInv.client_number ? String(cDataInv.client_number) : undefined,
                           amount: selectedLoan.total_amount - (selectedLoan.total_amount - (selectedLoan.total_amount / (1 + 0.3))),
                           interestRate: 30,
                           totalAmount: selectedLoan.total_amount,

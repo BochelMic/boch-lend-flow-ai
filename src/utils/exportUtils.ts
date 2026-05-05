@@ -84,6 +84,7 @@ export interface InvoiceData {
   clientDocument?: string;
   clientNuit?: string;
   clientAddress?: string;
+  clientNumber?: string;
   amount: number;
   interestRate?: number;
   totalAmount?: number;
@@ -107,6 +108,7 @@ export interface ReceiptData {
   clientDocument?: string;
   clientNuit?: string;
   clientAddress?: string;
+  clientNumber?: string;
   amount: number;
   paymentMethod?: string;
   remainingBalance?: number;
@@ -248,6 +250,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
     </div>
     <div class="info-box">
       <h3>Dados do Cliente</h3>
+      ${invoiceData.clientNumber ? `<div class="info-row"><span class="label">Nº do Cliente</span><span class="value" style="font-weight:800">${s(invoiceData.clientNumber)}</span></div>` : ''}
       <div class="info-row"><span class="label">Nome Completo</span><span class="value">${s(invoiceData.clientName)}</span></div>
       ${invoiceData.clientDocument ? `<div class="info-row"><span class="label">Nº Documento (BI)</span><span class="value">${s(invoiceData.clientDocument)}</span></div>` : ''}
       ${invoiceData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(invoiceData.clientNuit)}</span></div>` : ''}
@@ -260,8 +263,8 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
     <table>
       <thead><tr><th>Descrição</th><th>Taxa de Juro</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
       <tbody>
-        <tr><td>${s(invoiceData.description)}</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : '---'}</td><td style="text-align:right">${invoiceData.amount.toLocaleString()}</td></tr>
-        ${invoiceData.interestRate ? `<tr><td>Comissão de Juros (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
+        <tr><td>Crédito concedido</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : '---'}</td><td style="text-align:right">${invoiceData.amount.toLocaleString()}</td></tr>
+        ${invoiceData.interestRate ? `<tr><td>Juros de empréstimo (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
         <tr class="total-row"><td colspan="2">TOTAL A PAGAR</td><td style="text-align:right">${totalAmount.toLocaleString()}</td></tr>
       </tbody>
     </table>
@@ -352,6 +355,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
     </div>
     <div class="info-box">
       <h3>Dados do Cliente</h3>
+      ${receiptData.clientNumber ? `<div class="info-row"><span class="label">Nº do Cliente</span><span class="value" style="font-weight:800">${s(receiptData.clientNumber)}</span></div>` : ''}
       <div class="info-row"><span class="label">Nome</span><span class="value">${s(receiptData.clientName)}</span></div>
       ${receiptData.clientEmail ? `<div class="info-row"><span class="label">Email</span><span class="value">${s(receiptData.clientEmail)}</span></div>` : ''}
       ${receiptData.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(receiptData.clientDocument)}</span></div>` : ''}
@@ -381,9 +385,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
     (${s(receiptData.description)}), paga através de <strong>${s(method)}</strong>.
   </div>
 
-  <div style="margin:12px 0;padding:8px 12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:4px;font-size:10px;color:#92400e;line-height:1.6;">
-    <strong>⚠ AVISO:</strong> É obrigatório o envio do comprovativo de pagamento via WhatsApp ou por e-mail fornecidos neste documento para a quitação imediata no sistema.
-  </div>
+
 
   <div class="signature-area">
     <div class="sig-box">

@@ -17,6 +17,7 @@ interface LoanOption {
   clientDocument: string;
   clientNuit: string;
   clientAddress: string;
+  clientNumber: string;
   totalAmount: number;
   remainingAmount: number;
   interestRate: number;
@@ -58,7 +59,7 @@ const DocumentGenerator = () => {
       const [{ data: loansData }, { data: settings }] = await Promise.all([
         supabase
           .from('loans')
-          .select('id, total_amount, remaining_amount, interest_rate, installments, client_id, status, clients(name, phone, user_id, id_number, address, is_physical)')
+          .select('id, total_amount, remaining_amount, interest_rate, installments, client_id, status, clients(name, phone, user_id, id_number, address, is_physical, client_number)')
           .in('status', ['active', 'completed']),
         supabase
           .from('system_settings')
@@ -120,6 +121,7 @@ const DocumentGenerator = () => {
               clientDocument: clientDoc,
               clientNuit: clientNuit,
               clientAddress: clientAddr,
+              clientNumber: l.clients?.client_number ? String(l.clients.client_number) : '',
               totalAmount: Number(l.total_amount),
               remainingAmount: Number(l.remaining_amount),
               interestRate: Number(l.interest_rate),
@@ -168,6 +170,7 @@ const DocumentGenerator = () => {
       clientDocument: selectedLoan.clientDocument,
       clientNuit: selectedLoan.clientNuit,
       clientAddress: selectedLoan.clientAddress,
+      clientNumber: selectedLoan.clientNumber,
       amount: selectedLoan.totalAmount,
       interestRate: selectedLoan.interestRate,
       totalAmount: selectedLoan.totalAmount,
@@ -204,6 +207,7 @@ const DocumentGenerator = () => {
       clientDocument: receiptLoan.clientDocument,
       clientNuit: receiptLoan.clientNuit,
       clientAddress: receiptLoan.clientAddress,
+      clientNumber: receiptLoan.clientNumber,
       amount,
       paymentMethod: receiptMethod,
       remainingBalance: Math.max(0, receiptLoan.remainingAmount - amount),

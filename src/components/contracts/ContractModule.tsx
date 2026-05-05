@@ -554,12 +554,7 @@ const ContractModule = () => {
                             <p className="text-xs text-blue-100 mt-1">Desenhe com o dedo ou rato dentro do quadro branco.</p>
                         </div>
                         <CardContent className="p-6">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="flex gap-2 items-center">
-                                    <span className="text-sm font-medium text-gray-600">Cor:</span>
-                                    <button onClick={() => setInkColor('#0000a0')} className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#0000a0' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'}`} style={{ backgroundColor: '#0000a0' }} type="button" />
-                                    <button onClick={() => setInkColor('#000000')} className={`w-8 h-8 rounded-full shadow-sm border-2 ${inkColor === '#000000' ? 'border-[#d37c22] ring-2 ring-[#d37c22]/30' : 'border-gray-200'}`} style={{ backgroundColor: '#000000' }} type="button" />
-                                </div>
+                            <div className="flex justify-end items-center mb-4">
                                 <div className="flex gap-2">
                                     {existingSignatureUrl && (
                                         <Button
