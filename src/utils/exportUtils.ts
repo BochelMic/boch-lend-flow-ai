@@ -220,7 +220,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   for (let i = 1; i <= installments; i++) {
     const isLast = i === installments;
     const val = isLast ? totalAmount - installmentValue * (installments - 1) : installmentValue;
-    installmentRows += `<tr><td>${i}ª Parcela</td><td>---</td><td style="text-align:right">MZN ${val.toLocaleString()}</td></tr>`;
+    installmentRows += `<tr><td>${i}ª Parcela</td><td>---</td><td style="text-align:right">${val.toLocaleString()} Mt</td></tr>`;
   }
 
   return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Fatura ${s(invoiceData.number)}</title>
@@ -250,18 +250,17 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
     </div>
     <div class="info-box">
       <h3>Dados do Cliente</h3>
-      ${invoiceData.clientNumber ? `<div class="info-row"><span class="label">Nº do Cliente</span><span class="value" style="font-weight:800">${s(invoiceData.clientNumber)}</span></div>` : ''}
+      ${invoiceData.clientPhone ? `<div class="info-row"><span class="label">Nº do Cliente</span><span class="value" style="font-weight:800">${s(invoiceData.clientPhone)}</span></div>` : ''}
       <div class="info-row"><span class="label">Nome Completo</span><span class="value">${s(invoiceData.clientName)}</span></div>
       ${invoiceData.clientDocument ? `<div class="info-row"><span class="label">Nº Documento (BI)</span><span class="value">${s(invoiceData.clientDocument)}</span></div>` : ''}
       ${invoiceData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(invoiceData.clientNuit)}</span></div>` : ''}
-      ${invoiceData.clientPhone ? `<div class="info-row"><span class="label">Contacto</span><span class="value">${s(invoiceData.clientPhone)}</span></div>` : ''}
       ${invoiceData.clientAddress ? `<div class="info-row"><span class="label">Endereço</span><span class="value">${s(invoiceData.clientAddress)}</span></div>` : ''}
     </div>
   </div>
 
   <div class="table-section">
     <table>
-      <thead><tr><th>Descrição</th><th>Taxa de Juro</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
+      <thead><tr><th>Descrição</th><th>Taxa de Juro</th><th style="text-align:right">Valor (Mt)</th></tr></thead>
       <tbody>
         <tr><td>Crédito concedido</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : '---'}</td><td style="text-align:right">${invoiceData.amount.toLocaleString()}</td></tr>
         ${invoiceData.interestRate ? `<tr><td>Juros de empréstimo (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
@@ -273,7 +272,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
   ${installments > 1 ? `
   <div class="table-section">
     <table>
-      <thead><tr><th>Parcela</th><th>Vencimento</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
+      <thead><tr><th>Parcela</th><th>Vencimento</th><th style="text-align:right">Valor (Mt)</th></tr></thead>
       <tbody>${installmentRows}</tbody>
     </table>
   </div>
@@ -281,7 +280,7 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
 
   <div class="amount-section">
     <div class="amount-label">Total a Pagar</div>
-    <div class="amount-highlight-inv">MZN ${totalAmount.toLocaleString()}</div>
+    <div class="amount-highlight-inv">${totalAmount.toLocaleString()} Mt</div>
   </div>
 
   <!-- MEIOS DE PAGAMENTO -->
@@ -355,19 +354,18 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
     </div>
     <div class="info-box">
       <h3>Dados do Cliente</h3>
-      ${receiptData.clientNumber ? `<div class="info-row"><span class="label">Nº do Cliente</span><span class="value" style="font-weight:800">${s(receiptData.clientNumber)}</span></div>` : ''}
+      ${receiptData.clientPhone ? `<div class="info-row"><span class="label">Nº do Cliente</span><span class="value" style="font-weight:800">${s(receiptData.clientPhone)}</span></div>` : ''}
       <div class="info-row"><span class="label">Nome</span><span class="value">${s(receiptData.clientName)}</span></div>
       ${receiptData.clientEmail ? `<div class="info-row"><span class="label">Email</span><span class="value">${s(receiptData.clientEmail)}</span></div>` : ''}
       ${receiptData.clientDocument ? `<div class="info-row"><span class="label">Documento</span><span class="value">${s(receiptData.clientDocument)}</span></div>` : ''}
       ${receiptData.clientNuit ? `<div class="info-row"><span class="label">NUIT</span><span class="value">${s(receiptData.clientNuit)}</span></div>` : ''}
-      ${receiptData.clientPhone ? `<div class="info-row"><span class="label">Telefone</span><span class="value">${s(receiptData.clientPhone)}</span></div>` : ''}
       ${receiptData.clientAddress ? `<div class="info-row"><span class="label">Endereço</span><span class="value">${s(receiptData.clientAddress)}</span></div>` : ''}
     </div>
   </div>
 
   <div class="table-section">
     <table>
-      <thead><tr><th>Descrição</th><th>Método</th><th style="text-align:right">Valor (MZN)</th></tr></thead>
+      <thead><tr><th>Descrição</th><th>Método</th><th style="text-align:right">Valor (Mt)</th></tr></thead>
       <tbody>
         <tr><td>${s(receiptData.description)}</td><td>${s(method)}</td><td style="text-align:right">${receiptData.amount.toLocaleString()}</td></tr>
         ${receiptData.remainingBalance !== undefined ? `<tr><td colspan="2" style="color:#666">Saldo restante após este pagamento</td><td style="text-align:right;color:#666">${receiptData.remainingBalance.toLocaleString()}</td></tr>` : ''}
@@ -377,11 +375,11 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
 
   <div class="amount-section">
     <div class="amount-label">Total Pago</div>
-    <div class="amount-highlight">MZN ${receiptData.amount.toLocaleString()}</div>
+    <div class="amount-highlight">${receiptData.amount.toLocaleString()} Mt</div>
   </div>
 
   <div style="border:1px solid #ccc;padding:14px;margin:12px 0;font-size:12px;color:#1a1a1a;line-height:1.7">
-    Recebemos de <strong>${s(receiptData.clientName)}</strong> a quantia de <strong>MZN ${receiptData.amount.toLocaleString()}</strong>
+    Recebemos de <strong>${s(receiptData.clientName)}</strong> a quantia de <strong>${receiptData.amount.toLocaleString()} Mt</strong>
     (${s(receiptData.description)}), paga através de <strong>${s(method)}</strong>.
   </div>
 

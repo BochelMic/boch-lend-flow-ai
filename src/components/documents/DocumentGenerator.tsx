@@ -76,12 +76,13 @@ const DocumentGenerator = () => {
             let clientDoc = l.clients?.id_number || '';
             let clientNuit = '';
             let clientAddr = l.clients?.address || '';
+            let clientPhone = l.clients?.phone || '';
 
             // Try to enrich from credit_requests (works for digital clients with user_id)
             if (clientUserId) {
               const { data: creditReq } = await supabase
                 .from('credit_requests')
-                .select('document_number, nuit, neighborhood, district, province')
+                .select('document_number, nuit, client_phone, neighborhood, district, province')
                 .eq('user_id', clientUserId)
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -90,6 +91,7 @@ const DocumentGenerator = () => {
               if (creditReq) {
                 clientDoc = creditReq.document_number || clientDoc;
                 clientNuit = creditReq.nuit || '';
+                if (!clientPhone) clientPhone = creditReq.client_phone || '';
                 const parts = [creditReq.neighborhood, creditReq.district, creditReq.province].filter(Boolean);
                 if (parts.length > 0) clientAddr = parts.join(', ');
               }
@@ -99,7 +101,7 @@ const DocumentGenerator = () => {
               if (clientName) {
                 const { data: creditReq } = await supabase
                   .from('credit_requests')
-                  .select('document_number, nuit, neighborhood, district, province')
+                  .select('document_number, nuit, client_phone, neighborhood, district, province')
                   .ilike('client_name', clientName)
                   .order('created_at', { ascending: false })
                   .limit(1)
@@ -108,6 +110,7 @@ const DocumentGenerator = () => {
                 if (creditReq) {
                   clientDoc = creditReq.document_number || clientDoc;
                   clientNuit = creditReq.nuit || '';
+                  if (!clientPhone) clientPhone = creditReq.client_phone || '';
                   const parts = [creditReq.neighborhood, creditReq.district, creditReq.province].filter(Boolean);
                   if (parts.length > 0) clientAddr = parts.join(', ');
                 }
@@ -117,7 +120,7 @@ const DocumentGenerator = () => {
             return {
               id: l.id,
               clientName: l.clients?.name || 'Desconhecido',
-              clientPhone: l.clients?.phone || '',
+              clientPhone: clientPhone,
               clientDocument: clientDoc,
               clientNuit: clientNuit,
               clientAddress: clientAddr,
