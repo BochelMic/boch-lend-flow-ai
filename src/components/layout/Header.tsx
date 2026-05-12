@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Bell, User, LogOut, ChevronDown, MessageCircle, AlertTriangle, Check, Trash2, CheckCheck, Eye, EyeOff, Key } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -99,7 +99,7 @@ const Header = () => {
               <div className="flex flex-col">
                 <span className="text-[9px] uppercase font-bold text-secondary/70 leading-none">Saldo Devedor</span>
                 {showBalance ? (
-                  <span className="text-sm font-black text-secondary leading-none mt-0.5">{remainingAmount.toLocaleString()} MZN</span>
+                  <span className="text-sm font-black text-secondary leading-none mt-0.5">{remainingAmount.toLocaleString()} MT</span>
                 ) : (
                   <span className="text-sm font-black text-secondary leading-none mt-0.5">••••••</span>
                 )}

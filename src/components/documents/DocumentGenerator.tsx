@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -254,7 +254,7 @@ const DocumentGenerator = () => {
                   <SelectContent>
                     {loans.map(loan => (
                       <SelectItem key={loan.id} value={loan.id}>
-                        {loan.clientName} — MZN {loan.totalAmount.toLocaleString()}
+                        {loan.clientName} — MT {loan.totalAmount.toLocaleString()}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -263,7 +263,7 @@ const DocumentGenerator = () => {
               {selectedLoan && (
                 <div className="grid grid-cols-2 gap-2 text-sm bg-gray-50 p-3 rounded-lg">
                   <div><span className="text-gray-500">Cliente:</span> <strong>{selectedLoan.clientName}</strong></div>
-                  <div><span className="text-gray-500">Valor:</span> <strong>MZN {selectedLoan.totalAmount.toLocaleString()}</strong></div>
+                  <div><span className="text-gray-500">Valor:</span> <strong>MT {selectedLoan.totalAmount.toLocaleString()}</strong></div>
                   <div><span className="text-gray-500">Taxa:</span> <strong>{selectedLoan.interestRate}%</strong></div>
                   <div><span className="text-gray-500">Parcelas:</span> <strong>{selectedLoan.installments}</strong></div>
                   {selectedLoan.clientDocument && (
@@ -308,7 +308,7 @@ const DocumentGenerator = () => {
                   <SelectContent>
                     {loans.map(loan => (
                       <SelectItem key={loan.id} value={loan.id}>
-                        {loan.clientName} — Saldo: MZN {loan.remainingAmount.toLocaleString()}
+                        {loan.clientName} — Saldo: MT {loan.remainingAmount.toLocaleString()}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -316,7 +316,7 @@ const DocumentGenerator = () => {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Valor Pago (MZN) *</Label>
+                  <Label>Valor Pago (MT) *</Label>
                   <Input type="number" value={receiptAmount} onChange={(e) => setReceiptAmount(e.target.value)} placeholder="0.00" />
                 </div>
                 <div>

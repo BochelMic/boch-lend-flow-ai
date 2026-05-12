@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -123,7 +123,7 @@ const CreditDashboard = () => {
     
     toast({
       title: "Empréstimo Criado",
-      description: `Empréstimo de MZN ${loanForm.amount} criado com prestação de MZN ${Math.round(monthlyPayment)}.`,
+      description: `Empréstimo de MT ${loanForm.amount} criado com prestação de MT ${Math.round(monthlyPayment)}.`,
     });
   };
 
@@ -147,7 +147,7 @@ const CreditDashboard = () => {
     
     toast({
       title: "Pagamento Registrado",
-      description: `Pagamento de MZN ${paymentForm.amount} registrado com sucesso.`,
+      description: `Pagamento de MT ${paymentForm.amount} registrado com sucesso.`,
     });
   };
 
@@ -195,7 +195,7 @@ const CreditDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Carteira Total</p>
-                    <p className="text-2xl font-bold">MZN 0</p>
+                    <p className="text-2xl font-bold">MT 0</p>
                   </div>
                   <DollarSign className="h-8 w-8 text-green-600" />
                 </div>
@@ -263,7 +263,7 @@ const CreditDashboard = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="loanAmount">Valor (MZN)</Label>
+                  <Label htmlFor="loanAmount">Valor (MT)</Label>
                   <Input 
                     id="loanAmount"
                     type="number"
@@ -300,7 +300,7 @@ const CreditDashboard = () => {
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <p className="font-medium">Prestação Fixa Calculada:</p>
                   <p className="text-lg font-bold text-blue-600">
-                    MZN {calculateFixedInstallment(
+                    MT {calculateFixedInstallment(
                       parseFloat(loanForm.amount),
                       parseFloat(loanForm.interestRate),
                       parseInt(loanForm.term)
@@ -335,7 +335,7 @@ const CreditDashboard = () => {
                       const client = clients.find(c => c.id === loan.clientId);
                       return (
                         <SelectItem key={loan.id} value={loan.id.toString()}>
-                          {client?.name} - MZN {loan.amount.toLocaleString()} - {loan.term} meses
+                          {client?.name} - MT {loan.amount.toLocaleString()} - {loan.term} meses
                         </SelectItem>
                       );
                     })}
@@ -348,7 +348,7 @@ const CreditDashboard = () => {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
                     <div>
                       <p className="text-sm text-gray-600">Valor Empréstimo</p>
-                      <p className="font-bold">MZN {selectedLoanForAmortization.amount.toLocaleString()}</p>
+                      <p className="font-bold">MT {selectedLoanForAmortization.amount.toLocaleString()}</p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Taxa de Juros</p>
@@ -360,7 +360,7 @@ const CreditDashboard = () => {
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Prestação</p>
-                      <p className="font-bold">MZN {selectedLoanForAmortization.monthlyPayment.toLocaleString()}</p>
+                      <p className="font-bold">MT {selectedLoanForAmortization.monthlyPayment.toLocaleString()}</p>
                     </div>
                   </div>
 
@@ -383,10 +383,10 @@ const CreditDashboard = () => {
                         ).map((row, index) => (
                           <tr key={index} className="border-b hover:bg-gray-50">
                             <td className="p-3">{row.month}</td>
-                            <td className="p-3">MZN {row.payment.toFixed(2)}</td>
-                            <td className="p-3">MZN {row.interest.toFixed(2)}</td>
-                            <td className="p-3">MZN {row.principal.toFixed(2)}</td>
-                            <td className="p-3">MZN {row.balance.toFixed(2)}</td>
+                            <td className="p-3">MT {row.payment.toFixed(2)}</td>
+                            <td className="p-3">MT {row.interest.toFixed(2)}</td>
+                            <td className="p-3">MT {row.principal.toFixed(2)}</td>
+                            <td className="p-3">MT {row.balance.toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -422,7 +422,7 @@ const CreditDashboard = () => {
                         const client = clients.find(c => c.id === loan.clientId);
                         return (
                           <SelectItem key={loan.id} value={loan.id.toString()}>
-                            {client?.name} - MZN {loan.remainingBalance.toLocaleString()}
+                            {client?.name} - MT {loan.remainingBalance.toLocaleString()}
                           </SelectItem>
                         );
                       })}
@@ -430,7 +430,7 @@ const CreditDashboard = () => {
                   </Select>
                 </div>
                 <div>
-                  <Label htmlFor="paymentAmount">Valor do Pagamento (MZN)</Label>
+                  <Label htmlFor="paymentAmount">Valor do Pagamento (MT)</Label>
                   <Input 
                     id="paymentAmount"
                     type="number"

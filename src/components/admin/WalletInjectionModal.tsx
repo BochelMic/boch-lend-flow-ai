@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,7 +36,7 @@ const WalletInjectionModal = ({ isOpen, onClose, onSuccess }: WalletInjectionMod
 
             toast({
                 title: 'Capital Injectado!',
-                description: `MZN ${parseFloat(amount).toLocaleString()} adicionados ao saldo operacional.`
+                description: `MT ${parseFloat(amount).toLocaleString()} adicionados ao saldo operacional.`
             });
 
             setAmount('');
@@ -65,7 +65,7 @@ const WalletInjectionModal = ({ isOpen, onClose, onSuccess }: WalletInjectionMod
 
                 <div className="grid gap-4 py-4">
                     <div className="space-y-2">
-                        <Label htmlFor="amount">Valor a Injectar (MZN)</Label>
+                        <Label htmlFor="amount">Valor a Injectar (MT)</Label>
                         <Input
                             id="amount"
                             type="number"

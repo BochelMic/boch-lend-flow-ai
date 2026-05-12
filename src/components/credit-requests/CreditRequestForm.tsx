@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -278,7 +278,7 @@ const CreditRequestForm = ({ initialData }: { initialData?: any }) => {
                   <div className="space-y-2">
                     <Label htmlFor="amount" className="flex items-center gap-2">
                       <DollarSign className="h-4 w-4" />
-                      Valor Solicitado (MZN) *
+                      Valor Solicitado (MT) *
                     </Label>
                     <Input
                       id="amount"
@@ -370,7 +370,7 @@ const CreditRequestForm = ({ initialData }: { initialData?: any }) => {
                   <div className="mt-6 bg-gray-50 rounded-xl p-4 border border-gray-100 space-y-3">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-500">Total a Pagar</span>
-                      <span className="font-bold text-lg text-primary">MZN {result.totalToPay.toLocaleString()}</span>
+                      <span className="font-bold text-lg text-primary">MT {result.totalToPay.toLocaleString()}</span>
                     </div>
                     {isInstallment && (
                       <div className="flex justify-between items-center text-xs">
@@ -378,7 +378,7 @@ const CreditRequestForm = ({ initialData }: { initialData?: any }) => {
                           {selectedOption === 'A' ? 'Semanal' : 'Mensalidade'} ({installmentMonths}x)
                         </span>
                         <span className="font-semibold">
-                          MZN {(result.installments[0]?.total || 0).toLocaleString()}
+                          MT {(result.installments[0]?.total || 0).toLocaleString()}
                         </span>
                       </div>
                     )}

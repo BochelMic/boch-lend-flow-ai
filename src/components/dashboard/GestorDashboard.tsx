@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -171,7 +171,7 @@ const GestorDashboard = () => {
                     <h2 className="text-3xl font-black text-gray-900">
                       {showWalletBalance ? (
                         loadingWallet ? <Loader2 className="h-7 w-7 animate-spin text-gray-300" /> :
-                        walletBalance !== null ? `MZN ${walletBalance.toLocaleString()}` : 'N/A'
+                        walletBalance !== null ? `MT ${walletBalance.toLocaleString()}` : 'N/A'
                       ) : (
                         '••••••••••••'
                       )}
@@ -208,7 +208,7 @@ const GestorDashboard = () => {
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase font-bold">Crescimento (Juros)</p>
                   <p className="text-sm font-bold text-emerald-600">
-                    +{showWalletBalance ? `MZN ${interestGrowth.toLocaleString()}` : '••••'}
+                    +{showWalletBalance ? `MT ${interestGrowth.toLocaleString()}` : '••••'}
                   </p>
                 </div>
               </div>
@@ -280,7 +280,7 @@ const GestorDashboard = () => {
                       <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
                       <YAxis stroke="hsl(var(--muted-foreground))" />
                       <Tooltip
-                        formatter={(value: number) => [`MZN ${(value / 1000).toFixed(0)}K`, '']}
+                        formatter={(value: number) => [`MT ${(value / 1000).toFixed(0)}K`, '']}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--card))',
                           border: '1px solid hsl(var(--border))',
@@ -338,7 +338,7 @@ const GestorDashboard = () => {
               <CardContent className="p-4">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                  <p className="text-lg font-bold text-success">MZN 438K</p>
+                  <p className="text-lg font-bold text-success">MT 438K</p>
                   <p className="text-xs text-muted-foreground">Margem: 75.5%</p>
                 </div>
               </CardContent>
@@ -348,7 +348,7 @@ const GestorDashboard = () => {
               <CardContent className="p-4">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">EBITDA</p>
-                  <p className="text-lg font-bold text-primary">MZN 465K</p>
+                  <p className="text-lg font-bold text-primary">MT 465K</p>
                   <p className="text-xs text-muted-foreground">Margem: 80.2%</p>
                 </div>
               </CardContent>
@@ -358,7 +358,7 @@ const GestorDashboard = () => {
               <CardContent className="p-4">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">Provisões</p>
-                  <p className="text-lg font-bold text-warning">MZN 28K</p>
+                  <p className="text-lg font-bold text-warning">MT 28K</p>
                   <p className="text-xs text-muted-foreground">0.33% da carteira</p>
                 </div>
               </CardContent>
@@ -368,7 +368,7 @@ const GestorDashboard = () => {
               <CardContent className="p-4">
                 <div className="text-center">
                   <p className="text-sm text-muted-foreground">Fluxo de Caixa</p>
-                  <p className="text-lg font-bold text-accent">MZN 285K</p>
+                  <p className="text-lg font-bold text-accent">MT 285K</p>
                   <p className="text-xs text-muted-foreground">Positivo</p>
                 </div>
               </CardContent>
@@ -414,7 +414,7 @@ const GestorDashboard = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold text-success">MZN {agent.comissao.toLocaleString()}</p>
+                      <p className="font-bold text-success">MT {agent.comissao.toLocaleString()}</p>
                       <Progress value={(agent.emprestimos / agent.meta) * 100} className="w-24 mt-1" />
                     </div>
                   </div>
@@ -445,7 +445,7 @@ const GestorDashboard = () => {
                         <p className="text-sm text-muted-foreground">{loan.quantidade} contratos</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold">MZN {(loan.valor / 1000000).toFixed(1)}M</p>
+                        <p className="font-bold">MT {(loan.valor / 1000000).toFixed(1)}M</p>
                         <p className="text-xs text-muted-foreground">
                           {((loan.valor / 9380000) * 100).toFixed(1)}% da carteira
                         </p>
@@ -473,7 +473,7 @@ const GestorDashboard = () => {
                     <p className="text-sm text-muted-foreground">Empréstimo comercial</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-orange">MZN 45,000</p>
+                    <p className="font-bold text-orange">MT 45,000</p>
                     <div className="flex gap-2 mt-2">
                       <Button size="sm" variant="outline" className="text-xs">Aprovar</Button>
                       <Button size="sm" variant="outline" className="text-xs">Rejeitar</Button>
@@ -487,7 +487,7 @@ const GestorDashboard = () => {
                     <p className="text-sm text-muted-foreground">Empréstimo pessoal</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-accent">MZN 15,000</p>
+                    <p className="font-bold text-accent">MT 15,000</p>
                     <div className="flex gap-2 mt-2">
                       <Button size="sm" variant="outline" className="text-xs">Aprovar</Button>
                       <Button size="sm" variant="outline" className="text-xs">Rejeitar</Button>
@@ -501,7 +501,7 @@ const GestorDashboard = () => {
                     <p className="text-sm text-muted-foreground">Empréstimo agrícola</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-secondary">MZN 60,000</p>
+                    <p className="font-bold text-secondary">MT 60,000</p>
                     <div className="flex gap-2 mt-2">
                       <Button size="sm" variant="outline" className="text-xs">Aprovar</Button>
                       <Button size="sm" variant="outline" className="text-xs">Rejeitar</Button>
@@ -552,7 +552,7 @@ const GestorDashboard = () => {
                 </div>
                 <div className="p-3 bg-warning/10 rounded-lg">
                   <p className="font-medium text-warning">Meta mensal: 89%</p>
-                  <p className="text-sm text-muted-foreground">Faltam MZN 70K</p>
+                  <p className="text-sm text-muted-foreground">Faltam MT 70K</p>
                 </div>
               </CardContent>
             </Card>

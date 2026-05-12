@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -187,7 +187,7 @@ const CreditSimulatorModule = ({ className, onApply }: CreditSimulatorModuleProp
             </div>
             <CardContent className="p-6 space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="amount" className="font-bold text-gray-700">Montante Solicitado (MZN)</Label>
+                <Label htmlFor="amount" className="font-bold text-gray-700">Montante Solicitado (MT)</Label>
                 <div className="relative">
                   <Input
                     id="amount"

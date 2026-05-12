@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -188,7 +188,7 @@ const ClientRequestsModule = () => {
                       <CardContent className="p-4 md:p-6">
                         <div className="flex items-start justify-between mb-3">
                           <div>
-                            <p className="font-bold text-lg text-gray-900">{fmt(req.amount)} MZN</p>
+                            <p className="font-bold text-lg text-gray-900">{fmt(req.amount)} MT</p>
                             <p className="text-xs text-muted-foreground">{formatDate(req.created_at)} {req.term ? `• ${req.term} meses` : ''}</p>
                           </div>
                           {getStatusBadge(req.status)}
@@ -199,11 +199,11 @@ const ClientRequestsModule = () => {
                         <div className="bg-green-50/50 border border-green-100 rounded-lg p-3 flex flex-wrap gap-x-6 gap-y-2 text-sm justify-between md:justify-start">
                           <div>
                             <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">T. de Juro (30%)</p>
-                            <p className="font-medium text-gray-700">{fmt(req.amount * 0.3)} MZN</p>
+                            <p className="font-medium text-gray-700">{fmt(req.amount * 0.3)} MT</p>
                           </div>
                           <div>
                             <p className="text-xs text-green-700 uppercase tracking-wider font-bold">Total a Pagar</p>
-                            <p className="font-black text-green-700">{fmt(req.amount * 1.3)} MZN</p>
+                            <p className="font-black text-green-700">{fmt(req.amount * 1.3)} MT</p>
                           </div>
                         </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import {
   Users,
@@ -178,9 +178,9 @@ const Dashboard = () => {
   };
 
   const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `MZN ${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `MZN ${(value / 1000).toFixed(1)}K`;
-    return `MZN ${value.toLocaleString()}`;
+    if (value >= 1000000) return `MT ${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `MT ${(value / 1000).toFixed(1)}K`;
+    return `MT ${value.toLocaleString()}`;
   };
 
   return (
@@ -216,7 +216,7 @@ const Dashboard = () => {
                   <div className="flex items-center gap-3 mt-1">
                     <h2 className="text-3xl font-black">
                       {showWalletBalance ? (
-                        walletBalance !== null ? `MZN ${walletBalance.toLocaleString()}` : '...'
+                        walletBalance !== null ? `MT ${walletBalance.toLocaleString()}` : '...'
                       ) : (
                         '••••••••••••'
                       )}
@@ -263,15 +263,15 @@ const Dashboard = () => {
               <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-white/5 pt-6">
                 <div className="space-y-1">
                   <p className="text-[10px] text-white/40 uppercase font-black tracking-tighter">Entradas (Mes)</p>
-                  <p className="text-sm font-bold text-success">+ MZN {walletLedger.filter(l => l.transaction_type !== 'disbursement').reduce((s, l) => s + Number(l.amount), 0).toLocaleString()}</p>
+                  <p className="text-sm font-bold text-success">+ MT {walletLedger.filter(l => l.transaction_type !== 'disbursement').reduce((s, l) => s + Number(l.amount), 0).toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] text-white/40 uppercase font-black tracking-tighter">Saídas (Mes)</p>
-                  <p className="text-sm font-bold text-destructive">- MZN {walletLedger.filter(l => l.transaction_type === 'disbursement').reduce((s, l) => s + Number(l.amount), 0).toLocaleString()}</p>
+                  <p className="text-sm font-bold text-destructive">- MT {walletLedger.filter(l => l.transaction_type === 'disbursement').reduce((s, l) => s + Number(l.amount), 0).toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] text-white/40 uppercase font-black tracking-tighter">Liquidez Pendente</p>
-                  <p className="text-sm font-bold text-info">MZN {(stats.creditRequests * 5000).toLocaleString()} (est.)</p>
+                  <p className="text-sm font-bold text-info">MT {(stats.creditRequests * 5000).toLocaleString()} (est.)</p>
                 </div>
               </div>
             )}
@@ -355,7 +355,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Empréstimo Total</p>
-                <p className="text-sm md:text-lg font-bold truncate">MZN {stats.totalLoanAmount.toLocaleString()}</p>
+                <p className="text-sm md:text-lg font-bold truncate">MT {stats.totalLoanAmount.toLocaleString()}</p>
               </div>
               <DollarSign className="h-5 w-5 md:h-6 md:w-6 text-info flex-shrink-0" />
             </div>
@@ -367,7 +367,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Juros Totais</p>
-                <p className="text-sm md:text-lg font-bold text-success truncate">MZN {stats.totalInterest.toLocaleString()}</p>
+                <p className="text-sm md:text-lg font-bold text-success truncate">MT {stats.totalInterest.toLocaleString()}</p>
               </div>
               <TrendingUp className="h-5 w-5 md:h-6 md:w-6 text-success flex-shrink-0" />
             </div>
@@ -379,7 +379,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Juros de Mora</p>
-                <p className="text-sm md:text-lg font-bold text-destructive truncate">MZN {stats.lateInterest.toLocaleString()}</p>
+                <p className="text-sm md:text-lg font-bold text-destructive truncate">MT {stats.lateInterest.toLocaleString()}</p>
               </div>
               <AlertTriangle className="h-5 w-5 md:h-6 md:w-6 text-destructive flex-shrink-0" />
             </div>
@@ -391,7 +391,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Valor Total</p>
-                <p className="text-sm md:text-lg font-bold text-secondary truncate">MZN {stats.totalValue.toLocaleString()}</p>
+                <p className="text-sm md:text-lg font-bold text-secondary truncate">MT {stats.totalValue.toLocaleString()}</p>
               </div>
               <Target className="h-5 w-5 md:h-6 md:w-6 text-secondary flex-shrink-0" />
             </div>

@@ -1,479 +1,428 @@
-
-import React, { useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { 
-  ShieldCheck, 
-  Eye, 
-  Search, 
-  Filter, 
-  Download, 
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  Clock,
-  User,
-  Activity,
-  FileText,
-  Calendar
+import { Badge } from '../ui/badge';
+import {
+  Users, UserCheck, AlertTriangle, TrendingUp, TrendingDown, DollarSign,
+  Clock, Activity, FileText, Loader2, RefreshCw, Briefcase, CreditCard, Wallet, BarChart3
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ClientRow {
+  id: string; name: string; status: string; phone: string | null;
+  agent_id: string | null; created_at: string;
+  loan_count: number; total_borrowed: number; total_remaining: number;
+  days_overdue: number;
+}
+interface AgentRow {
+  user_id: string; name: string; client_count: number;
+  total_volume: number; total_collected: number;
+}
+interface LedgerRow {
+  id: string; amount: number; transaction_type: string;
+  description: string | null; created_at: string;
+}
 
 const AuditModule = () => {
-  const { toast } = useToast();
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 1, user: 'João Silva', action: 'Criou empréstimo', details: 'Cliente: Maria Santos, Valor: MZN 50,000', timestamp: '15/06/2024 10:30', ip: '192.168.1.100', status: 'Sucesso' },
-    { id: 2, user: 'Ana Costa', action: 'Atualizou cliente', details: 'Cliente: Carlos Mussa, Campo: Telefone', timestamp: '15/06/2024 09:15', ip: '192.168.1.101', status: 'Sucesso' },
-    { id: 3, user: 'Pedro Santos', action: 'Tentativa login', details: 'Login falhado - senha incorreta', timestamp: '15/06/2024 08:45', ip: '192.168.1.102', status: 'Falha' },
-    { id: 4, user: 'Maria Oliveira', action: 'Registrou pagamento', details: 'Empréstimo ID: 123, Valor: MZN 5,000', timestamp: '14/06/2024 16:20', ip: '192.168.1.103', status: 'Sucesso' },
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalClients: 0, activeClients: 0, clientsWithDebt: 0,
+    clientsOverdue: 0, clientsNoOrders: 0, totalAgents: 0,
+    totalLoaned: 0, totalCollected: 0, activeLoans: 0,
+    pendingRequests: 0, walletBalance: 0,
+  });
+  const [clients, setClients] = useState<ClientRow[]>([]);
+  const [agents, setAgents] = useState<AgentRow[]>([]);
+  const [ledger, setLedger] = useState<LedgerRow[]>([]);
+  const [clientFilter, setClientFilter] = useState<'all'|'active'|'overdue'|'no-orders'>('all');
 
-  const [securityAlerts, setSecurityAlerts] = useState([
-    { id: 1, type: 'Tentativa de acesso não autorizado', description: 'Múltiplas tentativas de login falhadas para usuário admin', severity: 'Alto', timestamp: '15/06/2024 11:00', status: 'Ativo' },
-    { id: 2, type: 'Alteração de dados sensíveis', description: 'Alteração em massa de dados de clientes', severity: 'Médio', timestamp: '14/06/2024 14:30', status: 'Investigando' },
-    { id: 3, type: 'Acesso fora do horário', description: 'Login realizado fora do horário comercial', severity: 'Baixo', timestamp: '13/06/2024 22:15', status: 'Resolvido' },
-  ]);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [clientsRes, loansRes, paymentsRes, requestsRes, rolesRes, profilesRes, walletRes, ledgerRes] = await Promise.all([
+        supabase.from('clients').select('*'),
+        supabase.from('loans').select('*'),
+        supabase.from('payments').select('*'),
+        supabase.from('credit_requests').select('id, status'),
+        supabase.from('user_roles').select('user_id, role').eq('role', 'agente'),
+        supabase.from('profiles').select('user_id, name, email'),
+        supabase.from('company_wallet').select('balance').single(),
+        supabase.from('wallet_ledger').select('*').order('created_at', { ascending: false }).limit(50),
+      ]);
 
-  const [filters, setFilters] = useState({
-    user: '',
-    action: '',
-    dateFrom: '',
-    dateTo: '',
-    status: ''
+      const allClients = clientsRes.data || [];
+      const allLoans = loansRes.data || [];
+      const allPayments = paymentsRes.data || [];
+      const allRequests = requestsRes.data || [];
+      const agentRoles = rolesRes.data || [];
+      const profiles = profilesRes.data || [];
+      const walletBalance = Number(walletRes.data?.balance) || 0;
+      const ledgerData = (ledgerRes.data || []) as LedgerRow[];
+
+      const profileMap = new Map(profiles.map(p => [p.user_id, p]));
+      const today = new Date();
+
+      // Build client rows with loan info
+      const clientRows: ClientRow[] = allClients.map(c => {
+        const clientLoans = allLoans.filter(l => l.client_id === c.id);
+        const activeLoans = clientLoans.filter(l => l.status === 'active');
+        const totalBorrowed = clientLoans.reduce((s, l) => s + Number(l.amount || 0), 0);
+        const totalRemaining = activeLoans.reduce((s, l) => s + Number(l.remaining_amount || 0), 0);
+
+        let maxOverdue = 0;
+        activeLoans.forEach(l => {
+          if (l.end_date) {
+            const endDate = new Date(l.end_date);
+            if (today > endDate) {
+              maxOverdue = Math.max(maxOverdue, Math.floor((today.getTime() - endDate.getTime()) / 86400000));
+            }
+          }
+        });
+
+        return {
+          id: c.id, name: c.name, status: c.status, phone: c.phone,
+          agent_id: c.agent_id, created_at: c.created_at,
+          loan_count: clientLoans.length, total_borrowed: totalBorrowed,
+          total_remaining: totalRemaining, days_overdue: maxOverdue,
+        };
+      });
+
+      // Build agent rows
+      const agentRows: AgentRow[] = agentRoles.map(ar => {
+        const profile = profileMap.get(ar.user_id);
+        const agentClients = allClients.filter(c => c.agent_id === ar.user_id);
+        const agentClientIds = new Set(agentClients.map(c => c.id));
+        const agentLoans = allLoans.filter(l => agentClientIds.has(l.client_id));
+        const agentLoanIds = new Set(agentLoans.map(l => l.id));
+        const agentPayments = allPayments.filter(p => agentLoanIds.has(p.loan_id));
+
+        return {
+          user_id: ar.user_id,
+          name: profile?.name || 'Agente',
+          client_count: agentClients.length,
+          total_volume: agentLoans.reduce((s, l) => s + Number(l.amount || 0), 0),
+          total_collected: agentPayments.reduce((s, p) => s + Number(p.amount || 0), 0),
+        };
+      });
+
+      const activeClients = clientRows.filter(c => c.status === 'active').length;
+      const clientsWithDebt = clientRows.filter(c => c.total_remaining > 0).length;
+      const clientsOverdue = clientRows.filter(c => c.days_overdue > 0).length;
+      const clientIdsWithRequests = new Set(allRequests.map(r => r.id));
+      const clientsNoOrders = clientRows.filter(c => c.loan_count === 0).length;
+      const activeLoansCount = allLoans.filter(l => l.status === 'active').length;
+      const pendingRequests = allRequests.filter(r => r.status === 'pending').length;
+      const totalLoaned = allLoans.reduce((s, l) => s + Number(l.amount || 0), 0);
+      const totalCollected = allPayments.reduce((s, p) => s + Number(p.amount || 0), 0);
+
+      setStats({
+        totalClients: allClients.length, activeClients, clientsWithDebt,
+        clientsOverdue, clientsNoOrders, totalAgents: agentRoles.length,
+        totalLoaned, totalCollected, activeLoans: activeLoansCount,
+        pendingRequests, walletBalance,
+      });
+
+      setClients(clientRows);
+      setAgents(agentRows);
+      setLedger(ledgerData);
+    } catch (err) {
+      console.error('AuditModule load error:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const filteredClients = clients.filter(c => {
+    if (clientFilter === 'active') return c.status === 'active';
+    if (clientFilter === 'overdue') return c.days_overdue > 0;
+    if (clientFilter === 'no-orders') return c.loan_count === 0;
+    return true;
   });
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Sucesso': return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'Falha': return <XCircle className="h-4 w-4 text-red-600" />;
-      case 'Pendente': return <Clock className="h-4 w-4 text-yellow-600" />;
-      default: return <AlertTriangle className="h-4 w-4 text-gray-600" />;
-    }
-  };
+  if (loading) {
+    return <div className="flex items-center justify-center h-[60vh]"><Loader2 className="h-8 w-8 animate-spin text-[#1b5e20]" /></div>;
+  }
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'Alto': return 'bg-red-100 text-red-800 border-red-200';
-      case 'Médio': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Baixo': return 'bg-green-100 text-green-800 border-green-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const getAlertStatusColor = (status: string) => {
-    switch (status) {
-      case 'Ativo': return 'bg-red-100 text-red-800';
-      case 'Investigando': return 'bg-yellow-100 text-yellow-800';
-      case 'Resolvido': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const exportAuditReport = () => {
-    toast({
-      title: "Relatório Exportado",
-      description: "Relatório de auditoria foi exportado com sucesso.",
-    });
-  };
-
-  const resolveAlert = (alertId: number) => {
-    setSecurityAlerts(prev => prev.map(alert => 
-      alert.id === alertId ? { ...alert, status: 'Resolvido' } : alert
-    ));
-    
-    toast({
-      title: "Alerta Resolvido",
-      description: "O alerta de segurança foi marcado como resolvido.",
-    });
-  };
+  const KpiCard = ({ icon: Icon, label, value, color, sub }: { icon: React.ElementType; label: string; value: string | number; color: string; sub?: string }) => (
+    <Card className={`border-l-4 border-l-${color}-500`}>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-2">
+          <Icon className={`h-5 w-5 text-${color}-500 shrink-0`} />
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">{label}</p>
+            <p className="text-lg font-bold truncate">{value}</p>
+            {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Sistema de Auditoria</h1>
-        <Button onClick={exportAuditReport}>
-          <Download className="mr-2 h-4 w-4" />
-          Exportar Relatório
+    <div className="container mx-auto p-4 md:p-6 space-y-5">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Auditoria do Sistema</h1>
+          <p className="text-muted-foreground text-sm">Controlo e monitorização de toda a operação</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
+          <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar
         </Button>
       </div>
 
-      <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList>
+      <Tabs defaultValue="dashboard" className="space-y-4">
+        <TabsList className="flex flex-wrap h-auto gap-1">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          <TabsTrigger value="logs">Logs de Auditoria</TabsTrigger>
-          <TabsTrigger value="security">Alertas de Segurança</TabsTrigger>
-          <TabsTrigger value="compliance">Compliance</TabsTrigger>
-          <TabsTrigger value="reports">Relatórios</TabsTrigger>
+          <TabsTrigger value="clients">Clientes</TabsTrigger>
+          <TabsTrigger value="agents">Agentes</TabsTrigger>
+          <TabsTrigger value="financial">Financeiro</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="dashboard" className="space-y-6">
-          <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Ações Hoje</p>
-                    <p className="text-2xl font-bold">147</p>
-                  </div>
-                  <Activity className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Usuários Ativos</p>
-                    <p className="text-2xl font-bold">23</p>
-                  </div>
-                  <User className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Alertas Ativos</p>
-                    <p className="text-2xl font-bold">{securityAlerts.filter(alert => alert.status === 'Ativo').length}</p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-red-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-600">Taxa Conformidade</p>
-                    <p className="text-2xl font-bold">98%</p>
-                  </div>
-                  <ShieldCheck className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
+        {/* DASHBOARD */}
+        <TabsContent value="dashboard" className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            <KpiCard icon={Users} label="Total Clientes" value={stats.totalClients} color="blue" sub={`${stats.activeClients} activos`} />
+            <KpiCard icon={CreditCard} label="Com Dívidas" value={stats.clientsWithDebt} color="amber" />
+            <KpiCard icon={AlertTriangle} label="Em Atraso" value={stats.clientsOverdue} color="red" />
+            <KpiCard icon={Clock} label="Sem Empréstimos" value={stats.clientsNoOrders} color="gray" />
+            <KpiCard icon={UserCheck} label="Agentes" value={stats.totalAgents} color="blue" />
+            <KpiCard icon={Activity} label="Empréstimos Activos" value={stats.activeLoans} color="green" />
+            <KpiCard icon={FileText} label="Pedidos Pendentes" value={stats.pendingRequests} color="amber" />
+            <KpiCard icon={Wallet} label="Saldo Carteira" value={`${stats.walletBalance.toLocaleString()} MT`} color="green" />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Card>
-              <CardHeader>
-                <CardTitle>Atividades Recentes</CardTitle>
-                <CardDescription>Últimas ações registradas no sistema</CardDescription>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Resumo Financeiro</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {auditLogs.slice(0, 5).map((log) => (
-                    <div key={log.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        {getStatusIcon(log.status)}
-                        <div>
-                          <p className="font-medium">{log.action}</p>
-                          <p className="text-sm text-gray-600">{log.user} - {log.timestamp}</p>
-                          <p className="text-xs text-gray-500">{log.details}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              <CardContent className="space-y-3">
+                <div className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
+                  <div className="flex items-center gap-2"><TrendingUp className="h-4 w-4 text-green-600" /><span className="text-sm">Total Emprestado</span></div>
+                  <span className="font-bold text-green-700">MT {stats.totalLoaned.toLocaleString()}</span>
                 </div>
+                <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-2"><TrendingDown className="h-4 w-4 text-blue-600" /><span className="text-sm">Total Cobrado</span></div>
+                  <span className="font-bold text-blue-700">MT {stats.totalCollected.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between items-center p-3 bg-amber-50 rounded-lg">
+                  <div className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-amber-600" /><span className="text-sm">A Receber</span></div>
+                  <span className="font-bold text-amber-700">MT {(stats.totalLoaned - stats.totalCollected).toLocaleString()}</span>
+                </div>
+                {stats.totalLoaned > 0 && (
+                  <div className="pt-2">
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">Taxa de Cobrança</span>
+                      <span className="font-bold">{Math.round((stats.totalCollected / stats.totalLoaned) * 100)}%</span>
+                    </div>
+                    <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full transition-all" style={{ width: `${Math.min((stats.totalCollected / stats.totalLoaned) * 100, 100)}%` }} />
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle>Alertas de Segurança</CardTitle>
-                <CardDescription>Alertas que requerem atenção</CardDescription>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Agentes — Top Performance</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {securityAlerts.filter(alert => alert.status !== 'Resolvido').map((alert) => (
-                    <div key={alert.id} className={`p-3 border rounded-lg ${getSeverityColor(alert.severity)}`}>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="font-medium">{alert.type}</p>
-                          <p className="text-sm mt-1">{alert.description}</p>
-                          <p className="text-xs mt-2">{alert.timestamp}</p>
+                {agents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">Nenhum agente registado.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {agents.sort((a, b) => b.total_volume - a.total_volume).slice(0, 5).map(agent => (
+                      <div key={agent.user_id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                            <span className="text-xs font-bold text-blue-700">{agent.name[0]?.toUpperCase()}</span>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium truncate">{agent.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{agent.client_count} clientes</p>
+                          </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-2 py-1 rounded text-xs ${getAlertStatusColor(alert.status)}`}>
-                            {alert.status}
-                          </span>
-                          {alert.status !== 'Resolvido' && (
-                            <Button size="sm" onClick={() => resolveAlert(alert.id)}>
-                              Resolver
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="logs" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Logs de Auditoria</CardTitle>
-              <CardDescription>Registro completo de todas as atividades do sistema</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                  <div>
-                    <Label htmlFor="filterUser">Usuário</Label>
-                    <Select onValueChange={(value) => setFilters({...filters, user: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="joao">João Silva</SelectItem>
-                        <SelectItem value="ana">Ana Costa</SelectItem>
-                        <SelectItem value="pedro">Pedro Santos</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="filterAction">Ação</Label>
-                    <Select onValueChange={(value) => setFilters({...filters, action: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas</SelectItem>
-                        <SelectItem value="login">Login</SelectItem>
-                        <SelectItem value="create">Criar</SelectItem>
-                        <SelectItem value="update">Atualizar</SelectItem>
-                        <SelectItem value="delete">Excluir</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="filterDateFrom">Data Início</Label>
-                    <Input 
-                      id="filterDateFrom"
-                      type="date"
-                      value={filters.dateFrom}
-                      onChange={(e) => setFilters({...filters, dateFrom: e.target.value})}
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="filterDateTo">Data Fim</Label>
-                    <Input 
-                      id="filterDateTo"
-                      type="date"
-                      value={filters.dateTo}
-                      onChange={(e) => setFilters({...filters, dateTo: e.target.value})}
-                    />
-                  </div>
-
-                  <div className="flex items-end">
-                    <Button>
-                      <Filter className="mr-2 h-4 w-4" />
-                      Filtrar
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="overflow-x-auto border rounded-md">
-                  <div className="min-w-[800px] space-y-2 p-1">
-                    <div className="grid grid-cols-6 gap-4 p-3 bg-gray-50 rounded font-medium">
-                      <span>Usuário</span>
-                      <span>Ação</span>
-                      <span>Detalhes</span>
-                      <span>Data/Hora</span>
-                      <span>IP</span>
-                      <span>Status</span>
-                    </div>
-                    {auditLogs.map((log) => (
-                      <div key={log.id} className="grid grid-cols-6 gap-4 p-3 border-b items-center hover:bg-gray-50 transition-colors">
-                        <span className="font-medium">{log.user}</span>
-                        <span>{log.action}</span>
-                        <span className="text-sm text-gray-600">{log.details}</span>
-                        <span className="text-sm">{log.timestamp}</span>
-                        <span className="text-sm font-mono">{log.ip}</span>
-                        <div className="flex items-center space-x-2">
-                          {getStatusIcon(log.status)}
-                          <span className="text-sm">{log.status}</span>
-                        </div>
+                        <span className="text-sm font-bold text-green-700 shrink-0">MT {agent.total_volume.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="security" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Alertas de Segurança</CardTitle>
-              <CardDescription>Monitoramento de eventos de segurança</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {securityAlerts.map((alert) => (
-                  <div key={alert.id} className={`p-4 border rounded-lg ${getSeverityColor(alert.severity)}`}>
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <AlertTriangle className="h-5 w-5" />
-                          <h3 className="font-medium">{alert.type}</h3>
-                          <span className={`px-2 py-1 rounded text-xs ${getSeverityColor(alert.severity)}`}>
-                            {alert.severity}
-                          </span>
-                        </div>
-                        <p className="text-sm mb-2">{alert.description}</p>
-                        <p className="text-xs text-gray-600">{alert.timestamp}</p>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <span className={`px-2 py-1 rounded text-xs ${getAlertStatusColor(alert.status)}`}>
-                          {alert.status}
-                        </span>
-                        {alert.status !== 'Resolvido' && (
-                          <div className="flex space-x-1">
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-3 w-3 mr-1" />
-                              Investigar
-                            </Button>
-                            <Button size="sm" onClick={() => resolveAlert(alert.id)}>
-                              Resolver
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="compliance" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Verificações de Compliance</CardTitle>
-              <CardDescription>Status de conformidade com regulamentações</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-medium">Proteção de Dados</h3>
-                    <p className="text-sm text-gray-600">Conformidade com lei de proteção de dados</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-green-600 font-medium">Conforme</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-medium">Anti-Lavagem de Dinheiro</h3>
-                    <p className="text-sm text-gray-600">Verificações AML em dia</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-green-600 font-medium">Conforme</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-medium">Backup de Dados</h3>
-                    <p className="text-sm text-gray-600">Último backup realizado</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                    <span className="text-yellow-600 font-medium">Atenção</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <h3 className="font-medium">Controle de Acesso</h3>
-                    <p className="text-sm text-gray-600">Revisão de permissões de usuários</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-green-600 font-medium">Conforme</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="reports" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatório de Auditoria Completo</CardTitle>
-                <CardDescription>Relatório detalhado de todas as atividades</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full" onClick={exportAuditReport}>
-                  <FileText className="mr-2 h-4 w-4" />
-                  Gerar Relatório
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatório de Segurança</CardTitle>
-                <CardDescription>Análise de eventos de segurança</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full" onClick={exportAuditReport}>
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  Gerar Relatório
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatório de Compliance</CardTitle>
-                <CardDescription>Status de conformidade regulatória</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full" onClick={exportAuditReport}>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Gerar Relatório
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatório de Atividade por Usuário</CardTitle>
-                <CardDescription>Atividades por usuário em período</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button className="w-full" onClick={exportAuditReport}>
-                  <User className="mr-2 h-4 w-4" />
-                  Gerar Relatório
-                </Button>
+                )}
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* CLIENTS TAB */}
+        <TabsContent value="clients" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-lg">Painel de Clientes</CardTitle>
+                  <CardDescription>Estado detalhado de cada cliente</CardDescription>
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {(['all', 'active', 'overdue', 'no-orders'] as const).map(f => (
+                    <Button key={f} size="sm" variant={clientFilter === f ? 'default' : 'outline'}
+                      className={clientFilter === f ? 'bg-[#1b5e20] hover:bg-[#145a32]' : ''}
+                      onClick={() => setClientFilter(f)}>
+                      {{ all: 'Todos', active: 'Activos', overdue: 'Em Atraso', 'no-orders': 'Sem Emp.' }[f]}
+                      <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                        {{ all: clients.length, active: clients.filter(c => c.status === 'active').length, overdue: clients.filter(c => c.days_overdue > 0).length, 'no-orders': clients.filter(c => c.loan_count === 0).length }[f]}
+                      </Badge>
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto border rounded-lg">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Cliente</th>
+                      <th className="px-4 py-3 text-left">Estado</th>
+                      <th className="px-4 py-3 text-right">Emprestado</th>
+                      <th className="px-4 py-3 text-right">Em Dívida</th>
+                      <th className="px-4 py-3 text-center">Atraso</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {filteredClients.map(c => (
+                      <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <p className="font-medium">{c.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{c.phone || 'Sem telefone'}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <Badge variant={c.status === 'active' ? 'default' : 'secondary'} className="capitalize text-[10px]">{c.status}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right font-medium">{c.total_borrowed.toLocaleString()} MT</td>
+                        <td className="px-4 py-3 text-right">
+                          <span className={c.total_remaining > 0 ? 'text-red-600 font-bold' : 'text-green-600'}>{c.total_remaining.toLocaleString()} MT</span>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {c.days_overdue > 0 ? (
+                            <Badge variant="destructive" className="text-[10px]">{c.days_overdue} dias</Badge>
+                          ) : (
+                            <span className="text-green-600 text-xs">Em dia</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredClients.length === 0 && (
+                      <tr><td colSpan={5} className="text-center py-8 text-muted-foreground">Nenhum cliente nesta categoria.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* AGENTS TAB */}
+        <TabsContent value="agents" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Painel de Agentes</CardTitle>
+              <CardDescription>Performance e carteira de cada agente</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {agents.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhum agente registado no sistema.</p>
+              ) : (
+                <div className="overflow-x-auto border rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-xs text-gray-500">
+                      <tr>
+                        <th className="px-4 py-3 text-left">Agente</th>
+                        <th className="px-4 py-3 text-center">Clientes</th>
+                        <th className="px-4 py-3 text-right">Volume Total</th>
+                        <th className="px-4 py-3 text-right">Cobrado</th>
+                        <th className="px-4 py-3 text-center">Taxa Cobrança</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {agents.sort((a, b) => b.total_volume - a.total_volume).map(agent => {
+                        const rate = agent.total_volume > 0 ? Math.round((agent.total_collected / agent.total_volume) * 100) : 0;
+                        return (
+                          <tr key={agent.user_id} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                  <span className="text-xs font-bold text-blue-700">{agent.name[0]?.toUpperCase()}</span>
+                                </div>
+                                <span className="font-medium">{agent.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-center"><Badge variant="secondary">{agent.client_count}</Badge></td>
+                            <td className="px-4 py-3 text-right font-medium">{agent.total_volume.toLocaleString()} MT</td>
+                            <td className="px-4 py-3 text-right text-green-700 font-medium">{agent.total_collected.toLocaleString()} MT</td>
+                            <td className="px-4 py-3 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-green-500 rounded-full" style={{ width: `${rate}%` }} />
+                                </div>
+                                <span className="text-xs font-bold">{rate}%</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* FINANCIAL TAB */}
+        <TabsContent value="financial" className="space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard icon={Wallet} label="Saldo Carteira" value={`${stats.walletBalance.toLocaleString()} MT`} color="green" />
+            <KpiCard icon={TrendingUp} label="Total Emprestado" value={`${stats.totalLoaned.toLocaleString()} MT`} color="blue" />
+            <KpiCard icon={TrendingDown} label="Total Cobrado" value={`${stats.totalCollected.toLocaleString()} MT`} color="emerald" />
+            <KpiCard icon={DollarSign} label="A Receber" value={`${(stats.totalLoaned - stats.totalCollected).toLocaleString()} MT`} color="amber" />
+          </div>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Últimas Transacções</CardTitle>
+              <CardDescription>Movimentações recentes na carteira</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 max-h-[50vh] overflow-y-auto">
+                {ledger.map(entry => {
+                  const isIn = entry.transaction_type !== 'disbursement';
+                  const amt = Math.abs(Number(entry.amount));
+                  return (
+                    <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50/50 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-2 rounded-full shrink-0 ${isIn ? 'bg-green-100' : 'bg-red-100'}`}>
+                          {isIn ? <TrendingUp className="h-4 w-4 text-green-600" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{entry.description || entry.transaction_type}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {new Date(entry.created_at).toLocaleDateString('pt-MZ')} {new Date(entry.created_at).toLocaleTimeString('pt-MZ', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                      <p className={`font-bold text-sm shrink-0 ml-2 ${isIn ? 'text-green-600' : 'text-red-600'}`}>
+                        {isIn ? '+' : '-'}{amt.toLocaleString()} MT
+                      </p>
+                    </div>
+                  );
+                })}
+                {ledger.length === 0 && <p className="text-center py-8 text-muted-foreground text-sm">Nenhuma transacção registada.</p>}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

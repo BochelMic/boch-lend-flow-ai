@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -281,8 +281,8 @@ const ClientDashboard = () => {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold" style={{ color: '#d37c22' }}>MZN {loanData?.totalAmount.toLocaleString() || '0'}</div>
-              <p className="text-xs text-gray-400 mt-1">Saldo: MZN {loanData?.remainingAmount.toLocaleString() || '0'}</p>
+              <div className="text-2xl font-bold" style={{ color: '#d37c22' }}>MT {loanData?.totalAmount.toLocaleString() || '0'}</div>
+              <p className="text-xs text-gray-400 mt-1">Saldo: MT {loanData?.remainingAmount.toLocaleString() || '0'}</p>
             </CardContent>
           </Card>
 
@@ -292,7 +292,7 @@ const ClientDashboard = () => {
               <Calendar className="h-5 w-5 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-success">MZN {monthlyPayment.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-success">MT {monthlyPayment.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 {loanData?.credit_option === 'A' ? 'Prestação semanal' : 'Prestação mensal'}
               </p>
@@ -305,7 +305,7 @@ const ClientDashboard = () => {
               <CheckCircle className="h-5 w-5 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-accent">MZN {totalPaid.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-accent">MT {totalPaid.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">{paidPercentage}% do empréstimo</p>
             </CardContent>
           </Card>
@@ -341,7 +341,7 @@ const ClientDashboard = () => {
                       <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" />
                       <YAxis stroke="hsl(var(--muted-foreground))" />
                       <Tooltip
-                        formatter={(value: number) => [`MZN ${value.toLocaleString()}`, '']}
+                        formatter={(value: number) => [`MT ${value.toLocaleString()}`, '']}
                         contentStyle={{
                           backgroundColor: 'hsl(var(--card))',
                           border: '1px solid hsl(var(--border))',
@@ -446,9 +446,9 @@ const ClientDashboard = () => {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <p className="text-xs text-blue-200 uppercase tracking-wider font-semibold mb-1">Valor para fechar hoje</p>
-                  <p className="text-3xl font-black">MZN {(calculateSmartSettlement(loanData) || 0).toLocaleString()}</p>
+                  <p className="text-3xl font-black">MT {(calculateSmartSettlement(loanData) || 0).toLocaleString()}</p>
                   <p className="text-[10px] text-orange-300 mt-1 flex items-center gap-1">
-                    <Info className="h-3 w-3" /> Poupança estimada de MZN {Math.max(0, (Number(loanData.remaining_amount) || 0) - (calculateSmartSettlement(loanData) || 0)).toLocaleString()} em juros.
+                    <Info className="h-3 w-3" /> Poupança estimada de MT {Math.max(0, (Number(loanData.remaining_amount) || 0) - (calculateSmartSettlement(loanData) || 0)).toLocaleString()} em juros.
                   </p>
                 </div>
                 <Link to="/chat" className="md:w-auto w-full">
@@ -501,9 +501,9 @@ const ClientDashboard = () => {
                               <Badge className="bg-gray-100 text-gray-500 hover:bg-gray-200 border-0">Agendado</Badge>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-gray-600">MZN {Number(row.principal || 0).toLocaleString()}</td>
-                          <td className="px-4 py-3 text-gray-600">MZN {Number(row.interest || 0).toLocaleString()}</td>
-                          <td className="px-4 py-3 font-bold text-[#1b5e20]">MZN {Number(row.total || 0).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-gray-600">MT {Number(row.principal || 0).toLocaleString()}</td>
+                          <td className="px-4 py-3 text-gray-600">MT {Number(row.interest || 0).toLocaleString()}</td>
+                          <td className="px-4 py-3 font-bold text-[#1b5e20]">MT {Number(row.total || 0).toLocaleString()}</td>
                         </tr>
                       );
                     })}

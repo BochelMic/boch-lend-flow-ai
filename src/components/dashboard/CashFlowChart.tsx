@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,7 +78,7 @@ const CashFlowChart = () => {
         <XAxis dataKey="month" />
         <YAxis />
         <Tooltip
-          formatter={(value: number) => [`MZN ${value.toLocaleString()}`, '']}
+          formatter={(value: number) => [`MT ${value.toLocaleString()}`, '']}
         />
         <Line type="monotone" dataKey="entrada" stroke="#10b981" strokeWidth={2} name="Entradas" />
         <Line type="monotone" dataKey="saida" stroke="#ef4444" strokeWidth={2} name="Saídas" />

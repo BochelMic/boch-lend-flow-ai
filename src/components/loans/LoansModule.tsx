@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -341,16 +341,16 @@ const LoansModule = () => {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                       <div>
                         <p className="text-muted-foreground">Valor Original</p>
-                        <p className="font-medium">{Number(loan.amount).toLocaleString('pt-MZ')} MZN</p>
+                        <p className="font-medium">{Number(loan.amount).toLocaleString('pt-MZ')} MT</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Total com Juros</p>
-                        <p className="font-medium">{Number(loan.total_amount).toLocaleString('pt-MZ')} MZN</p>
+                        <p className="font-medium">{Number(loan.total_amount).toLocaleString('pt-MZ')} MT</p>
                       </div>
                       <div>
                         <p className="text-muted-foreground">Saldo Devedor</p>
                         <p className={`font-medium ${loan.status === 'overdue' ? 'text-red-600' : ''}`}>
-                          {Number(loan.remaining_amount).toLocaleString('pt-MZ')} MZN
+                          {Number(loan.remaining_amount).toLocaleString('pt-MZ')} MT
                         </p>
                       </div>
                       <div>

@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -83,7 +83,7 @@ const CollectionsModule = () => {
               <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
               <div className="min-w-0">
                 <p className="text-xs md:text-sm text-muted-foreground truncate">Saldo Pendente</p>
-                <p className="text-sm md:text-lg font-semibold">{totalOverdue.toLocaleString()} MZN</p>
+                <p className="text-sm md:text-lg font-semibold">{totalOverdue.toLocaleString()} MT</p>
               </div>
             </div>
           </CardContent>
@@ -154,11 +154,11 @@ const CollectionsModule = () => {
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                     <div>
                       <p className="text-muted-foreground">Saldo Devedor</p>
-                      <p className="font-medium text-red-600">{item.remainingAmount.toLocaleString()} MZN</p>
+                      <p className="font-medium text-red-600">{item.remainingAmount.toLocaleString()} MT</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Valor Total</p>
-                      <p className="font-medium">{item.amount.toLocaleString()} MZN</p>
+                      <p className="font-medium">{item.amount.toLocaleString()} MT</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground">Prestações</p>

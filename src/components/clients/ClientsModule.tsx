@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -510,18 +510,18 @@ const ClientsModule = () => {
                 return (
                   <div key={loan.id} className="border rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm">MZN {Number(loan.amount).toLocaleString()}</span>
+                      <span className="font-bold text-sm">MT {Number(loan.amount).toLocaleString()}</span>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${st.color}`}>{st.label}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
                       <div>
                         <span className="font-medium text-gray-600">Total:</span>{' '}
-                        MZN {Number(loan.total_amount).toLocaleString()}
+                        MT {Number(loan.total_amount).toLocaleString()}
                       </div>
                       <div>
                         <span className="font-medium text-gray-600">Restante:</span>{' '}
                         <span className={loan.remaining_amount > 0 ? 'text-red-500 font-bold' : 'text-green-600'}>
-                          MZN {Number(loan.remaining_amount).toLocaleString()}
+                          MT {Number(loan.remaining_amount).toLocaleString()}
                         </span>
                       </div>
                       <div>

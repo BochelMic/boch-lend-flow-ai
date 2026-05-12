@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -363,7 +363,7 @@ const PaymentsModule = () => {
                                 </span>
                               )}
                             </span>
-                            <span className="text-[10px] text-gray-500">Saldo Actual: <strong className="text-red-500">MZN {loan.remaining_amount.toLocaleString()}</strong></span>
+                            <span className="text-[10px] text-gray-500">Saldo Actual: <strong className="text-red-500">MT {loan.remaining_amount.toLocaleString()}</strong></span>
                           </div>
                         </SelectItem>
                       ))}
@@ -437,7 +437,7 @@ const PaymentsModule = () => {
                             </div>
                             <p className="text-xs text-amber-900 mb-3 font-medium">
                               O cliente pode encerrar a dívida hoje pagando apenas o capital + juro do mês atual.
-                              <strong> Economia de MZN {discount.toLocaleString()}</strong>.
+                              <strong> Economia de MT {discount.toLocaleString()}</strong>.
                             </p>
                             <Button
                               type="button"
@@ -446,10 +446,10 @@ const PaymentsModule = () => {
                                 ...formData,
                                 amount: String(smartVal),
                                 isLiquidation: true,
-                                notes: `Liquidação antecipada inteligente (Desconto de MZN ${discount.toLocaleString()} em juros futuros).`
+                                notes: `Liquidação antecipada inteligente (Desconto de MT ${discount.toLocaleString()} em juros futuros).`
                               })}
                             >
-                              Usar Valor de Liquidação (MZN {smartVal.toLocaleString()})
+                              Usar Valor de Liquidação (MT {smartVal.toLocaleString()})
                             </Button>
                           </div>
                         );
@@ -471,7 +471,7 @@ const PaymentsModule = () => {
                       <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
                         <DollarSign className="h-4 w-4" />
                       </div>
-                      Liquidar Saldo Total Nominal (MZN {selectedLoan.remaining_amount.toLocaleString()})
+                      Liquidar Saldo Total Nominal (MT {selectedLoan.remaining_amount.toLocaleString()})
                     </Button>
                   </div>
                 )}
@@ -605,7 +605,7 @@ const PaymentsModule = () => {
                             </td>
                             <td className="px-6 py-5 text-right">
                               <div className="flex flex-col items-end">
-                                <span className="font-black text-gray-900">MZN {Number(row.total || 0).toLocaleString()}</span>
+                                <span className="font-black text-gray-900">MT {Number(row.total || 0).toLocaleString()}</span>
                                 <span className="text-[9px] text-gray-400 font-medium">Sugerido para hoje</span>
                               </div>
                             </td>

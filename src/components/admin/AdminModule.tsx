@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -150,7 +150,7 @@ const AdminDashboard = () => {
 
       const formattedRevenue = new Intl.NumberFormat('pt-MZ', {
         style: 'currency',
-        currency: 'MZN',
+        currency: 'MT',
         maximumFractionDigits: 0
       }).format(totalRevenue);
 

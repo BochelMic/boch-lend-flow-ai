@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 import { Bell, Camera, LogOut, Eye, EyeOff, Key, Loader2, User } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '../../hooks/useNotifications';
@@ -329,7 +329,7 @@ export default function MobileHeader() {
                                 <p className="text-white/50 text-[10px] font-semibold uppercase tracking-wider">Saldo Devedor</p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                     {showBalance ? (
-                                        <p className="text-white text-2xl font-black tracking-tight">{remainingAmount.toLocaleString()} <span className="text-sm font-semibold text-white/60">MZN</span></p>
+                                        <p className="text-white text-2xl font-black tracking-tight">{remainingAmount.toLocaleString()} <span className="text-sm font-semibold text-white/60">MT</span></p>
                                     ) : (
                                         <p className="text-white text-2xl font-black tracking-tight">••••••</p>
                                     )}

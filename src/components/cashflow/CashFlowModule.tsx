@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -90,7 +90,7 @@ const CashFlowModule = () => {
     
     toast({
       title: "Transação Registrada",
-      description: `${cashForm.type} de MZN ${cashForm.amount} registrada com sucesso.`,
+      description: `${cashForm.type} de MT ${cashForm.amount} registrada com sucesso.`,
     });
   };
 
@@ -184,7 +184,7 @@ const CashFlowModule = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Saldo Atual</p>
-                    <p className="text-2xl font-bold">MZN {balance.current.toLocaleString()}</p>
+                    <p className="text-2xl font-bold">MT {balance.current.toLocaleString()}</p>
                   </div>
                   <Wallet className="h-8 w-8 text-blue-600" />
                 </div>
@@ -196,7 +196,7 @@ const CashFlowModule = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Entradas do Mês</p>
-                    <p className="text-2xl font-bold text-green-600">MZN {balance.monthly.income.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-green-600">MT {balance.monthly.income.toLocaleString()}</p>
                   </div>
                   <TrendingUp className="h-8 w-8 text-green-600" />
                 </div>
@@ -208,7 +208,7 @@ const CashFlowModule = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Saídas do Mês</p>
-                    <p className="text-2xl font-bold text-red-600">MZN {balance.monthly.expenses.toLocaleString()}</p>
+                    <p className="text-2xl font-bold text-red-600">MT {balance.monthly.expenses.toLocaleString()}</p>
                   </div>
                   <TrendingDown className="h-8 w-8 text-red-600" />
                 </div>
@@ -221,7 +221,7 @@ const CashFlowModule = () => {
                   <div>
                     <p className="text-sm font-medium text-gray-600">Fluxo Líquido</p>
                     <p className={`text-2xl font-bold ${getNetFlow() >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      MZN {getNetFlow().toLocaleString()}
+                      MT {getNetFlow().toLocaleString()}
                     </p>
                   </div>
                   <DollarSign className="h-8 w-8 text-purple-600" />
@@ -249,7 +249,7 @@ const CashFlowModule = () => {
                       </div>
                       <div className="text-right">
                         <p className={`font-bold ${getTransactionColor(transaction.type)}`}>
-                          {transaction.type === 'Entrada' ? '+' : '-'}MZN {transaction.amount.toLocaleString()}
+                          {transaction.type === 'Entrada' ? '+' : '-'}MT {transaction.amount.toLocaleString()}
                         </p>
                       </div>
                     </div>
@@ -305,7 +305,7 @@ const CashFlowModule = () => {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="transactionAmount">Valor (MZN)</Label>
+                    <Label htmlFor="transactionAmount">Valor (MT)</Label>
                     <Input 
                       id="transactionAmount"
                       type="number"
@@ -378,7 +378,7 @@ const CashFlowModule = () => {
                       <span className="text-sm">{transaction.category}</span>
                       <span>{transaction.date}</span>
                       <span className={`font-bold ${getTransactionColor(transaction.type)}`}>
-                        {transaction.type === 'Entrada' ? '+' : '-'}MZN {transaction.amount.toLocaleString()}
+                        {transaction.type === 'Entrada' ? '+' : '-'}MT {transaction.amount.toLocaleString()}
                       </span>
                       <div className="flex space-x-1">
                         <Button size="sm" variant="outline">Editar</Button>
@@ -423,16 +423,16 @@ const CashFlowModule = () => {
                         <div className="space-y-2">
                           <div className="flex justify-between">
                             <span className="text-sm">Entradas previstas:</span>
-                            <span className="text-green-600 font-medium">MZN {data.income.toLocaleString()}</span>
+                            <span className="text-green-600 font-medium">MT {data.income.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm">Saídas previstas:</span>
-                            <span className="text-red-600 font-medium">MZN {data.expenses.toLocaleString()}</span>
+                            <span className="text-red-600 font-medium">MT {data.expenses.toLocaleString()}</span>
                           </div>
                           <div className="flex justify-between border-t pt-2">
                             <span className="font-medium">Saldo projetado:</span>
                             <span className={`font-bold ${data.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                              MZN {data.net.toLocaleString()}
+                              MT {data.net.toLocaleString()}
                             </span>
                           </div>
                         </div>
@@ -450,7 +450,7 @@ const CashFlowModule = () => {
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="projectedIncome">Entradas Previstas (MZN)</Label>
+                          <Label htmlFor="projectedIncome">Entradas Previstas (MT)</Label>
                           <Input 
                             id="projectedIncome"
                             type="number"
@@ -459,7 +459,7 @@ const CashFlowModule = () => {
                           />
                         </div>
                         <div>
-                          <Label htmlFor="projectedExpenses">Saídas Previstas (MZN)</Label>
+                          <Label htmlFor="projectedExpenses">Saídas Previstas (MT)</Label>
                           <Input 
                             id="projectedExpenses"
                             type="number"
@@ -485,15 +485,15 @@ const CashFlowModule = () => {
                   <div className="space-y-2">
                     <div className="flex justify-between">
                       <span className="text-sm">Cenário otimista (100% recebimentos):</span>
-                      <span className="text-green-600 font-medium">MZN 620,000</span>
+                      <span className="text-green-600 font-medium">MT 620,000</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Cenário realista (85% recebimentos):</span>
-                      <span className="text-blue-600 font-medium">MZN 527,000</span>
+                      <span className="text-blue-600 font-medium">MT 527,000</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-sm">Cenário pessimista (70% recebimentos):</span>
-                      <span className="text-red-600 font-medium">MZN 434,000</span>
+                      <span className="text-red-600 font-medium">MT 434,000</span>
                     </div>
                   </div>
                 </div>

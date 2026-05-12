@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BarChart3, FileText, Download, TrendingUp, Users, Building2 } from 'lucide-react';
@@ -185,7 +185,7 @@ const ReportsModule = () => {
           title: 'Relatório Completo de Clientes',
           headers: [
             'Nome', 'Tipo Doc', 'Nº Documento', 'NUIT', 'Telefone', 'Género', 'Data Nasc.',
-            'Província', 'Distrito', 'Bairro', 'Ocupação', 'Empresa/Local', 'Renda (MZN)',
+            'Província', 'Distrito', 'Bairro', 'Ocupação', 'Empresa/Local', 'Renda (MT)',
             'Crédito Ativo?', 'Total Historico', 'Dívida Atual', 'Status'
           ],
           data: rows,
@@ -230,15 +230,15 @@ const ReportsModule = () => {
 
         const reportData = {
           title: 'Relatório Financeiro - Bochel Microcredito, Ei',
-          headers: ['Cliente', 'Capital (MZN)', 'Taxa', 'Total c/ Juros', 'Pago', 'Saldo Devedor', 'Status', 'Data'],
+          headers: ['Cliente', 'Capital (MT)', 'Taxa', 'Total c/ Juros', 'Pago', 'Saldo Devedor', 'Status', 'Data'],
           data: rows,
           summary: {
-            'Saldo da Carteira Empresa': `MZN ${Number(saldoCarteira).toLocaleString()}`,
-            'Total Desembolsado (Capital)': `MZN ${totalDesembolsado.toLocaleString()}`,
-            'Total Juros Gerados': `MZN ${totalJuros.toLocaleString()}`,
-            'Total c/ Juros': `MZN ${totalComJuros.toLocaleString()}`,
-            'Total Recebido (Pagamentos)': `MZN ${totalRecebido.toLocaleString()}`,
-            'Total Saldo Devedor Activo': `MZN ${totalDevedor.toLocaleString()}`,
+            'Saldo da Carteira Empresa': `MT ${Number(saldoCarteira).toLocaleString()}`,
+            'Total Desembolsado (Capital)': `MT ${totalDesembolsado.toLocaleString()}`,
+            'Total Juros Gerados': `MT ${totalJuros.toLocaleString()}`,
+            'Total c/ Juros': `MT ${totalComJuros.toLocaleString()}`,
+            'Total Recebido (Pagamentos)': `MT ${totalRecebido.toLocaleString()}`,
+            'Total Saldo Devedor Activo': `MT ${totalDevedor.toLocaleString()}`,
             'Nº Total de Empréstimos': loans.length.toString(),
             'Nº Pagamentos Registados': pmts.length.toString(),
           }
@@ -383,7 +383,7 @@ const ReportsModule = () => {
                       <tr>
                           <th>Descrição</th>
                           <th>Quantidade</th>
-                          <th>Valor (MZN)</th>
+                          <th>Valor (MT)</th>
                       </tr>
                   </thead>
                   <tbody>
@@ -565,7 +565,7 @@ const ReportsModule = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="totalRemuneracao">Total de Remunerações (MZN)</Label>
+                    <Label htmlFor="totalRemuneracao">Total de Remunerações (MT)</Label>
                     <Input
                       id="totalRemuneracao"
                       type="number"

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -743,7 +743,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
         const newBalance = (rpcResult as any)?.new_balance;
         toast({
           title: '\u2705 Cr\u00e9dito Registado com Sucesso!',
-          description: `MZN ${amount.toLocaleString()} concedido a ${form.fullName}. ${newBalance !== undefined ? `Saldo restante: MZN ${Number(newBalance).toLocaleString()}` : ''}`,
+          description: `MT ${amount.toLocaleString()} concedido a ${form.fullName}. ${newBalance !== undefined ? `Saldo restante: MT ${Number(newBalance).toLocaleString()}` : ''}`,
         });
 
         setIsSubmitted(true);
@@ -1047,7 +1047,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
               <span>📞 {form.phone}</span>
               <span>📍 {form.neighborhood}, {form.district}</span>
               <span>💼 {form.companyName}</span>
-              <span>💰 MZN {form.monthlyIncome}</span>
+              <span>💰 MT {form.monthlyIncome}</span>
             </div>
           </CardContent>
         </Card>
@@ -1088,12 +1088,12 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
                 <FieldError field="companyName" />
               </div>
               <div>
-                <Label className="text-sm font-medium">Rendimento Mensal (MZN) *</Label>
+                <Label className="text-sm font-medium">Rendimento Mensal (MT) *</Label>
                 <Input type="number" value={form.monthlyIncome} onChange={e => updateField('monthlyIncome', e.target.value)} placeholder="Ex: 25000" className="mt-1.5" />
                 <FieldError field="monthlyIncome" />
               </div>
               <div>
-                <Label className="text-sm font-medium">Valor Solicitado (MZN) *</Label>
+                <Label className="text-sm font-medium">Valor Solicitado (MT) *</Label>
                 <Input type="number" value={form.requestedAmount} onChange={e => updateField('requestedAmount', e.target.value)} placeholder="Ex: 50000" className="mt-1.5" />
                 <FieldError field="requestedAmount" />
               </div>
@@ -1459,7 +1459,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
                     <Select value={form.occupation || undefined} onValueChange={v => updateField('occupation', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="empregado_formal">Empregado Formal</SelectItem><SelectItem value="conta_propria">Conta Própria</SelectItem><SelectItem value="informal">Informal</SelectItem><SelectItem value="aposentado">Aposentado</SelectItem><SelectItem value="estudante">Estudante</SelectItem><SelectItem value="desempregado">Desempregado</SelectItem></SelectContent></Select><FieldError field="occupation" /></div>
                   <div><Label className="text-sm font-medium">Empresa / Atividade *</Label><Input value={form.companyName} onChange={e => updateField('companyName', e.target.value)} placeholder="Nome da empresa ou atividade" className="mt-1.5" /><FieldError field="companyName" /></div>
                   <div><Label className="text-sm font-medium">Tempo de Trabalho *</Label><Input value={form.workDuration} onChange={e => updateField('workDuration', e.target.value)} placeholder="Ex: 2 anos e 6 meses" className="mt-1.5" /><FieldError field="workDuration" /></div>
-                  <div><Label className="text-sm font-medium">Rendimento Mensal (MZN) *</Label><Input type="number" inputMode="numeric" pattern="[0-9]*" value={form.monthlyIncome} onChange={e => updateField('monthlyIncome', e.target.value)} placeholder="Ex: 25000" className="mt-1.5" /><FieldError field="monthlyIncome" /></div>
+                  <div><Label className="text-sm font-medium">Rendimento Mensal (MT) *</Label><Input type="number" inputMode="numeric" pattern="[0-9]*" value={form.monthlyIncome} onChange={e => updateField('monthlyIncome', e.target.value)} placeholder="Ex: 25000" className="mt-1.5" /><FieldError field="monthlyIncome" /></div>
                 </div>
               </div>
             )}
@@ -1472,7 +1472,7 @@ const CreditApplicationForm = ({ isPublicAccess = false, isPhysicalRegistration 
                   <div><h2 className="text-lg font-bold text-gray-900">Informações do Crédito</h2><p className="text-xs text-gray-500">Detalhes do empréstimo</p></div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div><Label className="text-sm font-medium">Valor Solicitado (MZN) *</Label><Input type="number" inputMode="numeric" pattern="[0-9]*" value={form.requestedAmount} onChange={e => updateField('requestedAmount', e.target.value)} placeholder="Ex: 50000" className="mt-1.5" /><FieldError field="requestedAmount" /></div>
+                  <div><Label className="text-sm font-medium">Valor Solicitado (MT) *</Label><Input type="number" inputMode="numeric" pattern="[0-9]*" value={form.requestedAmount} onChange={e => updateField('requestedAmount', e.target.value)} placeholder="Ex: 50000" className="mt-1.5" /><FieldError field="requestedAmount" /></div>
                   <div><Label className="text-sm font-medium">Data para Receber *</Label><Input type="date" value={form.receiveDate} onChange={e => updateField('receiveDate', e.target.value)} className="mt-1.5" /><FieldError field="receiveDate" /></div>
                   <div><Label className="text-sm font-medium">Finalidade do Crédito *</Label>
                     <Select value={form.creditPurpose || undefined} onValueChange={v => updateField('creditPurpose', v)}><SelectTrigger className="mt-1.5"><SelectValue placeholder="Selecione" /></SelectTrigger><SelectContent><SelectItem value="negocio">Negócio</SelectItem><SelectItem value="consumo">Consumo</SelectItem><SelectItem value="saude">Saúde</SelectItem><SelectItem value="educacao">Educação</SelectItem><SelectItem value="emergencia">Emergência</SelectItem><SelectItem value="construcao">Construção/Reforma</SelectItem><SelectItem value="outros">Outros</SelectItem></SelectContent></Select><FieldError field="creditPurpose" /></div>

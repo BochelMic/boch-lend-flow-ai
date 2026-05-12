@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -167,15 +167,15 @@ const ClientAccountModule = () => {
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4 text-center">
                   <p className="text-xs text-muted-foreground">Emprestado</p>
-                  <p className="text-lg font-bold text-gray-700">{fmt(stats.totalBorrowed)} MZN</p>
+                  <p className="text-lg font-bold text-gray-700">{fmt(stats.totalBorrowed)} MT</p>
                 </div>
                 <div className="bg-green-50 rounded-xl p-4 text-center">
                   <p className="text-xs text-green-700">Pago</p>
-                  <p className="text-lg font-bold text-green-700">{fmt(stats.totalPaid)} MZN</p>
+                  <p className="text-lg font-bold text-green-700">{fmt(stats.totalPaid)} MT</p>
                 </div>
                 <div className={`rounded-xl p-4 text-center ${stats.currentDebt > 0 ? 'bg-orange-50' : 'bg-green-50'}`}>
                   <p className={`text-xs ${stats.currentDebt > 0 ? 'text-orange-700' : 'text-green-700'}`}>Dívida Atual</p>
-                  <p className={`text-lg font-bold ${stats.currentDebt > 0 ? 'text-orange-700' : 'text-green-700'}`}>{fmt(stats.currentDebt)} MZN</p>
+                  <p className={`text-lg font-bold ${stats.currentDebt > 0 ? 'text-orange-700' : 'text-green-700'}`}>{fmt(stats.currentDebt)} MT</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-4 text-center">
                   <p className="text-xs text-muted-foreground">Status</p>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -119,13 +119,13 @@ const ClientPaymentsModule = () => {
                                     <div className="space-y-4">
                                         <div>
                                             <p className="text-blue-200 text-sm">Saldo Devedor Actual</p>
-                                            <h2 className="text-3xl font-bold">MZN {Number(activeLoan.remaining_amount).toLocaleString()}</h2>
+                                            <h2 className="text-3xl font-bold">MT {Number(activeLoan.remaining_amount).toLocaleString()}</h2>
                                         </div>
 
                                         <div className="pt-4 border-t border-white/10 grid grid-cols-2 gap-2 text-sm">
                                             <div>
                                                 <p className="text-blue-200">Valor Total</p>
-                                                <p className="font-semibold">MZN {Number(activeLoan.total_amount).toLocaleString()}</p>
+                                                <p className="font-semibold">MT {Number(activeLoan.total_amount).toLocaleString()}</p>
                                             </div>
                                             <div>
                                                 <p className="text-blue-200">Prestações</p>
@@ -138,7 +138,7 @@ const ClientPaymentsModule = () => {
                                                 <p className="text-blue-200 text-xs mb-1">Próxima Parcela (Estimada)</p>
                                                 <div className="flex items-center justify-between">
                                                     <h3 className="text-xl font-bold">
-                                                        MZN {(activeLoan.amortization_plan?.find((p: any) => p.installmentNumber === (activeLoan.installments - activeLoan.remaining_installments + 1))?.total || Math.round(activeLoan.total_amount / activeLoan.installments)).toLocaleString()}
+                                                        MT {(activeLoan.amortization_plan?.find((p: any) => p.installmentNumber === (activeLoan.installments - activeLoan.remaining_installments + 1))?.total || Math.round(activeLoan.total_amount / activeLoan.installments)).toLocaleString()}
                                                     </h3>
                                                     <Badge className="bg-amber-500/20 text-amber-200 border-amber-500/30">Opção {activeLoan.credit_option}</Badge>
                                                 </div>

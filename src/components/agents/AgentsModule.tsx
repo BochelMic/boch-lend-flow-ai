@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -335,7 +335,7 @@ const AgentsModule = () => {
               <DollarSign className="h-5 w-5 text-purple-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Cobrado</p>
-                <p className="text-lg font-semibold">{totalCollections.toLocaleString()} MZN</p>
+                <p className="text-lg font-semibold">{totalCollections.toLocaleString()} MT</p>
               </div>
             </div>
           </CardContent>
@@ -346,7 +346,7 @@ const AgentsModule = () => {
               <TrendingUp className="h-5 w-5 text-orange-500" />
               <div>
                 <p className="text-sm text-muted-foreground">Comissões</p>
-                <p className="text-lg font-semibold">{totalCommissions.toLocaleString()} MZN</p>
+                <p className="text-lg font-semibold">{totalCommissions.toLocaleString()} MT</p>
               </div>
             </div>
           </CardContent>
@@ -459,11 +459,11 @@ const AgentsModule = () => {
                       <p className="font-medium">{agent.activeLoans}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Cobranças (MZN)</p>
+                      <p className="text-muted-foreground">Cobranças (MT)</p>
                       <p className="font-medium">{agent.collections.toLocaleString()}</p>
                     </div>
                     <div>
-                      <p className="text-muted-foreground">Comissão (MZN)</p>
+                      <p className="text-muted-foreground">Comissão (MT)</p>
                       <p className="font-medium text-green-600">{agent.commission.toLocaleString()}</p>
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+﻿import { supabase } from '@/integrations/supabase/client';
 
 type NotifyEventType =
     | 'NEW_CREDIT_REQUEST'
@@ -73,7 +73,7 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                     user_id: id,
                     type: 'alert' as const,
                     title: '📋 Novo Pedido de Crédito',
-                    body: `${params.clientName} solicitou MZN ${fmt(params.amount || 0)}. Total c/ 30% juros: MZN ${fmt(total)}.`,
+                    body: `${params.clientName} solicitou MT ${fmt(params.amount || 0)}. Total c/ 30% juros: MT ${fmt(total)}.`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/credit-requests',
                 }));
@@ -84,7 +84,7 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                         user_id: params.agentUserId,
                         type: 'alert' as const,
                         title: '📋 Pedido de Crédito Submetido',
-                        body: `O pedido para ${params.clientName} (MZN ${fmt(params.amount || 0)}) foi submetido com sucesso e aguarda análise.`,
+                        body: `O pedido para ${params.clientName} (MT ${fmt(params.amount || 0)}) foi submetido com sucesso e aguarda análise.`,
                         from_user_id: params.fromUserId || null,
                         link_url: '/credit-requests',
                     });
@@ -101,7 +101,7 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                     user_id: params.userId,
                     type: 'alert',
                     title: '✅ Pedido de Crédito Aprovado!',
-                    body: `O seu pedido de MZN ${fmt(params.amount || 0)} foi aprovado! Um contrato foi gerado — aceda a "Contratos" para assinar.`,
+                    body: `O seu pedido de MT ${fmt(params.amount || 0)} foi aprovado! Um contrato foi gerado — aceda a "Contratos" para assinar.`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/contratos',
                 }]);
@@ -115,7 +115,7 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                     user_id: params.userId,
                     type: 'alert',
                     title: '❌ Pedido de Crédito Rejeitado',
-                    body: `O seu pedido de MZN ${fmt(params.amount || 0)} foi rejeitado. Motivo: ${params.rejectReason || 'Sem motivo especificado.'}`,
+                    body: `O seu pedido de MT ${fmt(params.amount || 0)} foi rejeitado. Motivo: ${params.rejectReason || 'Sem motivo especificado.'}`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/pedidos',
                 }]);
@@ -172,7 +172,7 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                     user_id: params.userId,
                     type: 'alert',
                     title: '💰 Saldo Creditado!',
-                    body: `MZN ${fmt(params.amount || 0)} foram creditados na sua conta. Dívida total com 30% de juros: MZN ${fmt(total)}. Prazo: 30 dias.`,
+                    body: `MT ${fmt(params.amount || 0)} foram creditados na sua conta. Dívida total com 30% de juros: MT ${fmt(total)}. Prazo: 30 dias.`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/meus-creditos',
                 }]);
@@ -187,7 +187,7 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                     user_id: params.userId,
                     type: 'alert',
                     title: '💳 Pagamento Recebido',
-                    body: `Recebemos o seu pagamento de MZN ${fmt(params.amount || 0)}. ${remaining > 0 ? `Saldo restante: MZN ${fmt(remaining)}.` : 'A sua dívida foi totalmente paga!'} Obrigado!`,
+                    body: `Recebemos o seu pagamento de MT ${fmt(params.amount || 0)}. ${remaining > 0 ? `Saldo restante: MT ${fmt(remaining)}.` : 'A sua dívida foi totalmente paga!'} Obrigado!`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/meus-creditos',
                 }]);
@@ -213,7 +213,7 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                         user_id: id,
                         type: 'system',
                         title: '🎉 Crédito Quitado',
-                        body: `O cliente ${params.clientName || 'Desconhecido'} liquidou totalmente o crédito de MZN ${fmt(params.amount || 0)}.`,
+                        body: `O cliente ${params.clientName || 'Desconhecido'} liquidou totalmente o crédito de MT ${fmt(params.amount || 0)}.`,
                         from_user_id: null,
                     });
                 });
@@ -229,7 +229,7 @@ export async function notifyEvent(event: NotifyEventType, params: NotifyParams) 
                     user_id: params.agentUserId,
                     type: 'alert',
                     title: `📢 Pedido ${params.action === 'approved' ? 'Aprovado' : 'Rejeitado'}`,
-                    body: `O pedido de ${params.clientName} (MZN ${fmt(params.amount || 0)}) foi ${actionLabel}.`,
+                    body: `O pedido de ${params.clientName} (MT ${fmt(params.amount || 0)}) foi ${actionLabel}.`,
                     from_user_id: params.fromUserId || null,
                     link_url: '/credit-requests',
                 }]);

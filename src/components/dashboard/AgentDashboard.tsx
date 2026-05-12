@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -219,11 +219,11 @@ const AgentDashboard = () => {
       doc.setTextColor(60, 60, 60);
 
       const metrics = [
-        ['Vendas no Mês (MZN)', `${stats.monthlySales.toLocaleString()}`],
-        ['Meta do Mês (MZN)', `${stats.monthlyGoal.toLocaleString()}`],
+        ['Vendas no Mês (MT)', `${stats.monthlySales.toLocaleString()}`],
+        ['Meta do Mês (MT)', `${stats.monthlyGoal.toLocaleString()}`],
         ['Progresso da Meta', `${stats.monthlyGoal > 0 ? Math.round((stats.monthlySales / stats.monthlyGoal) * 100) : 0}%`],
         ['Clientes Ativos', `${stats.activeClients}`],
-        ['Carteira em Risco (MZN)', `${stats.totalDebt.toLocaleString()}`],
+        ['Carteira em Risco (MT)', `${stats.totalDebt.toLocaleString()}`],
         ['Taxa de Recuperação', `${stats.recoveryRate}%`],
       ];
 
@@ -282,8 +282,8 @@ const AgentDashboard = () => {
           const cName = loan.clients?.name || loan.client_name || 'Desconhecido';
           return [
             cName,
-            `${Number(loan.amount).toLocaleString()} MZN`,
-            `${Number(loan.total_amount).toLocaleString()} MZN`,
+            `${Number(loan.amount).toLocaleString()} MT`,
+            `${Number(loan.total_amount).toLocaleString()} MT`,
             new Date(loan.created_at).toLocaleDateString('pt-MZ'),
             loan.status
           ];
@@ -405,7 +405,7 @@ const AgentDashboard = () => {
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-2xl font-black text-success">{stats.monthlySales.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground mt-1">MZN</p>
+            <p className="text-xs text-muted-foreground mt-1">MT</p>
           </CardContent>
         </Card>
 
@@ -436,7 +436,7 @@ const AgentDashboard = () => {
           <CardContent className="p-4 pt-0">
             <div className="flex items-baseline gap-1 mb-2">
               <span className="text-xl font-black text-secondary">{stats.monthlySales.toLocaleString()}</span>
-              <span className="text-xs font-medium text-muted-foreground">/ {stats.monthlyGoal.toLocaleString()} MZN</span>
+              <span className="text-xs font-medium text-muted-foreground">/ {stats.monthlyGoal.toLocaleString()} MT</span>
             </div>
             <Progress
               value={stats.monthlyGoal > 0 ? Math.min((stats.monthlySales / stats.monthlyGoal) * 100, 100) : 0}
@@ -478,7 +478,7 @@ const AgentDashboard = () => {
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-2xl font-black text-blue-800">{stats.totalDebt.toLocaleString()}</div>
-            <p className="text-xs text-blue-400 mt-1">MZN Total em Dívida</p>
+            <p className="text-xs text-blue-400 mt-1">MT Total em Dívida</p>
           </CardContent>
         </Card>
 
@@ -508,7 +508,7 @@ const AgentDashboard = () => {
           </CardHeader>
           <CardContent className="p-4 pt-0">
             <div className="text-2xl font-black text-amber-900">{stats.upcomingCollections.toLocaleString()}</div>
-            <p className="text-xs text-amber-600/70 mt-1 font-medium italic">Estimado MZN</p>
+            <p className="text-xs text-amber-600/70 mt-1 font-medium italic">Estimado MT</p>
           </CardContent>
         </Card>
       </div>
@@ -565,7 +565,7 @@ const AgentDashboard = () => {
                   <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" />
                   <YAxis stroke="hsl(var(--muted-foreground))" />
                   <Tooltip
-                    formatter={(value: number) => [`MZN ${value.toLocaleString()}`, '']}
+                    formatter={(value: number) => [`MT ${value.toLocaleString()}`, '']}
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',

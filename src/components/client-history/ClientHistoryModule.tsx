@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -126,7 +126,7 @@ const ClientHistoryModule = () => {
                       <div key={loan.id} className="border rounded-xl p-4 space-y-3">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="font-semibold">{fmt(loan.amount)} MZN</p>
+                            <p className="font-semibold">{fmt(loan.amount)} MT</p>
                             <p className="text-xs text-muted-foreground">{formatDate(loan.created_at)} • {loan.term} meses • {loan.interest_rate}% juros</p>
                           </div>
                           {getStatusBadge(loan.status)}
@@ -134,15 +134,15 @@ const ClientHistoryModule = () => {
                         <div className="grid grid-cols-3 gap-3 text-sm">
                           <div>
                             <p className="text-xs text-muted-foreground">Total c/ Juros</p>
-                            <p className="font-medium">{fmt(total)} MZN</p>
+                            <p className="font-medium">{fmt(total)} MT</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Pago</p>
-                            <p className="font-medium text-green-700">{fmt(Math.max(paid, 0))} MZN</p>
+                            <p className="font-medium text-green-700">{fmt(Math.max(paid, 0))} MT</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground">Restante</p>
-                            <p className="font-medium text-orange-700">{fmt(loan.remaining_amount || 0)} MZN</p>
+                            <p className="font-medium text-orange-700">{fmt(loan.remaining_amount || 0)} MT</p>
                           </div>
                         </div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
@@ -179,7 +179,7 @@ const ClientHistoryModule = () => {
                           {formatDate(payment.payment_date)} • {payment.payment_method || 'Não especificado'}
                         </p>
                       </div>
-                      <p className="font-semibold text-green-700">{fmt(payment.amount)} MZN</p>
+                      <p className="font-semibold text-green-700">{fmt(payment.amount)} MT</p>
                     </div>
                   ))}
                 </div>

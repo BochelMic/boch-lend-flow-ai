@@ -1,4 +1,4 @@
-import jsPDF from 'jspdf';
+﻿import jsPDF from 'jspdf';
 
 export interface CreditPdfData {
     id: string;
@@ -232,7 +232,7 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
         ['Ocupacao', data.occupation],
         ['Empresa/Atividade', data.companyName],
         ['Tempo de Trabalho', data.workDuration],
-        ['Rendimento Mensal', data.monthlyIncome ? 'MZN ' + Number(data.monthlyIncome).toLocaleString() : undefined],
+        ['Rendimento Mensal', data.monthlyIncome ? 'MT ' + Number(data.monthlyIncome).toLocaleString() : undefined],
     ].filter(([, v]) => v && v !== '-') as [string, string][];
 
     const savedY2 = y;
@@ -252,7 +252,7 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
     sectionTitle('3. Informacoes do Credito Solicitado');
 
     const creditLeft = [
-        ['Valor Solicitado', 'MZN ' + data.amount.toLocaleString()],
+        ['Valor Solicitado', 'MT ' + data.amount.toLocaleString()],
         ['Prazo Escolhido', data.isInstallment ? `${data.installmentMonths} ${data.creditOption === 'A' ? 'Semanas' : 'Meses'}` : '30 dias'],
         ['Finalidade', data.purpose],
         ['Data Desejada', data.receiveDate],
@@ -356,7 +356,7 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...COLORS.primary);
-    doc.text('MZN ' + data.amount.toLocaleString(), pageW / 2, y + 14, { align: 'center' });
+    doc.text('MT ' + data.amount.toLocaleString(), pageW / 2, y + 14, { align: 'center' });
     y += 25;
 
     // ============================

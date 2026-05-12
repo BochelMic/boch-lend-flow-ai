@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -317,7 +317,7 @@ const CreditRequestManager = () => {
 
       if (existingLoan && existingLoan.length > 0) {
         console.warn('[INJECT] ⚠️ Duplicate loan found! Existing loan ID:', existingLoan[0].id, 'for client:', clientId, 'amount:', request.amount);
-        toast({ title: '⚠️ Empréstimo já existe', description: `Já existe um empréstimo activo (ID: ${existingLoan[0].id.substring(0, 8)}) para ${request.client_name} com o valor MZN ${request.amount.toLocaleString()}. Não é possível criar duplicado.`, variant: 'destructive' });
+        toast({ title: '⚠️ Empréstimo já existe', description: `Já existe um empréstimo activo (ID: ${existingLoan[0].id.substring(0, 8)}) para ${request.client_name} com o valor MT ${request.amount.toLocaleString()}. Não é possível criar duplicado.`, variant: 'destructive' });
         setInjecting(false);
         return;
       }
@@ -393,7 +393,7 @@ const CreditRequestManager = () => {
       console.log('[INJECT] ✅ All steps completed successfully!');
       toast({
         title: '✅ Saldo Injectado!',
-        description: `MZN ${request.amount.toLocaleString()} creditados a ${request.client_name}. Prazo total: ${isInstallment ? `${installments} ${option === 'A' ? 'Semanas' : 'Meses'}` : '30 dias'}.`
+        description: `MT ${request.amount.toLocaleString()} creditados a ${request.client_name}. Prazo total: ${isInstallment ? `${installments} ${option === 'A' ? 'Semanas' : 'Meses'}` : '30 dias'}.`
       });
       setSelected(null);
       load();
@@ -658,7 +658,7 @@ const CreditRequestManager = () => {
               <div className="bg-green-50 rounded-xl p-3 text-center">
                 <DollarSign className="h-5 w-5 mx-auto mb-1 text-green-600" />
                 <p className="text-[10px] text-gray-500">Valor Solicitado</p>
-                <p className="font-bold text-green-700">MZN {Number(r.amount).toLocaleString()}</p>
+                <p className="font-bold text-green-700">MT {Number(r.amount).toLocaleString()}</p>
               </div>
               <div className="bg-blue-50 rounded-xl p-3 text-center">
                 <Calendar className="h-5 w-5 mx-auto mb-1 text-blue-600" />
@@ -716,7 +716,7 @@ const CreditRequestManager = () => {
                 <InfoRow icon={Briefcase} title="Ocupação" value={label(r.occupation)} />
                 <InfoRow icon={Briefcase} title="Empresa/Atividade" value={r.company_name} />
                 <InfoRow icon={Clock} title="Tempo de Trabalho" value={r.work_duration} />
-                <InfoRow icon={DollarSign} title="Rendimento Mensal" value={r.monthly_income ? `MZN ${Number(r.monthly_income).toLocaleString()}` : null} />
+                <InfoRow icon={DollarSign} title="Rendimento Mensal" value={r.monthly_income ? `MT ${Number(r.monthly_income).toLocaleString()}` : null} />
               </div>
             </div>
 
@@ -724,7 +724,7 @@ const CreditRequestManager = () => {
             <div>
               <h3 className="text-sm font-bold text-[#1a3a5c] mb-3 flex items-center gap-2"><DollarSign className="h-4 w-4" /> Informações do Crédito</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                <InfoRow icon={DollarSign} title="Valor Solicitado" value={`MZN ${Number(r.amount).toLocaleString()}`} />
+                <InfoRow icon={DollarSign} title="Valor Solicitado" value={`MT ${Number(r.amount).toLocaleString()}`} />
                 <InfoRow icon={Briefcase} title="Finalidade" value={label(r.credit_purpose || r.purpose)} />
                 <InfoRow icon={Calendar} title="Data para Receber" value={r.receive_date} />
                 <InfoRow icon={Shield} title="Garantia" value={label(r.guarantee_type)} />
@@ -920,7 +920,7 @@ const CreditRequestManager = () => {
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-5 text-center space-y-2">
                   <CheckCircle className="h-8 w-8 text-green-600 mx-auto" />
                   <h3 className="font-bold text-green-800">Saldo Já Injectado</h3>
-                  <p className="text-sm text-gray-600">O empréstimo de MZN {(Number(r.amount) * 1.3).toLocaleString()} (com 30% juros) já foi creditado na conta deste cliente.</p>
+                  <p className="text-sm text-gray-600">O empréstimo de MT {(Number(r.amount) * 1.3).toLocaleString()} (com 30% juros) já foi creditado na conta deste cliente.</p>
                 </div>
               </div>
             )}
@@ -948,7 +948,7 @@ const CreditRequestManager = () => {
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
                       <p className="text-[10px] text-gray-500 uppercase font-bold">Juros Estimados</p>
                       <p className="font-bold text-orange-600">
-                        MZN {(
+                        MT {(
                           (r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: AmortizationRow) => acc + row.total, 0) : r.amount * 1.3)
                           - r.amount
                         ).toLocaleString()}
@@ -957,7 +957,7 @@ const CreditRequestManager = () => {
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
                       <p className="text-[10px] text-gray-500 uppercase font-bold">Dívida a Receber</p>
                       <p className="font-black text-green-700">
-                        MZN {(r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: AmortizationRow) => acc + row.total, 0) : r.amount * 1.3).toLocaleString()}
+                        MT {(r.amortization_plan ? r.amortization_plan.reduce((acc: number, row: AmortizationRow) => acc + row.total, 0) : r.amount * 1.3).toLocaleString()}
                       </p>
                     </div>
                     <div className="bg-white rounded-lg p-2 border border-green-100 shadow-sm">
@@ -973,7 +973,7 @@ const CreditRequestManager = () => {
                     {injecting ? (
                       <><Loader2 className="h-5 w-5 mr-2 animate-spin" /> A Processar...</>
                     ) : (
-                      <><Wallet className="h-5 w-5 mr-2" /> Injectar MZN {Number(r.amount).toLocaleString()}</>
+                      <><Wallet className="h-5 w-5 mr-2" /> Injectar MT {Number(r.amount).toLocaleString()}</>
                     )}
                   </Button>
                 </div>
@@ -1036,14 +1036,14 @@ const CreditRequestManager = () => {
                   </div>
                   <div className="text-right">
                     {statusBadge(r.status)}
-                    <p className="text-lg font-bold text-green-700 mt-1">MZN {Number(r.amount).toLocaleString()}</p>
+                    <p className="text-lg font-bold text-green-700 mt-1">MT {Number(r.amount).toLocaleString()}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 text-xs text-gray-500">
                   {r.client_phone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{r.client_phone}</span>}
                   {(r.credit_purpose || r.purpose) && <span className="flex items-center gap-1"><Briefcase className="h-3 w-3" />{label(r.credit_purpose || r.purpose)}</span>}
                   {r.guarantee_type && <span className="flex items-center gap-1"><Shield className="h-3 w-3" />{label(r.guarantee_type)}</span>}
-                  {r.monthly_income && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />MZN {Number(r.monthly_income).toLocaleString()}/mês</span>}
+                  {r.monthly_income && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />MT {Number(r.monthly_income).toLocaleString()}/mês</span>}
                 </div>
               </CardContent>
             </Card>

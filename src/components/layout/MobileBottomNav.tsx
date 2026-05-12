@@ -61,6 +61,8 @@ export default function MobileBottomNav() {
                 { name: 'Pagamentos', href: `${prefix}/pagamentos` },
                 { name: 'Contratos', href: `${prefix}/contratos` },
                 { name: 'Cobranças', href: `${prefix}/cobrancas` },
+                { name: 'Caixa', href: `${prefix}/caixa` },
+                { name: 'Auditoria', href: `${prefix}/audit` },
                 { name: 'Relatórios', href: `${prefix}/reports` },
                 { name: 'Agentes', href: `${prefix}/agentes` },
                 { name: 'Administração', href: `${prefix}/admin` },

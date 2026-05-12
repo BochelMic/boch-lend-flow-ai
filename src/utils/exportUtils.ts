@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx';
+﻿import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -503,7 +503,7 @@ export const generateCreditRequestHTML = (data: CreditRequestExportData) => {
       ${data.occupation ? `<div class="info-row"><span class="label">Ocupação</span><span class="value">${s(data.occupation)}</span></div>` : ''}
       ${data.companyName ? `<div class="info-row"><span class="label">Empresa/Ativ.</span><span class="value">${s(data.companyName)}</span></div>` : ''}
       ${data.workDuration ? `<div class="info-row"><span class="label">Tempo Trabal.</span><span class="value">${s(data.workDuration)}</span></div>` : ''}
-      ${data.monthlyIncome ? `<div class="info-row"><span class="label">Rendimento</span><span class="value">MZN ${s(data.monthlyIncome)}</span></div>` : ''}
+      ${data.monthlyIncome ? `<div class="info-row"><span class="label">Rendimento</span><span class="value">MT ${s(data.monthlyIncome)}</span></div>` : ''}
     </div>
   </div>
 
@@ -512,7 +512,7 @@ export const generateCreditRequestHTML = (data: CreditRequestExportData) => {
       <h3>4. Informações do Crédito Solicitado</h3>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
         <div>
-          <div class="info-row"><span class="label">Valor Solicitado</span><span class="value" style="color: #0b3a20; font-size: 16px;">MZN ${data.amount.toLocaleString()}</span></div>
+          <div class="info-row"><span class="label">Valor Solicitado</span><span class="value" style="color: #0b3a20; font-size: 16px;">MT ${data.amount.toLocaleString()}</span></div>
           ${data.duration ? `<div class="info-row"><span class="label">Prazo</span><span class="value">${s(data.duration)}</span></div>` : ''}
           ${data.purpose ? `<div class="info-row"><span class="label">Finalidade</span><span class="value">${s(data.purpose)}</span></div>` : ''}
           ${data.receiveDate ? `<div class="info-row"><span class="label">Data Desejada</span><span class="value">${s(data.receiveDate)}</span></div>` : ''}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -246,7 +246,7 @@ const SettingsModule = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="minLoan">Valor Mínimo (MZN)</Label>
+              <Label htmlFor="minLoan">Valor Mínimo (MT)</Label>
               <Input
                 id="minLoan"
                 type="number"
@@ -256,7 +256,7 @@ const SettingsModule = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="maxLoan">Valor Máximo (MZN)</Label>
+              <Label htmlFor="maxLoan">Valor Máximo (MT)</Label>
               <Input
                 id="maxLoan"
                 type="number"
