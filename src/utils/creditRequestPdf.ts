@@ -1,4 +1,4 @@
-﻿import jsPDF from 'jspdf';
+import jsPDF from 'jspdf';
 
 export interface CreditPdfData {
     id: string;
@@ -360,23 +360,16 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
     y += 25;
 
     // ============================
-    // SIGNATURE AREA
+    // CREDIT GRANTED STAMP
     // ============================
-    checkPageBreak(25);
+    checkPageBreak(20);
     y += 8;
-    doc.setDrawColor(...COLORS.gray);
-    doc.setLineWidth(0.3);
-    // Left signature
-    doc.line(margin + 10, y + 10, margin + contentW / 2 - 10, y + 10);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...COLORS.gray);
-    doc.text('Assinatura do Cliente', margin + contentW / 4, y + 15, { align: 'center' });
-    // Right signature
-    doc.line(margin + contentW / 2 + 10, y + 10, pageW - margin - 10, y + 10);
-    doc.text('Analista de Credito', margin + contentW * 3 / 4, y + 15, { align: 'center' });
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...COLORS.primary);
+    doc.text('Credito concedido por Bochel Microcredito, Ei', pageW / 2, y + 8, { align: 'center' });
 
-    y += 22;
+    y += 16;
 
     // ============================
     // FOOTER
