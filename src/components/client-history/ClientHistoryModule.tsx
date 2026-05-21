@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +46,18 @@ const ClientHistoryModule = () => {
 
       // Get loans
       const { data: loanData } = await supabase.from('loans').select('*').eq('client_id', client.id).order('created_at', { ascending: false });
-      setLoans(loanData || []);
+      const normalizedLoans = (loanData || []).map((l: any) => {
+        let status = l.status;
+        if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+          const end = new Date(l.end_date);
+          const today = new Date();
+          const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+          const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+        }
+        return { ...l, status };
+      });
+      setLoans(normalizedLoans);
 
       // Get payments for those loans
       if (loanData && loanData.length > 0) {

@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,14 +40,18 @@ const processLoan = (l: any): Loan => {
   let remaining = Number(l.remaining_amount);
   let status = normaliseStatus(rawStatus);
 
-  // Auto-detect overdue: active loan with past due date and remaining balance
-  if (l.end_date && remaining > 0 && status === 'active') {
+  // Auto-detect status and apply late penalty based on end_date
+  if (l.end_date && remaining > 0 && (status === 'active' || status === 'overdue')) {
     const end = new Date(l.end_date);
     const today = new Date();
-    const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
-    if (diffDays < 0) {
+    if (endDateOnly >= todayDateOnly) {
+      status = 'active';
+    } else {
       status = 'overdue';
+      const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       const lateDays = Math.abs(diffDays);
       const penalty = remaining * (0.015 * lateDays);
       total += penalty;

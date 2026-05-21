@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,6 +75,7 @@ const ClientRequestsModule = () => {
     const map: Record<string, { label: string; cls: string; icon: React.ReactNode }> = {
       pending: { label: 'Em Análise', cls: 'bg-yellow-100 text-yellow-800', icon: <Clock className="h-3 w-3" /> },
       approved: { label: 'Aprovado', cls: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-3 w-3" /> },
+      completed: { label: 'Aprovado', cls: 'bg-green-100 text-green-800', icon: <CheckCircle className="h-3 w-3" /> },
       rejected: { label: 'Rejeitado', cls: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" /> },
     };
     const s = map[status] || { label: status, cls: 'bg-gray-100 text-gray-800', icon: <FileText className="h-3 w-3" /> };
@@ -88,7 +89,7 @@ const ClientRequestsModule = () => {
   const stats = {
     total: requests.length,
     pending: requests.filter(r => r.status === 'pending').length,
-    approved: requests.filter(r => r.status === 'approved').length,
+    approved: requests.filter(r => r.status === 'approved' || r.status === 'completed').length,
     rejected: requests.filter(r => r.status === 'rejected').length,
   };
 
@@ -171,7 +172,11 @@ const ClientRequestsModule = () => {
         </TabsList>
 
         {['all', 'pending', 'approved', 'rejected'].map(tab => {
-          const filtered = tab === 'all' ? requests : requests.filter(r => r.status === tab);
+          const filtered = tab === 'all'
+            ? requests
+            : tab === 'approved'
+              ? requests.filter(r => r.status === 'approved' || r.status === 'completed')
+              : requests.filter(r => r.status === tab);
           return (
             <TabsContent key={tab} value={tab}>
               {filtered.length === 0 ? (

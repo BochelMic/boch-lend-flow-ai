@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -551,13 +551,14 @@ const CreditRequestManager = () => {
     const m: Record<string, { l: string; c: string; i: React.ReactNode }> = {
       pending: { l: 'Pendente', c: 'bg-amber-100 text-amber-800', i: <Clock className="w-3 h-3" /> },
       approved: { l: 'Aprovado', c: 'bg-green-100 text-green-800', i: <CheckCircle className="w-3 h-3" /> },
+      completed: { l: 'Aprovado', c: 'bg-green-100 text-green-800', i: <CheckCircle className="w-3 h-3" /> },
       rejected: { l: 'Rejeitado', c: 'bg-red-100 text-red-800', i: <XCircle className="w-3 h-3" /> },
     };
     const x = m[s] || { l: s, c: 'bg-gray-100', i: null };
     return <Badge className={x.c}><span className="flex items-center gap-1">{x.i}{x.l}</span></Badge>;
   };
 
-  const filtered = requests.filter(r => filter === 'all' || r.status === filter);
+  const filtered = requests.filter(r => filter === 'all' || (filter === 'approved' ? (r.status === 'approved' || r.status === 'completed') : r.status === filter));
   const isGestor = user?.role === 'gestor';
 
   const InfoRow = ({ icon: Icon, title, value }: { icon: React.ElementType; title: string; value: string | null | undefined }) => {
@@ -1004,7 +1005,7 @@ const CreditRequestManager = () => {
         {([
           { key: 'all' as const, label: 'Todos', count: requests.length, color: 'bg-gray-100 text-gray-800' },
           { key: 'pending' as const, label: 'Pendentes', count: requests.filter(r => r.status === 'pending').length, color: 'bg-amber-100 text-amber-800' },
-          { key: 'approved' as const, label: 'Aprovados', count: requests.filter(r => r.status === 'approved').length, color: 'bg-green-100 text-green-800' },
+          { key: 'approved' as const, label: 'Aprovados', count: requests.filter(r => r.status === 'approved' || r.status === 'completed').length, color: 'bg-green-100 text-green-800' },
           { key: 'rejected' as const, label: 'Rejeitados', count: requests.filter(r => r.status === 'rejected').length, color: 'bg-red-100 text-red-800' },
         ]).map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}

@@ -18,16 +18,28 @@ const RiskAnalysis = () => {
 
   const loadRiskData = async () => {
     try {
-      const { data: loans } = await supabase
+      const { data: rawLoans } = await supabase
         .from('loans')
-        .select('status');
+        .select('status, end_date, remaining_amount');
 
-      if (!loans || loans.length === 0) {
+      if (!rawLoans || rawLoans.length === 0) {
         setData([
           { name: 'Sem Dados', value: 100, color: '#d1d5db' },
         ]);
         return;
       }
+
+      const loans = rawLoans.map((l: any) => {
+        let status = l.status;
+        if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+          const end = new Date(l.end_date);
+          const today = new Date();
+          const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+          const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+        }
+        return { ...l, status };
+      });
 
       const active = loans.filter(l => l.status === 'active').length;
       const pending = loans.filter(l => l.status === 'pending').length;

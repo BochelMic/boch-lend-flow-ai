@@ -131,8 +131,10 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
     doc.text('Dossie de Pedido de Credito', margin, y);
 
     // Status badge
-    const statusText = data.status === 'approved' ? 'APROVADO' : data.status === 'rejected' ? 'REJEITADO' : 'PENDENTE';
-    const statusColor = data.status === 'approved' ? COLORS.green : data.status === 'rejected' ? COLORS.red : COLORS.amber;
+    const isApproved = data.status === 'approved' || data.status === 'completed';
+    const isRejected = data.status === 'rejected';
+    const statusText = isApproved ? 'APROVADO' : isRejected ? 'REJEITADO' : 'PENDENTE';
+    const statusColor = isApproved ? COLORS.green : isRejected ? COLORS.red : COLORS.amber;
     const badgeW = doc.getTextWidth(statusText) + 10;
     const badgeX = pageW - margin - badgeW;
     doc.setFillColor(...statusColor);
@@ -360,16 +362,50 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
     y += 25;
 
     // ============================
-    // CREDIT GRANTED STAMP
+    // CREDIT STAMP (dynamic based on status)
     // ============================
-    checkPageBreak(20);
+    checkPageBreak(30);
     y += 8;
-    doc.setFontSize(9);
+    const stampText = isApproved
+        ? 'CREDITO APROVADO'
+        : isRejected
+            ? 'CREDITO REJEITADO'
+            : 'CREDITO PENDENTE';
+            
+    const stampSubText = 'Bochel Microcredito, Ei';
+    const stampColor = isApproved ? COLORS.green : isRejected ? COLORS.red : COLORS.amber;
+    
+    // Draw beautiful stamp box
+    const stampW = 80;
+    const stampH = 20;
+    const stampX = (pageW - stampW) / 2;
+    
+    doc.setDrawColor(...stampColor);
+    doc.setLineWidth(1);
+    doc.rect(stampX, y, stampW, stampH);
+    
+    // Inner dashed border for retro stamp effect
+    doc.setDrawColor(...stampColor);
+    doc.setLineWidth(0.5);
+    doc.setLineDashPattern([2, 1], 0);
+    doc.rect(stampX + 1.5, y + 1.5, stampW - 3, stampH - 3);
+    doc.setLineDashPattern([], 0); // clear dash pattern
+    
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...COLORS.primary);
-    doc.text('Credito concedido por Bochel Microcredito, Ei', pageW / 2, y + 8, { align: 'center' });
+    doc.setTextColor(...stampColor);
+    doc.text(stampText, pageW / 2, y + 8, { align: 'center' });
+    
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text(stampSubText, pageW / 2, y + 13, { align: 'center' });
+    
+    // Date of stamp
+    doc.setFontSize(7);
+    doc.setTextColor(...COLORS.gray);
+    doc.text(data.date, pageW / 2, y + 17, { align: 'center' });
 
-    y += 16;
+    y += 26;
 
     // ============================
     // FOOTER

@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -64,10 +64,22 @@ const AgentDashboard = () => {
         .eq('status', 'active');
 
       // Empréstimos do agente
-      const { data: loans } = await supabase
+      const { data: rawLoans } = await supabase
         .from('loans')
         .select('*, clients(name)')
         .eq('agent_id', user!.id);
+
+      const loans = (rawLoans || []).map((l: any) => {
+        let status = l.status;
+        if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+          const end = new Date(l.end_date);
+          const today = new Date();
+          const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+          const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+        }
+        return { ...l, status };
+      });
 
       // Pedidos de crédito pendentes do agente
       const { data: requests } = await supabase
@@ -76,9 +88,9 @@ const AgentDashboard = () => {
         .eq('agent_id', user!.id)
         .eq('status', 'pending');
 
-      const pendingLoans = (loans?.filter(l => l.status === 'pending').length || 0) + (requests?.length || 0);
-      const overdueClients = loans?.filter(l => l.status === 'overdue').length || 0;
-      const totalDebt = loans?.reduce((sum, l) => sum + Number(l.remaining_amount), 0) || 0;
+      const pendingLoans = (loans.filter(l => l.status === 'pending').length) + (requests?.length || 0);
+      const overdueClients = loans.filter(l => l.status === 'overdue').length;
+      const totalDebt = loans.reduce((sum, l) => sum + Number(l.remaining_amount), 0);
 
       const totalDisbursed = loans?.reduce((sum, l) => sum + Number(l.total_amount), 0) || 0;
       const totalRemaining = loans?.reduce((sum, l) => sum + Number(l.remaining_amount), 0) || 0;

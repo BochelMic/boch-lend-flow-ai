@@ -132,7 +132,7 @@ export const ClientProfileDialog = ({ children, clientData }: ClientProfileDialo
             if (targetClientId) {
                 const { data: loans } = await supabase
                     .from('loans')
-                    .select('status, amount, remaining_amount')
+                    .select('status, amount, remaining_amount, end_date')
                     .eq('client_id', targetClientId);
 
                 let total = 0;
@@ -143,9 +143,17 @@ export const ClientProfileDialog = ({ children, clientData }: ClientProfileDialo
                 loans?.forEach((loan) => {
                     total++;
                     borrowed += Number(loan.amount) || 0;
-                    if (loan.status === 'completed') {
+                    let status = loan.status;
+                    if (loan.end_date && Number(loan.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+                        const end = new Date(loan.end_date);
+                        const today = new Date();
+                        const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+                        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                        status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+                    }
+                    if (status === 'completed' || status === 'paid') {
                         paid++;
-                    } else if (loan.status === 'active' || loan.status === 'overdue') {
+                    } else if (status === 'active' || status === 'overdue') {
                         debt++;
                     }
                 });

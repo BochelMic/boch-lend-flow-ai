@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +49,7 @@ const ClientAccountModule = () => {
       }
 
       // Loan stats
-      const { data: loans } = await supabase.from('loans').select('amount, total_amount, remaining_amount, status')
+      const { data: loans } = await supabase.from('loans').select('amount, total_amount, remaining_amount, status, end_date')
         .or(`client_id.eq.${user.id},client_id.in.(select id from clients where user_id = '${user.id}')`);
 
       const clientLoans = loans || [];
@@ -59,19 +59,31 @@ const ClientAccountModule = () => {
       let allLoans = clientLoans;
 
       if (clientRecord) {
-        const { data: loansByClientId } = await supabase.from('loans').select('amount, total_amount, remaining_amount, status').eq('client_id', clientRecord.id);
+        const { data: loansByClientId } = await supabase.from('loans').select('amount, total_amount, remaining_amount, status, end_date').eq('client_id', clientRecord.id);
         if (loansByClientId && loansByClientId.length > 0) {
           allLoans = loansByClientId;
         }
       }
 
-      const totalBorrowed = allLoans.reduce((s, l) => s + (l.amount || 0), 0);
-      const totalDebt = allLoans.filter(l => l.status === 'active' || l.status === 'overdue').reduce((s, l) => s + (l.remaining_amount || 0), 0);
+      const normalizedLoans = allLoans.map((l: any) => {
+        let status = l.status;
+        if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+          const end = new Date(l.end_date);
+          const today = new Date();
+          const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+          const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+        }
+        return { ...l, status };
+      });
+
+      const totalBorrowed = normalizedLoans.reduce((s, l) => s + (l.amount || 0), 0);
+      const totalDebt = normalizedLoans.filter(l => l.status === 'active' || l.status === 'overdue').reduce((s, l) => s + (l.remaining_amount || 0), 0);
       const totalPaid = totalBorrowed - totalDebt;
 
       setStats({
-        totalLoans: allLoans.length,
-        activeLoans: allLoans.filter(l => l.status === 'active' || l.status === 'overdue').length,
+        totalLoans: normalizedLoans.length,
+        activeLoans: normalizedLoans.filter(l => l.status === 'active' || l.status === 'overdue').length,
         totalBorrowed,
         totalPaid: Math.max(totalPaid, 0),
         currentDebt: totalDebt,

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import {
   Users,
@@ -94,7 +94,7 @@ const Dashboard = () => {
         ledgerRes
       ] = await Promise.all([
         supabase.from('clients').select('*', { count: 'exact', head: true }).eq('status', 'active'),
-        supabase.from('loans').select('amount, total_amount, remaining_amount, interest_rate, status'),
+        supabase.from('loans').select('amount, total_amount, remaining_amount, interest_rate, status, end_date'),
         supabase.from('payments').select('amount'),
         supabase.from('credit_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('notifications').select('*', { count: 'exact', head: true }),
@@ -115,7 +115,18 @@ const Dashboard = () => {
       const totalClients = clientsRes.count || 0;
 
       // 2. Processar Empréstimos
-      const loans = loansRes.data || [];
+      const rawLoans = loansRes.data || [];
+      const loans = rawLoans.map((l: any) => {
+        let status = l.status;
+        if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+          const end = new Date(l.end_date);
+          const today = new Date();
+          const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+          const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+        }
+        return { ...l, status };
+      });
       const activeLoans = loans.filter(l => l.status === 'active').length;
       const pendingLoans = loans.filter(l => l.status === 'pending').length;
       const completedLoans = loans.filter(l => l.status === 'completed').length;

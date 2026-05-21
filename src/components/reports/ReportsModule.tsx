@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BarChart3, FileText, Download, TrendingUp, Users, Building2 } from 'lucide-react';
@@ -48,7 +48,11 @@ const ReportsModule = () => {
       if (selectedReportType === 'carteira') {
         let query = supabase.from('loans').select('*, clients!inner(name, id_number, phone)');
         if (reportFilters.status !== 'all') {
-          query = query.eq('status', reportFilters.status);
+          if (reportFilters.status === 'active' || reportFilters.status === 'overdue') {
+            query = query.in('status', ['active', 'overdue']);
+          } else {
+            query = query.eq('status', reportFilters.status);
+          }
         }
         if (reportFilters.startDate) {
           query = query.gte('created_at', reportFilters.startDate);
@@ -57,15 +61,32 @@ const ReportsModule = () => {
           query = query.lte('created_at', reportFilters.endDate);
         }
 
-        const { data, error } = await query;
+        const { data: rawData, error } = await query;
         if (error) throw error;
+
+        const data = (rawData || []).map((l: any) => {
+          let status = l.status;
+          if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+            const end = new Date(l.end_date);
+            const today = new Date();
+            const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+          }
+          return { ...l, status };
+        }).filter((l: any) => {
+          if (reportFilters.status !== 'all') {
+            return l.status === reportFilters.status;
+          }
+          return true;
+        });
 
         let totalCreditos = 0;
         let totalPago = 0;
         let totalDevedor = 0;
         let clientesEmAtraso = 0;
 
-        const rows = (data || []).map((l: any) => {
+        const rows = data.map((l: any) => {
           totalCreditos += Number(l.amount);
           totalDevedor += Number(l.remaining_amount);
           totalPago += Number(l.total_amount) - Number(l.remaining_amount);
@@ -96,15 +117,27 @@ const ReportsModule = () => {
         toast({ title: "Relatório de Carteira gerado", description: "Dados exportados com sucesso." });
 
       } else if (selectedReportType === 'inadimplencia') {
-        let query = supabase.from('loans').select('*, clients!inner(name, id_number, phone)').eq('status', 'overdue');
+        let query = supabase.from('loans').select('*, clients!inner(name, id_number, phone)').in('status', ['active', 'overdue']);
         if (reportFilters.startDate) query = query.gte('created_at', reportFilters.startDate);
         if (reportFilters.endDate) query = query.lte('created_at', reportFilters.endDate);
 
-        const { data, error } = await query;
+        const { data: rawData, error } = await query;
         if (error) throw error;
 
+        const data = (rawData || []).map((l: any) => {
+          let status = l.status;
+          if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+            const end = new Date(l.end_date);
+            const today = new Date();
+            const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+          }
+          return { ...l, status };
+        }).filter((l: any) => l.status === 'overdue');
+
         let totalAtraso = 0;
-        const rows = (data || []).map((l: any) => {
+        const rows = data.map((l: any) => {
           totalAtraso += Number(l.remaining_amount);
           const end = l.end_date ? new Date(l.end_date) : new Date();
           const p = Math.max(0, Math.ceil((new Date().getTime() - end.getTime()) / (1000 * 3600 * 24)));
@@ -132,7 +165,7 @@ const ReportsModule = () => {
         toast({ title: "Relatório de Inadimplência gerado", description: "Exportado com sucesso." });
 
       } else if (selectedReportType === 'clientes') {
-        let query = supabase.from('clients').select('id, user_id, name, id_number, phone, status, created_at, loans(amount, remaining_amount, status)');
+        let query = supabase.from('clients').select('id, user_id, name, id_number, phone, status, created_at, loans(amount, remaining_amount, status, end_date)');
         if (reportFilters.status !== 'all') {
           query = query.eq('status', reportFilters.status);
         }
@@ -148,7 +181,17 @@ const ReportsModule = () => {
         let ativos = 0;
         const rows = (clientsData || []).map((c: any) => {
           if (c.status === 'active') ativos++;
-          const ls = c.loans || [];
+          const ls = (c.loans || []).map((l: any) => {
+            let status = l.status;
+            if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+              const end = new Date(l.end_date);
+              const today = new Date();
+              const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+              const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+              status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+            }
+            return { ...l, status };
+          });
           const tempAtivo = ls.some((x: any) => x.status === 'active' || x.status === 'overdue') ? 'Sim' : 'Não';
           const totalEmp = ls.reduce((acc: number, x: any) => acc + Number(x.amount || 0), 0);
           const deve = ls.reduce((acc: number, x: any) => acc + Number(x.remaining_amount || 0), 0);
@@ -205,7 +248,18 @@ const ReportsModule = () => {
           supabase.from('company_wallet').select('balance').limit(1).single(),
         ]);
 
-        const loans = loansData || [];
+        const rawLoans = loansData || [];
+        const loans = rawLoans.map((l: any) => {
+          let status = l.status;
+          if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+            const end = new Date(l.end_date);
+            const today = new Date();
+            const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+            const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+            status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+          }
+          return { ...l, status };
+        });
         const pmts = paymentsData || [];
 
         const totalDesembolsado = loans.reduce((s: number, l: any) => s + Number(l.amount || 0), 0);

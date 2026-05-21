@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -47,16 +47,26 @@ const CollectionsModule = () => {
 
       if (error) throw error;
 
-      const mapped = (loans || []).map((l: any) => ({
-        id: l.id,
-        clientName: l.clients?.name || 'Desconhecido',
-        clientPhone: l.clients?.phone || '',
-        amount: Number(l.total_amount),
-        remainingAmount: Number(l.remaining_amount),
-        installments: l.installments,
-        startDate: l.start_date,
-        status: l.status,
-      }));
+      const mapped = (loans || []).map((l: any) => {
+        let status = l.status;
+        if (l.end_date && Number(l.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+          const end = new Date(l.end_date);
+          const today = new Date();
+          const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+          const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+          status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+        }
+        return {
+          id: l.id,
+          clientName: l.clients?.name || 'Desconhecido',
+          clientPhone: l.clients?.phone || '',
+          amount: Number(l.total_amount),
+          remainingAmount: Number(l.remaining_amount),
+          installments: l.installments,
+          startDate: l.start_date,
+          status,
+        };
+      });
 
       setOverdue(mapped);
       setTotalOverdue(mapped.reduce((sum: number, l: OverdueLoan) => sum + l.remainingAmount, 0));

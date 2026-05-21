@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,7 +42,15 @@ const ClientPaymentsModule = () => {
                     .single();
 
                 if (loanData && !error) {
-                    setActiveLoan(loanData);
+                    let status = loanData.status;
+                    if (loanData.end_date && Number(loanData.remaining_amount) > 0 && (status === 'active' || status === 'overdue')) {
+                        const end = new Date(loanData.end_date);
+                        const today = new Date();
+                        const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+                        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+                        status = endDateOnly >= todayDateOnly ? 'active' : 'overdue';
+                    }
+                    setActiveLoan({ ...loanData, status });
                 }
             }
         } catch (error) {

@@ -1,4 +1,4 @@
-﻿import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
@@ -387,7 +387,7 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
 
   <div class="signature-area">
     <div class="sig-box">
-      <div class="sig-line">Recebido por</div>
+      <div class="sig-line">Recebido por Bochel Microcredito, Ei</div>
     </div>
   </div>
 
@@ -404,11 +404,14 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
 export const generateCreditRequestHTML = (data: CreditRequestExportData) => {
   const s = sanitizeHtml;
 
-  const statusColor = data.status === 'approved' ? '#16a34a'
-    : data.status === 'rejected' ? '#dc2626'
+  const isApproved = data.status === 'approved' || data.status === 'completed';
+  const isRejected = data.status === 'rejected';
+
+  const statusColor = isApproved ? '#16a34a'
+    : isRejected ? '#dc2626'
       : '#d97706';
-  const statusText = data.status === 'approved' ? 'APROVADO'
-    : data.status === 'rejected' ? 'REJEITADO'
+  const statusText = isApproved ? 'APROVADO'
+    : isRejected ? 'REJEITADO'
       : 'PENDENTE';
 
   let photosHtml = '';
