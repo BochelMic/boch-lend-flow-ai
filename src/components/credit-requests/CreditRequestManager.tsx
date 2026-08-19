@@ -1041,8 +1041,8 @@ const CreditRequestManager = () => {
         {([
           { key: 'all' as const, label: 'Todos', count: requests.length, color: 'bg-gray-100 text-gray-800 border-gray-300' },
           { key: 'pending' as const, label: 'Pendentes', count: requests.filter(r => r.status === 'pending').length, color: 'bg-amber-100 text-amber-800 border-amber-300' },
-          { key: 'approved_unsigned' as const, label: 'Apr.(Ñ Ass)', count: requests.filter(r => r.status === 'approved' && !r.contracts?.some(c => c.status === 'signed' || c.status === 'active')).length, color: 'bg-blue-50 text-blue-700 border-blue-200' },
-          { key: 'approved_signed' as const, label: 'Apr.(Assin)', count: requests.filter(r => r.status === 'approved' && r.contracts?.some(c => c.status === 'signed' || c.status === 'active')).length, color: 'bg-blue-100 text-blue-800 border-blue-400' },
+          { key: 'approved_unsigned' as const, label: 'Aprovado não assinado', count: requests.filter(r => r.status === 'approved' && !r.contracts?.some(c => c.status === 'signed' || c.status === 'active')).length, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+          { key: 'approved_signed' as const, label: 'Aprovado assinado', count: requests.filter(r => r.status === 'approved' && r.contracts?.some(c => c.status === 'signed' || c.status === 'active')).length, color: 'bg-blue-100 text-blue-800 border-blue-400' },
           { key: 'completed' as const, label: 'Injectados', count: requests.filter(r => r.status === 'completed').length, color: 'bg-green-100 text-green-800 border-green-300' },
           { key: 'paid' as const, label: 'Quitados', count: requests.filter(r => r.status === 'paid').length, color: 'bg-slate-100 text-slate-800 border-slate-300' },
           { key: 'rejected' as const, label: 'Rejeitados', count: requests.filter(r => r.status === 'rejected').length, color: 'bg-red-100 text-red-800 border-red-300' },

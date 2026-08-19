@@ -351,7 +351,7 @@ export async function generateCreditRequestPdf(data: CreditPdfData): Promise<voi
     y += 3;
     doc.setFillColor(240, 253, 244);
     doc.setDrawColor(187, 247, 208);
-    doc.roundedRect(margin, y, contentW, 18, 3, 3, 'FD');
+     doc.roundedRect(margin, y, contentW, 18, 3, 3, 'FD');
     doc.setFontSize(8);
     doc.setTextColor(...COLORS.gray);
     doc.text('VALOR TOTAL SOLICITADO', pageW / 2, y + 6, { align: 'center' });
