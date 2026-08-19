@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -38,6 +38,10 @@ interface LoanData {
   credit_option?: string;
   remaining_installments?: number;
   amortization_plan?: any[];
+  interest_rate: number;
+  recapitalizedInterest: number;
+  lateFees: number;
+  originalInterest: number;
 }
 
 const ClientDashboard = () => {
@@ -66,6 +70,11 @@ const ClientDashboard = () => {
     try {
       let totalAmount = Number(currentLoan.total_amount);
       let remainingAmount = Number(currentLoan.remaining_amount);
+      let lateFees = 0;
+      let interest_rate = Number(currentLoan.interest_rate) || 30;
+      let originalInterest = Number(currentLoan.amount) * (interest_rate / 100);
+      let recapitalizedInterest = Number(currentLoan.total_amount) - (Number(currentLoan.amount) + originalInterest);
+      if (recapitalizedInterest < 0) recapitalizedInterest = 0;
 
       if (currentLoan.end_date && remainingAmount > 0) {
         const end = new Date(currentLoan.end_date);
@@ -75,9 +84,9 @@ const ClientDashboard = () => {
 
         if (diffDays < 0) {
           const lateDays = Math.abs(diffDays);
-          const penalty = remainingAmount * (0.015 * lateDays); // 1.5% penalty per day of delay
-          totalAmount += penalty;
-          remainingAmount += penalty;
+          lateFees = remainingAmount * (0.015 * lateDays); // 1.5% penalty per day of delay
+          totalAmount += lateFees;
+          remainingAmount += lateFees;
         }
       }
 
@@ -93,6 +102,10 @@ const ClientDashboard = () => {
         credit_option: currentLoan.credit_option || 'A',
         remaining_installments: currentLoan.remaining_installments,
         amortization_plan: currentLoan.amortization_plan,
+        interest_rate,
+        recapitalizedInterest,
+        lateFees,
+        originalInterest,
       });
 
       // Pagamentos deste empréstimo
@@ -204,7 +217,7 @@ const ClientDashboard = () => {
   const monthlyPayment = loanData
     ? (loanData.is_installment
       ? (loanData.amortization_plan?.find(p => p.installmentNumber === (loanData.installments - (loanData.remaining_installments || 0) + 1))?.total || Math.round(loanData.totalAmount / loanData.installments))
-      : Math.round(loanData.totalAmount / loanData.installments))
+      : loanData.remainingAmount)
     : 0;
   const paidPercentage = loanData && loanData.totalAmount > 0
     ? Math.round(((loanData.totalAmount - loanData.remainingAmount) / loanData.totalAmount) * 100)
@@ -271,21 +284,64 @@ const ClientDashboard = () => {
           );
         })()}
 
-        {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border border-[#d37c22]/20 shadow-md bg-white hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-500">Empréstimo Atual</CardTitle>
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#d37c22' + '15' }}>
-                <CreditCard className="h-5 w-5" style={{ color: '#d37c22' }} />
-              </div>
+        {/* Resumo da Dívida */}
+        {loanData && (
+          <Card className="border border-[#d37c22]/30 shadow-lg bg-white overflow-hidden">
+            <CardHeader className="bg-slate-50 border-b pb-4">
+              <CardTitle className="text-lg font-bold flex items-center gap-2" style={{ color: '#d37c22' }}>
+                <CreditCard className="h-5 w-5" />
+                Resumo da Dívida Atual
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold" style={{ color: '#d37c22' }}>MT {loanData?.totalAmount.toLocaleString() || '0'}</div>
-              <p className="text-xs text-gray-400 mt-1">Saldo: MT {loanData?.remainingAmount.toLocaleString() || '0'}</p>
+            <CardContent className="p-0">
+              <div className="grid grid-cols-1 md:grid-cols-2">
+                <div className="p-6 space-y-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Valor do Empréstimo (Capital)</span>
+                    <span className="font-medium">MT {loanData.amount.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Juros Iniciais ({loanData.interest_rate}%)</span>
+                    <span className="font-medium text-amber-600">+ MT {loanData.originalInterest.toLocaleString()}</span>
+                  </div>
+                  {loanData.recapitalizedInterest > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Juros de Recapitalização (Prorrogação)</span>
+                      <span className="font-medium text-amber-600">+ MT {loanData.recapitalizedInterest.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {loanData.lateFees > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Juros de Mora (Atrasos)</span>
+                      <span className="font-medium text-red-600">+ MT {Math.round(loanData.lateFees).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div className="border-t pt-3 flex justify-between font-semibold">
+                    <span>Dívida Acumulada</span>
+                    <span>MT {Math.round(loanData.totalAmount).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Valor Já Pago</span>
+                    <span className="font-medium text-emerald-600">- MT {totalPaid.toLocaleString()}</span>
+                  </div>
+                </div>
+                
+                <div className="bg-[#d37c22]/5 p-6 border-t md:border-t-0 md:border-l flex flex-col items-center justify-center text-center">
+                  <p className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-2">Saldo Devedor Atual</p>
+                  <p className="text-4xl md:text-5xl font-black" style={{ color: '#d37c22' }}>
+                    MT {Math.round(loanData.remainingAmount).toLocaleString()}
+                  </p>
+                  <p className="text-xs text-slate-400 mt-4 max-w-xs">
+                    Este é o valor exacto que falta para liquidar totalmente o seu empréstimo hoje.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
+        )}
 
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="border-0 shadow-medium bg-gradient-to-br from-white to-success/10">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">Próximo Pagamento</CardTitle>
@@ -294,7 +350,7 @@ const ClientDashboard = () => {
             <CardContent>
               <div className="text-2xl font-bold text-success">MT {monthlyPayment.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                {loanData?.credit_option === 'A' ? 'Prestação semanal' : 'Prestação mensal'}
+                {loanData?.is_installment ? (loanData?.credit_option === 'A' ? 'Prestação semanal' : 'Prestação mensal') : 'Pagamento Único'}
               </p>
             </CardContent>
           </Card>

@@ -22,6 +22,8 @@ interface Loan {
   start_date: string | null;
   end_date: string | null;
   created_at: string;
+  penalty_amount?: number;
+  late_days?: number;
 }
 
 const QUERY_KEY = 'loans';
@@ -40,7 +42,9 @@ const processLoan = (l: any): Loan => {
   let remaining = Number(l.remaining_amount);
   let status = normaliseStatus(rawStatus);
 
-  // Auto-detect status and apply late penalty based on end_date
+  let penaltyAmount = 0;
+  let daysLate = 0;
+
   if (l.end_date && remaining > 0 && (status === 'active' || status === 'overdue')) {
     const end = new Date(l.end_date);
     const today = new Date();
@@ -52,10 +56,10 @@ const processLoan = (l: any): Loan => {
     } else {
       status = 'overdue';
       const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-      const lateDays = Math.abs(diffDays);
-      const penalty = remaining * (0.015 * lateDays);
-      total += penalty;
-      remaining += penalty;
+      daysLate = Math.abs(diffDays);
+      penaltyAmount = remaining * (0.015 * daysLate);
+      total += penaltyAmount;
+      remaining += penaltyAmount;
     }
   }
 
@@ -72,6 +76,8 @@ const processLoan = (l: any): Loan => {
     remaining_amount: remaining,
     status,
     client_name: l.clients?.name || 'Cliente desconhecido',
+    penalty_amount: penaltyAmount,
+    late_days: daysLate,
   };
 };
 
@@ -351,11 +357,16 @@ const LoansModule = () => {
                         <p className="text-muted-foreground">Total com Juros</p>
                         <p className="font-medium">{Number(loan.total_amount).toLocaleString('pt-MZ')} MT</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Saldo Devedor</p>
-                        <p className={`font-medium ${loan.status === 'overdue' ? 'text-red-600' : ''}`}>
+                      <div className={loan.status === 'overdue' ? "bg-red-50 p-2 rounded-lg -m-2" : ""}>
+                        <p className={`text-muted-foreground ${loan.status === 'overdue' ? 'text-red-700 font-semibold' : ''}`}>Saldo Devedor</p>
+                        <p className={`font-medium ${loan.status === 'overdue' ? 'text-red-700 font-bold' : ''}`}>
                           {Number(loan.remaining_amount).toLocaleString('pt-MZ')} MT
                         </p>
+                        {loan.status === 'overdue' && loan.penalty_amount! > 0 && (
+                           <p className="text-[9px] text-red-600 mt-0.5 leading-tight">
+                             Inclui <b>{loan.penalty_amount?.toLocaleString('pt-MZ')} MT</b><br/>de mora ({loan.late_days} dias)
+                           </p>
+                        )}
                       </div>
                       <div>
                         <p className="text-muted-foreground">Progresso</p>

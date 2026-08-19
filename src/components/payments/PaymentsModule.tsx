@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Search, Plus, Filter, Wallet, Receipt, DollarSign, Download, Printer, Loader2, Calendar, MapPin, Phone, Mail, User, Clock, CheckCircle, Info, TrendingDown, Check, ArrowUpRight, ChevronRight, RefreshCw, FileText } from 'lucide-react';
-import { calculateSmartSettlement } from '@/utils/creditUtils';
+import { calculateSmartSettlement, simulateCredit } from '@/utils/creditUtils';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '../../hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +27,8 @@ interface Payment {
   created_at: string;
   loan_client_name?: string;
   client_data?: any;
+  recapitalized_interest?: number;
+  recapitalized_new_end_date?: string | null;
 }
 
 interface ActiveLoan {
@@ -40,7 +44,27 @@ interface ActiveLoan {
   credit_option: string;
   remaining_installments: number;
   amortization_plan?: any[];
+  end_date: string | null;
+  status: string;
 }
+
+const getPenaltyInfo = (loan: ActiveLoan) => {
+  let penalty = 0;
+  let lateDays = 0;
+  if (loan.end_date && loan.remaining_amount > 0) {
+    const end = new Date(loan.end_date);
+    const today = new Date();
+    const endDateOnly = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+    const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    if (endDateOnly < todayDateOnly) {
+      const diffDays = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      lateDays = Math.abs(diffDays);
+      penalty = loan.remaining_amount * (0.015 * lateDays);
+    }
+  }
+  return { penalty, lateDays };
+};
 
 const PaymentsModule = () => {
   const { user } = useAuth();
@@ -57,7 +81,7 @@ const PaymentsModule = () => {
 
   // Form state
   const [formData, setFormData] = useState({
-    loanId: '', amount: '', method: 'cash', date: new Date().toISOString().split('T')[0], notes: '', isLiquidation: false
+    loanId: '', amount: '', method: 'cash', date: new Date().toISOString().split('T')[0], notes: '', isLiquidation: false, isRecapitalize: false
   });
 
   useEffect(() => {
@@ -124,9 +148,11 @@ const PaymentsModule = () => {
           credit_option, 
           remaining_installments, 
           amortization_plan,
+          end_date,
+          status,
           clients(*, client_number)
         `)
-        .eq('status', 'active')
+        .in('status', ['active', 'overdue'])
         .order('created_at', { ascending: false });
 
       if (user?.role === 'agente') {
@@ -150,6 +176,8 @@ const PaymentsModule = () => {
         credit_option: l.credit_option || '?',
         remaining_installments: l.remaining_installments,
         amortization_plan: l.amortization_plan,
+        end_date: l.end_date,
+        status: l.status,
       }));
       setActiveLoans(mapped);
     } catch (error: any) {
@@ -169,6 +197,14 @@ const PaymentsModule = () => {
     const selectedLoan = activeLoans.find(l => l.id === formData.loanId);
 
     try {
+      const { penalty } = getPenaltyInfo(selectedLoan!);
+      const totalRequired = selectedLoan!.remaining_amount + penalty;
+
+      if (amount > totalRequired) {
+        toast({ title: 'Valor Inválido', description: `O valor informado (MT ${amount.toLocaleString()}) é superior ao saldo exigido (MT ${totalRequired.toLocaleString()}).`, variant: 'destructive' });
+        return;
+      }
+
       // Inserir pagamento
       const paymentData: any = {
         loan_id: formData.loanId,
@@ -177,6 +213,16 @@ const PaymentsModule = () => {
         payment_method: formData.method,
         notes: formData.notes || null,
       };
+
+      let recapitalizedInterest = 0;
+      let newEndDate: string | null = null;
+      
+      if (formData.isRecapitalize && amount < totalRequired) {
+        const remainingToRecapitalize = totalRequired - amount;
+        const sim = simulateCredit(remainingToRecapitalize, 30, undefined, false);
+        recapitalizedInterest = sim.totalInterest;
+        newEndDate = sim.installments[0].date;
+      }
 
       // Process payment with atomic RPC
       const { data: rpcData, error: rpcError } = await supabase.rpc('receive_payment_with_wallet', {
@@ -187,7 +233,10 @@ const PaymentsModule = () => {
         p_notes: formData.notes || null,
         p_received_by: user?.id || null,
         p_installment_number: null,
-        p_is_liquidation: formData.isLiquidation
+        p_is_liquidation: formData.isLiquidation,
+        p_penalty_amount: penalty,
+        p_recapitalize_interest: recapitalizedInterest,
+        p_new_end_date: newEndDate
       });
 
       if (rpcError) throw rpcError;
@@ -207,6 +256,8 @@ const PaymentsModule = () => {
         created_at: new Date().toISOString(),
         loan_client_name: selectedLoan?.client_name || 'Desconhecido',
         client_data: selectedLoan?.client_data || null,
+        recapitalized_interest: recapitalizedInterest,
+        recapitalized_new_end_date: newEndDate,
       };
 
       // ----------------------------------------------------
@@ -286,6 +337,8 @@ const PaymentsModule = () => {
       companyPhone: companySettings?.phone || '+258 86 188 7302 / +258 84 582 8205',
       companyNuit: companySettings?.nuit || '1477066510',
       companyAddress: companySettings?.address || 'Moçambique, Maputo - Malhampsene (N4)',
+      recapitalizedInterest: payment.recapitalized_interest,
+      recapitalizedNewEndDate: payment.recapitalized_new_end_date || undefined
     });
     downloadDocumentAsPdf(html, `Recibo_${(payment.loan_client_name || 'Pagamento').replace(/\s+/g, '_')}_${receiptNumber}`);
     toast({ title: 'Recibo Gerado', description: `Recibo ${receiptNumber} baixado em PDF.` });
@@ -352,21 +405,27 @@ const PaymentsModule = () => {
                       <SelectValue placeholder="Selecione o Cliente..." />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
-                      {activeLoans.map(loan => (
-                        <SelectItem key={loan.id} value={loan.id} className="rounded-xl py-3 px-4 focus:bg-amber-50">
-                          <div className="flex flex-col items-start gap-1">
-                            <span className="font-bold text-gray-800 flex items-center gap-1.5">
-                              {loan.client_name}
-                              {loan.is_physical && (
-                                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">
-                                  <MapPin className="h-2.5 w-2.5" /> Físico
-                                </span>
-                              )}
-                            </span>
-                            <span className="text-[10px] text-gray-500">Saldo Actual: <strong className="text-red-500">MT {loan.remaining_amount.toLocaleString()}</strong></span>
-                          </div>
-                        </SelectItem>
-                      ))}
+                      {activeLoans.map(loan => {
+                        const { penalty } = getPenaltyInfo(loan);
+                        return (
+                          <SelectItem key={loan.id} value={loan.id} className="rounded-xl py-3 px-4 focus:bg-amber-50">
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="font-bold text-gray-800 flex items-center gap-1.5">
+                                {loan.client_name}
+                                {loan.is_physical && (
+                                  <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-700">
+                                    <MapPin className="h-2.5 w-2.5" /> Físico
+                                  </span>
+                                )}
+                              </span>
+                              <span className="text-[10px] text-gray-500">
+                                Saldo Actual: <strong className="text-red-500">MT {(loan.remaining_amount + penalty).toLocaleString()}</strong>
+                                {penalty > 0 && <span className="text-red-600 font-bold ml-1">(Inclui MT {penalty.toLocaleString()} mora)</span>}
+                              </span>
+                            </div>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
 
@@ -390,6 +449,8 @@ const PaymentsModule = () => {
                           if (loanDetails?.end_date) dueDateStr = new Date(loanDetails.end_date).toLocaleDateString('pt-MZ');
                         } catch { /* fallback */ }
 
+                        const { penalty, lateDays } = getPenaltyInfo(selectedLoan);
+
                         const html = generateInvoiceHTML({
                           number: invoiceNumber,
                           date: new Date().toLocaleDateString('pt-MZ'),
@@ -402,7 +463,9 @@ const PaymentsModule = () => {
                           clientNumber: cDataInv.client_number ? String(cDataInv.client_number) : undefined,
                           amount: selectedLoan.total_amount - (selectedLoan.total_amount - (selectedLoan.total_amount / (1 + 0.3))),
                           interestRate: 30,
-                          totalAmount: selectedLoan.total_amount,
+                          latePenaltyAmount: penalty > 0 ? penalty : undefined,
+                          latePenaltyDays: penalty > 0 ? lateDays : undefined,
+                          totalAmount: selectedLoan.total_amount + penalty,
                           installments: selectedLoan.installments,
                           description: 'Concessão de microcrédito',
                           companyName: companySettings?.company_name || 'Bochel Microcredito, Ei',
@@ -422,7 +485,42 @@ const PaymentsModule = () => {
                 </div>
 
                 {selectedLoan && (
-                  <div className="animate-in slide-in-from-top-2 duration-300 space-y-3">
+                  <div className="animate-in slide-in-from-top-2 duration-300 space-y-4">
+                    {/* Exibição Clara do Saldo e Juros de Mora */}
+                    {(() => {
+                      const { penalty, lateDays } = getPenaltyInfo(selectedLoan);
+                      const isLate = lateDays > 0;
+                      const originalRemaining = selectedLoan.remaining_amount;
+                      const totalToPay = originalRemaining + penalty;
+                      
+                      return (
+                        <div className={cn("rounded-2xl p-4 border", isLate ? "bg-red-50/50 border-red-200" : "bg-emerald-50/50 border-emerald-200")}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <Info className={cn("h-4 w-4", isLate ? "text-red-600" : "text-emerald-600")} />
+                            <h3 className={cn("text-xs font-black uppercase tracking-widest", isLate ? "text-red-800" : "text-emerald-800")}>
+                              {isLate ? 'Dívida em Atraso' : 'Estado da Dívida (Regular)'}
+                            </h3>
+                          </div>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between items-center text-gray-600">
+                              <span>Saldo Normal:</span>
+                              <span className="font-bold">{originalRemaining.toLocaleString('pt-MZ', { minimumFractionDigits: 2 })} MT</span>
+                            </div>
+                            {isLate && (
+                              <div className="flex justify-between items-center text-red-600">
+                                <span>Juros de Mora ({lateDays} dias):</span>
+                                <span className="font-bold">+{penalty.toLocaleString('pt-MZ', { minimumFractionDigits: 2 })} MT</span>
+                              </div>
+                            )}
+                            <div className="pt-2 border-t flex justify-between items-center">
+                              <span className="font-black text-gray-800">Total Exigido:</span>
+                              <span className="text-xl font-black text-gray-900">{totalToPay.toLocaleString('pt-MZ', { minimumFractionDigits: 2 })} MT</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
                     {/* Smart Settlement Suggestion */}
                     {(() => {
                       const smartVal = calculateSmartSettlement(selectedLoan);
@@ -461,17 +559,23 @@ const PaymentsModule = () => {
                       type="button"
                       variant="outline"
                       className="w-full h-12 border-2 border-dashed border-emerald-200 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group active:scale-[0.98]"
-                      onClick={() => setFormData({
-                        ...formData,
-                        amount: String(selectedLoan.remaining_amount),
-                        isLiquidation: true,
-                        notes: 'Liquidação total do saldo devedor (valor integral).'
-                      })}
+                      onClick={() => {
+                        const { penalty } = getPenaltyInfo(selectedLoan);
+                        setFormData({
+                          ...formData,
+                          amount: String(selectedLoan.remaining_amount + penalty),
+                          isLiquidation: true,
+                          notes: 'Liquidação total do saldo devedor (valor integral).'
+                        });
+                      }}
                     >
                       <div className="p-1.5 bg-emerald-500 text-white rounded-lg shadow-sm group-hover:scale-110 transition-transform">
                         <DollarSign className="h-4 w-4" />
                       </div>
-                      Liquidar Saldo Total Nominal (MT {selectedLoan.remaining_amount.toLocaleString()})
+                      Liquidar Saldo Total Nominal (MT {(() => {
+                        const { penalty } = getPenaltyInfo(selectedLoan);
+                        return (selectedLoan.remaining_amount + penalty).toLocaleString();
+                      })()})
                     </Button>
                   </div>
                 )}
@@ -485,8 +589,22 @@ const PaymentsModule = () => {
                         step="0.01"
                         className="h-14 border-gray-200 rounded-2xl bg-gray-50/50 shadow-inner pl-12 font-black text-xl text-[#2e7d32]"
                         placeholder="0.00"
+                        max={selectedLoan ? (() => {
+                          const { penalty } = getPenaltyInfo(selectedLoan);
+                          return selectedLoan.remaining_amount + penalty;
+                        })() : undefined}
                         value={formData.amount}
-                        onChange={(e) => setFormData({ ...formData, amount: e.target.value, isLiquidation: false })}
+                        onChange={(e) => {
+                          let val = e.target.value;
+                          if (selectedLoan && val) {
+                            const { penalty } = getPenaltyInfo(selectedLoan);
+                            const totalRequired = selectedLoan.remaining_amount + penalty;
+                            if (parseFloat(val) > totalRequired) {
+                              val = String(totalRequired);
+                            }
+                          }
+                          setFormData({ ...formData, amount: val, isLiquidation: false });
+                        }}
                       />
                       <DollarSign className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     </div>
@@ -528,6 +646,54 @@ const PaymentsModule = () => {
                     />
                   </div>
                 </div>
+
+                {/* RECAPITALIZATION UI */}
+                {selectedLoan && (() => {
+                  const { penalty } = getPenaltyInfo(selectedLoan);
+                  const totalRequired = selectedLoan.remaining_amount + penalty;
+                  const partialAmount = parseFloat(formData.amount) || 0;
+                  
+                  if (partialAmount > 0 && partialAmount < totalRequired) {
+                    const remainingToRecapitalize = totalRequired - partialAmount;
+                    const sim = simulateCredit(remainingToRecapitalize, 30, undefined, false);
+                    
+                    return (
+                      <div className="mt-4 p-4 rounded-2xl bg-indigo-50 border border-indigo-100 flex flex-col gap-4 animate-in fade-in slide-in-from-top-2">
+                        <div className="flex items-center justify-between">
+                          <div className="space-y-0.5">
+                            <Label className="text-sm font-bold text-indigo-900">Recapitalizar Saldo Restante?</Label>
+                            <p className="text-xs text-indigo-700">Dá mais 30 dias para o cliente pagar os restantes MT {remainingToRecapitalize.toLocaleString()}</p>
+                          </div>
+                          <Switch 
+                            checked={formData.isRecapitalize} 
+                            onCheckedChange={(checked) => setFormData({ ...formData, isRecapitalize: checked })}
+                          />
+                        </div>
+
+                        {formData.isRecapitalize && (
+                          <div className="pt-3 border-t border-indigo-100/50 grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-white/50 p-2 rounded-lg">
+                              <p className="text-indigo-400 font-medium text-[10px] uppercase tracking-wider mb-0.5">Novo Juro (+30 dias)</p>
+                              <p className="font-bold text-indigo-900">+ MT {sim.totalInterest.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white/50 p-2 rounded-lg">
+                              <p className="text-indigo-400 font-medium text-[10px] uppercase tracking-wider mb-0.5">Novo Total a Pagar</p>
+                              <p className="font-black text-indigo-900">MT {sim.totalToPay.toLocaleString()}</p>
+                            </div>
+                            <div className="col-span-2 bg-indigo-600 text-white p-2.5 rounded-lg flex items-center justify-between shadow-sm mt-1">
+                              <span className="font-medium">Novo Vencimento:</span>
+                              <span className="font-black flex items-center gap-1.5">
+                                <Calendar className="w-3.5 h-3.5 opacity-80" />
+                                {new Date(sim.installments[0].date).toLocaleDateString('pt-PT')}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
 
                 <Button
                   type="submit"

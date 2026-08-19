@@ -7,7 +7,7 @@ import legacy from "@vitejs/plugin-legacy";
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
-    port: 8080,
+    port: 5173,
   },
   plugins: [
     react(),

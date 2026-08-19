@@ -68,6 +68,7 @@ export interface CreditRequest {
   installment_months?: number | null;
   amortization_plan?: AmortizationRow[] | null;
   interest_rate_at_request?: number | null;
+  contracts?: { status: string }[];
 }
 
 const LABELS: Record<string, string> = {
@@ -87,8 +88,7 @@ const label = (v: string | null | undefined) => (v && LABELS[v]) || v || '-';
 const CreditRequestManager = () => {
   const [requests, setRequests] = useState<CreditRequest[]>([]);
   const [selected, setSelected] = useState<CreditRequest | null>(null);
-  const [reviewMsg, setReviewMsg] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'completed' | 'paid' | 'rejected'>('all');
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -97,7 +97,26 @@ const CreditRequestManager = () => {
   const [contractStatus, setContractStatus] = useState<string | null>(null);
   const [loanAlreadyExists, setLoanAlreadyExists] = useState(false);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { 
+    load(); 
+    
+    const reqSub = supabase.channel('requests-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'credit_requests' }, () => {
+        load();
+      })
+      .subscribe();
+      
+    const contractsSub = supabase.channel('contracts-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'contracts' }, () => {
+        load();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(reqSub);
+      supabase.removeChannel(contractsSub);
+    };
+  }, []);
 
   // Check contract status and existing loan when viewing an approved request
   useEffect(() => {
@@ -183,11 +202,12 @@ const CreditRequestManager = () => {
 
   const [injecting, setInjecting] = useState(false);
   const [acting, setActing] = useState(false);
+  const [reviewMsg, setReviewMsg] = useState('');
 
   const load = async () => {
     try {
       const [requestsRes, settingsRes] = await Promise.all([
-        supabase.from('credit_requests').select('*').order('created_at', { ascending: false }),
+        supabase.from('credit_requests').select('*, contracts(status)').order('created_at', { ascending: false }),
         supabase.from('system_settings').select('company_name, email, phone, nuit, address').limit(1).single()
       ]);
       if (requestsRes.error) throw requestsRes.error;
@@ -547,18 +567,25 @@ const CreditRequestManager = () => {
     }
   };
 
-  const statusBadge = (s: string) => {
+  const statusBadge = (s: string, req?: CreditRequest) => {
+    let finalLabel = 'Pendente';
+    if (s === 'approved') {
+      const isSigned = req?.contracts?.some(c => c.status === 'signed' || c.status === 'active');
+      finalLabel = isSigned ? 'Aprovado (Assinado)' : 'Aprovado (Ñ Assinado)';
+    }
+
     const m: Record<string, { l: string; c: string; i: React.ReactNode }> = {
-      pending: { l: 'Pendente', c: 'bg-amber-100 text-amber-800', i: <Clock className="w-3 h-3" /> },
-      approved: { l: 'Aprovado', c: 'bg-green-100 text-green-800', i: <CheckCircle className="w-3 h-3" /> },
-      completed: { l: 'Aprovado', c: 'bg-green-100 text-green-800', i: <CheckCircle className="w-3 h-3" /> },
-      rejected: { l: 'Rejeitado', c: 'bg-red-100 text-red-800', i: <XCircle className="w-3 h-3" /> },
+      pending: { l: 'Pendente', c: 'bg-amber-100 text-amber-800 border-amber-200', i: <Clock className="w-3 h-3" /> },
+      approved: { l: finalLabel, c: 'bg-blue-100 text-blue-800 border-blue-200', i: <CheckCircle className="w-3 h-3" /> },
+      completed: { l: 'Assinado (Injectado)', c: 'bg-green-100 text-green-800 border-green-200', i: <Wallet className="w-3 h-3" /> },
+      paid: { l: 'Quitado', c: 'bg-gray-100 text-gray-800 border-gray-300', i: <CheckCircle className="w-3 h-3 text-green-600" /> },
+      rejected: { l: 'Rejeitado', c: 'bg-red-100 text-red-800 border-red-200', i: <XCircle className="w-3 h-3" /> },
     };
-    const x = m[s] || { l: s, c: 'bg-gray-100', i: null };
-    return <Badge className={x.c}><span className="flex items-center gap-1">{x.i}{x.l}</span></Badge>;
+    const x = m[s] || { l: s, c: 'bg-gray-100 border-gray-200', i: null };
+    return <Badge className={`border ${x.c}`}><span className="flex items-center gap-1">{x.i}{x.l}</span></Badge>;
   };
 
-  const filtered = requests.filter(r => filter === 'all' || (filter === 'approved' ? (r.status === 'approved' || r.status === 'completed') : r.status === filter));
+  const filtered = requests.filter(r => filter === 'all' || r.status === filter);
   const isGestor = user?.role === 'gestor';
 
   const InfoRow = ({ icon: Icon, title, value }: { icon: React.ElementType; title: string; value: string | null | undefined }) => {
@@ -651,7 +678,7 @@ const CreditRequestManager = () => {
                   <p className="text-xs text-gray-500">{new Date(r.created_at).toLocaleDateString('pt-MZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
               </div>
-              {statusBadge(r.status)}
+              {statusBadge(r.status, r)}
             </div>
 
             {/* Key Stats */}
@@ -1001,17 +1028,19 @@ const CreditRequestManager = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
         {([
-          { key: 'all' as const, label: 'Todos', count: requests.length, color: 'bg-gray-100 text-gray-800' },
-          { key: 'pending' as const, label: 'Pendentes', count: requests.filter(r => r.status === 'pending').length, color: 'bg-amber-100 text-amber-800' },
-          { key: 'approved' as const, label: 'Aprovados', count: requests.filter(r => r.status === 'approved' || r.status === 'completed').length, color: 'bg-green-100 text-green-800' },
-          { key: 'rejected' as const, label: 'Rejeitados', count: requests.filter(r => r.status === 'rejected').length, color: 'bg-red-100 text-red-800' },
+          { key: 'all' as const, label: 'Todos', count: requests.length, color: 'bg-gray-100 text-gray-800 border-gray-300' },
+          { key: 'pending' as const, label: 'Pendentes', count: requests.filter(r => r.status === 'pending').length, color: 'bg-amber-100 text-amber-800 border-amber-300' },
+          { key: 'approved' as const, label: 'Aprovados', count: requests.filter(r => r.status === 'approved').length, color: 'bg-blue-100 text-blue-800 border-blue-300' },
+          { key: 'completed' as const, label: 'Assinados', count: requests.filter(r => r.status === 'completed').length, color: 'bg-green-100 text-green-800 border-green-300' },
+          { key: 'paid' as const, label: 'Quitados', count: requests.filter(r => r.status === 'paid').length, color: 'bg-slate-100 text-slate-800 border-slate-300' },
+          { key: 'rejected' as const, label: 'Rejeitados', count: requests.filter(r => r.status === 'rejected').length, color: 'bg-red-100 text-red-800 border-red-300' },
         ]).map(f => (
           <button key={f.key} onClick={() => setFilter(f.key)}
-            className={`rounded-xl p-3 text-center transition-all ${filter === f.key ? 'ring-2 ring-[#1a3a5c] shadow-md' : 'hover:shadow-sm'} ${f.color}`}>
+            className={`rounded-xl p-3 text-center transition-all border ${filter === f.key ? 'ring-2 ring-offset-1 ring-[#1a3a5c] shadow-md scale-[1.02]' : 'hover:shadow-sm opacity-80 hover:opacity-100'} ${f.color}`}>
             <p className="text-2xl font-bold">{f.count}</p>
-            <p className="text-[10px] font-medium">{f.label}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wide">{f.label}</p>
           </button>
         ))}
       </div>
@@ -1025,7 +1054,7 @@ const CreditRequestManager = () => {
       ) : (
         <div className="space-y-3">
           {filtered.map(r => (
-            <Card key={r.id} className="border-0 shadow-md cursor-pointer hover:shadow-lg transition-shadow" onClick={() => setSelected(r)}>
+            <Card key={r.id} className={`border-l-4 shadow-md cursor-pointer hover:shadow-lg transition-shadow ${r.status === 'pending' ? 'border-l-amber-400' : r.status === 'approved' ? 'border-l-blue-400' : r.status === 'completed' ? 'border-l-green-500' : r.status === 'paid' ? 'border-l-gray-400' : r.status === 'rejected' ? 'border-l-red-400' : 'border-l-gray-200'}`} onClick={() => setSelected(r)}>
               <CardContent className="p-4 md:p-5">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-3">
@@ -1036,7 +1065,7 @@ const CreditRequestManager = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    {statusBadge(r.status)}
+                    {statusBadge(r.status, r)}
                     <p className="text-lg font-bold text-green-700 mt-1">MT {Number(r.amount).toLocaleString()}</p>
                   </div>
                 </div>

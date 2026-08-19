@@ -87,6 +87,8 @@ export interface InvoiceData {
   clientNumber?: string;
   amount: number;
   interestRate?: number;
+  latePenaltyAmount?: number;
+  latePenaltyDays?: number;
   totalAmount?: number;
   installments?: number;
   duration?: string;
@@ -113,6 +115,8 @@ export interface ReceiptData {
   paymentMethod?: string;
   remainingBalance?: number;
   loanTotalAmount?: number;
+  recapitalizedInterest?: number;
+  recapitalizedNewEndDate?: string;
   installmentNumber?: string;
   description: string;
   companyName: string;
@@ -263,7 +267,8 @@ export const generateInvoiceHTML = (invoiceData: InvoiceData) => {
       <thead><tr><th>Descrição</th><th>Taxa de Juro</th><th style="text-align:right">Valor (Mt)</th></tr></thead>
       <tbody>
         <tr><td>Crédito concedido</td><td>${invoiceData.interestRate ? invoiceData.interestRate + '%' : '---'}</td><td style="text-align:right">${invoiceData.amount.toLocaleString()}</td></tr>
-        ${invoiceData.interestRate ? `<tr><td>Juros de empréstimo (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">${(totalAmount - invoiceData.amount).toLocaleString()}</td></tr>` : ''}
+        ${invoiceData.interestRate ? `<tr><td>Juros de empréstimo (${invoiceData.interestRate}%)</td><td></td><td style="text-align:right">${((invoiceData.totalAmount || invoiceData.amount) - invoiceData.amount - (invoiceData.latePenaltyAmount || 0)).toLocaleString()}</td></tr>` : ''}
+        ${invoiceData.latePenaltyAmount ? `<tr><td>Juros de Mora (${invoiceData.latePenaltyDays} dias)</td><td>1.5%/dia</td><td style="text-align:right">${invoiceData.latePenaltyAmount.toLocaleString()}</td></tr>` : ''}
         <tr class="total-row"><td colspan="2">TOTAL A PAGAR</td><td style="text-align:right">${totalAmount.toLocaleString()}</td></tr>
       </tbody>
     </table>
@@ -382,6 +387,17 @@ export const generateReceiptHTML = (receiptData: ReceiptData) => {
     Recebemos de <strong>${s(receiptData.clientName)}</strong> a quantia de <strong>${receiptData.amount.toLocaleString()} Mt</strong>
     (${s(receiptData.description)}), paga através de <strong>${s(method)}</strong>.
   </div>
+
+  ${receiptData.recapitalizedInterest ? `
+  <div style="border:1px dashed #d37c22; background-color: #fff9f0; padding:14px; margin:12px 0; border-radius: 8px;">
+    <h4 style="margin:0 0 8px 0; color:#b05d15; font-size:13px; text-transform: uppercase;">Aviso de Recapitalização</h4>
+    <p style="margin:0; font-size:12px; color:#5c3a21; line-height: 1.5;">
+      O saldo devedor restante foi recapitalizado por mais 30 dias.<br/>
+      <strong>Juro Adicionado:</strong> ${receiptData.recapitalizedInterest.toLocaleString()} Mt<br/>
+      <strong>Novo Vencimento:</strong> ${receiptData.recapitalizedNewEndDate ? new Date(receiptData.recapitalizedNewEndDate).toLocaleDateString('pt-PT') : 'N/A'}
+    </p>
+  </div>
+  ` : ''}
 
 
 

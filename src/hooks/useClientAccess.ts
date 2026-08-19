@@ -9,6 +9,7 @@ interface Loan {
   amount: number;
   remaining_amount: number;
   total_amount: number;
+  interest_rate: number;
 }
 
 export const useClientAccess = () => {
