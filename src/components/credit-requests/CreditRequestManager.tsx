@@ -585,7 +585,16 @@ const CreditRequestManager = () => {
     return <Badge className={`border ${x.c}`}><span className="flex items-center gap-1">{x.i}{x.l}</span></Badge>;
   };
 
-  const filtered = requests.filter(r => filter === 'all' || r.status === filter);
+  const filtered = requests.filter(r => {
+    if (filter === 'all') return true;
+    if (filter === 'approved_unsigned') {
+      return r.status === 'approved' && !r.contracts?.some(c => c.status === 'signed' || c.status === 'active');
+    }
+    if (filter === 'approved_signed') {
+      return r.status === 'approved' && r.contracts?.some(c => c.status === 'signed' || c.status === 'active');
+    }
+    return r.status === filter;
+  });
   const isGestor = user?.role === 'gestor';
 
   const InfoRow = ({ icon: Icon, title, value }: { icon: React.ElementType; title: string; value: string | null | undefined }) => {
@@ -1028,12 +1037,13 @@ const CreditRequestManager = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 md:gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2 md:gap-3">
         {([
           { key: 'all' as const, label: 'Todos', count: requests.length, color: 'bg-gray-100 text-gray-800 border-gray-300' },
           { key: 'pending' as const, label: 'Pendentes', count: requests.filter(r => r.status === 'pending').length, color: 'bg-amber-100 text-amber-800 border-amber-300' },
-          { key: 'approved' as const, label: 'Aprovados', count: requests.filter(r => r.status === 'approved').length, color: 'bg-blue-100 text-blue-800 border-blue-300' },
-          { key: 'completed' as const, label: 'Assinados', count: requests.filter(r => r.status === 'completed').length, color: 'bg-green-100 text-green-800 border-green-300' },
+          { key: 'approved_unsigned' as const, label: 'Apr.(Ñ Ass)', count: requests.filter(r => r.status === 'approved' && !r.contracts?.some(c => c.status === 'signed' || c.status === 'active')).length, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+          { key: 'approved_signed' as const, label: 'Apr.(Assin)', count: requests.filter(r => r.status === 'approved' && r.contracts?.some(c => c.status === 'signed' || c.status === 'active')).length, color: 'bg-blue-100 text-blue-800 border-blue-400' },
+          { key: 'completed' as const, label: 'Injectados', count: requests.filter(r => r.status === 'completed').length, color: 'bg-green-100 text-green-800 border-green-300' },
           { key: 'paid' as const, label: 'Quitados', count: requests.filter(r => r.status === 'paid').length, color: 'bg-slate-100 text-slate-800 border-slate-300' },
           { key: 'rejected' as const, label: 'Rejeitados', count: requests.filter(r => r.status === 'rejected').length, color: 'bg-red-100 text-red-800 border-red-300' },
         ]).map(f => (
